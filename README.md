@@ -1,2 +1,2 @@
 # vdrp
-HT VIRUS data reduction pipeline
+HET VIRUS data reduction pipeline
