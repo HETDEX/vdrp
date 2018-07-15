@@ -71,7 +71,7 @@ class TestAllstar(TestDaophot):
         psf = "use.psf"
         with path.Path(self.test_dir):
             print(glob.glob("*"))
-            daophot.allstar(prefix, psf)
+            daophot.allstar(prefix, psf = psf)
             self.assertTrue(os.path.exists(prefix + ".als"))
             print(glob.glob("*"))
 
@@ -85,6 +85,30 @@ class TestDeomaster(TestDaophot):
             daophot.daomaster()
             print(glob.glob("*"))
 
+class TestFilterDaophot(TestDaophot):
+    ff = ["20180611T055249_053.coo"]
+
+    def test_filter_daophot_out(self):
+        with path.Path(self.test_dir):
+            print(glob.glob("*"))
+            prefix = "20180611T055249_053"
+            file_in  = prefix + ".coo"
+            file_out = prefix + ".lst"
+            xmin,xmax,ymin,ymax = 5,45,5,45
+            daophot.filter_daophot_out(file_in, file_out, xmin,xmax,ymin,ymax)
+            print(glob.glob("*"))
+            # Make sure output files exists.
+            self.assertTrue(os.path.exists(file_out))
+            # Check that only x y ramin that fall inside of xmin,xmax and ymin,ymax.
+            with open(file_out) as f:
+                ll = f.readlines()
+                for l in ll[3:]:
+                    tt = l.split()
+                    x,y = float(tt[1]), float(tt[2])
+                    self.assertTrue(x > xmin)
+                    self.assertTrue(y < xmax)
+                    self.assertTrue(y > ymin)
+                    self.assertTrue(y < ymax)
 
 if __name__ == '__main__':
     unittest.main()

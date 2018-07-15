@@ -82,7 +82,24 @@ n
 n
 """
 
+class DaophotException(Exception):
+    pass
+
+
+def test_input_files_exist(input_files):
+    """
+    Takes a list of files names and check if they are in place.
+    Raises DaophotException if not.
+    """
+    for f in input_files:
+        if not os.path.exists(f):
+            raise DaophotException("Input file {} not in place.".format(f))
+
+
 def rm(ff):
+    """
+    Takes a list of files names and deletes them.
+    """
     for f in ff:
         try:
             os.remove(f)
@@ -97,6 +114,10 @@ def daophot_find(prefix, sigma):
     Requires daophot.opt to be in place.
     """
     global DAOPHOT_FIND_CMD
+    
+    input_files = ["daophot.opt", prefix + ".fits"]
+    test_input_files_exist(input_files)
+
     rm([prefix + ".coo",prefix + ".lst",prefix + "jnk.fits"])
     #proc = subprocess.Popen("daophot", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     proc = subprocess.Popen("daophot", stdin=subprocess.PIPE)
@@ -113,6 +134,10 @@ def daophot_phot(prefix):
     Requires photo.opt to be in place.
     """
     global DAOPHOT_PHOT_CMD
+
+    input_files = ["daophot.opt", "photo.opt", prefix + ".fits", prefix + ".coo"]
+    test_input_files_exist(input_files)
+
     rm([prefix + ".ap",prefix + "1s.fits",prefix + ".als", prefix + "jnk.fits"])
     #proc = subprocess.Popen("daophot", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     proc = subprocess.Popen("daophot", stdin=subprocess.PIPE)
@@ -122,13 +147,18 @@ def daophot_phot(prefix):
     p_status = proc.wait()
     rm([prefix + "jnk.fits"])
 
-def allstar(prefix, psf):
+
+def allstar(prefix, psf="use.psf"):
     """
     Interface to allstar.
     Replaces second part of rdsub.
     Requires allstar.opt and use.psf, PREFIX.ap to be in place.
     """
     global ALLSTAR_CMD
+
+    input_files = [prefix + ".fits", "allstar.opt", psf, prefix + ".ap"]
+    test_input_files_exist(input_files)
+
     rm([prefix + "s.fits",prefix + ".als", prefix + "jnk.fits"])
     #proc = subprocess.Popen("allstar", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     proc = subprocess.Popen("allstar", stdin=subprocess.PIPE)
@@ -136,6 +166,7 @@ def allstar(prefix, psf):
     so,se = proc.communicate(input=s)
     print so
     p_status = proc.wait()
+
 
 def daomaster():
     """
@@ -145,6 +176,11 @@ def daomaster():
     and all.mch to be in place.
     """
     global DAOMASTER_CMD
+
+    # TODO: Shoudl check for existence of e.g. "20180611T054545tot.als"
+    input_files = ["all.mch"]
+    test_input_files_exist(input_files)
+
     #rm([prefix + ".raw"])
     #proc = subprocess.Popen("daomaster", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     proc = subprocess.Popen("daomaster", stdin=subprocess.PIPE)
@@ -152,6 +188,7 @@ def daomaster():
     so,se = proc.communicate(input=s)
     print so
     p_status = proc.wait()
+
 
 def mk_daophot_opt(args):
     s = ""
@@ -171,20 +208,20 @@ def mk_daophot_opt(args):
     with open("daophot.opt", 'w') as f:
         f.write(s)
 
-def filter_daophot_out(file_in, file_out, xmin,xmax,ymin,ymix):
+def filter_daophot_out(file_in, file_out, xmin, xmax, ymin, ymax):
     """
     Read the daophot *.coo output file and rejects detections
     that fall outside xmin - xmax and ymin - ymax.
     Translated from
     awk '{s+=1; if (s<=3||($2>4&&$2<45&&$3>4&&$3<45)) print $0}' $1.coo > $1.lst
     """
-    with open(file_in) as fin:
-        ll = file_in.readlines()
-    with open(file_out) as fout:
+    with open(file_in, 'r') as fin:
+        ll = fin.readlines()
+    with open(file_out, 'w') as fout:
         for i in range(3):
             fout.write(ll[i])
         for l in ll[3:]:
-            t = tt.split()
+            tt = l.split()
             x,y = float(tt[1]), float(tt[2])
             if x > xmin and y < xmax and y > ymin and y < ymax:
                 fout.write(l)

@@ -43,7 +43,6 @@ rm -f CoFeS*fits
 # 
 run2
 
-exit 0
 # produces run6
 awk2.dat
 
@@ -54,6 +53,7 @@ awk2.dat
 ls *.coo | awk '{print "rdsub",$1}' | sed s/.coo// > run4a; chmod +x run4a
 run4a
 
+exit 0
 
 # runs mktot 20180611T054545 > j1 ; cat head j1 > 20180611T054545tot.als
 # mktot is many lines like

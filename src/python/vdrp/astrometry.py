@@ -52,8 +52,9 @@ def parseArgs():
     defaults["daophot_xmax"] = 45
     defaults["daophot_ymin"] = 4
     defaults["daophot_ymix"] = 45
-
-    defaults["daophot_phot_psf"] = "use.psf"
+    defaults["daophot_phot_psf"]    = "vdrp/config/use.psf"
+    defaults["daophot_photo_opt"]   = "vdrp/config/photo.opt"
+    defaults["daophot_allstar_opt"] = "vdrp/config/allstar.opt"
 
     if args.conf_file:
         config = ConfigParser.SafeConfigParser()
@@ -89,6 +90,8 @@ def parseArgs():
     parser.add_argument("--daophot_ymin",  type=float)
     parser.add_argument("--daophot_ymix",  type=float)
     parser.add_argument("--daophot_phot_psf",  type=str)
+    parser.add_argument("--daophot_photo_opt",  type=str)
+    parser.add_argument("--daophot_allstar_opt",  type=str)
 
     parser.add_argument('night', metavar='night', type=str,
             help='Night of observation (e.g. 20180611).')
@@ -97,7 +100,6 @@ def parseArgs():
     args = parser.parse_args(remaining_argv)
  
     return args
-    #return(0)
 
 
 def createDir(directory):
@@ -114,54 +116,73 @@ cwd = os.getcwd()
 wdir = os.path.join(cwd, "{}v{}".format(args.night, args.shotid))
 createDir(wdir)
 
+def copy_postage_stamps(args):
+    ## find the IFU postage stamp fits files and copy them over
+    pattern = os.path.join( args.reduction_dir, "{}/virus/virus0000{}/*/*/CoFeS*".format( args.night, args.shotid ) )
+    print("Copy CoFeS* files to {}".format(wdir))
+    cofes_files = glob.glob(pattern)
 
-## find the IFU postage stamp fits files and copy them over
-pattern = os.path.join( args.reduction_dir, "{}/virus/virus0000{}/*/*/CoFeS*".format( args.night, args.shotid ) )
-print("Copy CoFeS* files to {}".format(wdir))
-cofes_files = glob.glob(pattern)
-for f in cofes_files:
-    h,t = os.path.split(f)
-    if os.path.exists(os.path.join(wdir,t)):
-        print("{} already exists in {}, skipping ...".format(t,wdir))
-        continue
-    shutil.copy2(f, wdir)
-
-# create the IFU postage stamp matrix image
-print("Creating the IFU postage stamp matrix image...")
-prefix = os.path.split(cofes_files[0])[-1][:20]
-outfile_name = prefix + ".png"
-with path.Path(wdir):
-    #os.chdir(wdir)
-    print(prefix, outfile_name, args.cofes_vis_vmin, args.cofes_vis_vmax)
-    cofes_4x4_plots(prefix = prefix, outfile_name = outfile_name, vmin = args.cofes_vis_vmin, vmax = args.cofes_vis_vmax)
-
-
-# run initial daophot find
-print("Running initial daophot find...")
-with path.Path(wdir):
+    already_warned = False
     for f in cofes_files:
-        # first need to shorten file names such
-        # that daophot won't choke on them.
         h,t = os.path.split(f)
-        prefix = t[5:20] + t[22:26]
-        os.rename(t, prefix + ".fits")
-        # execute daophot
-        daophot.mk_daophot_opt(args)
-        daophot.daophot_find(prefix, args.daophot_sigma)
-        # filter ouput
-        filter_daophot_out(prefix + ".coo", prefix + ".lst", args.daophot_xmin,args.daophot_xmax,args.daophot_ymin,args.daophot_ymix)
+        if os.path.exists(os.path.join(wdir,t)):
+            if not already_warned:
+                print("{} already exists in {}, skipping, wo'nt warn about other files....".format(t,wdir))
+                already_warned = True
+            continue
+        shutil.copy2(f, wdir)
+    return cofes_files
 
-# run initial daophot phot & allstar
-print("Running initial daophot ...")
-with path.Path(wdir):
-    for f in cofes_files:
-        # first need to shorten file names such
-        # that daophot won't choke on them.
-        h,t = os.path.split(f)
-        prefix = t[5:20] + t[22:26]
-        daophot.daophot_phot(prefix)
-        shutil.copy2(args.daophot_phot_psf, "use.psf")
-        daophot.allstar(prefix, args.daophot_phot_psf)
+def create_postage_stamp_matrix(args, cofes_files):
+    # create the IFU postage stamp matrix image
+    print("Creating the IFU postage stamp matrix image...")
+    prefix = os.path.split(cofes_files[0])[-1][:20]
+    outfile_name = prefix + ".png"
+    with path.Path(wdir):
+        #os.chdir(wdir)
+        print(prefix, outfile_name, args.cofes_vis_vmin, args.cofes_vis_vmax)
+        cofes_4x4_plots(prefix = prefix, outfile_name = outfile_name, vmin = args.cofes_vis_vmin, vmax = args.cofes_vis_vmax)
+
+
+def inital_daophot_find(args, cofes_files):
+    # run initial daophot find
+    print("Running initial daophot find...")
+    # Create configuration file for daophot.
+    daophot.mk_daophot_opt(args)
+    with path.Path(wdir):
+        for f in cofes_files:
+            # first need to shorten file names such
+            # that daophot won't choke on them.
+            h,t = os.path.split(f)
+            prefix = t[5:20] + t[22:26]
+            os.rename(t, prefix + ".fits")
+            # execute daophot
+            daophot.daophot_find(prefix, args.daophot_sigma)
+            # filter ouput
+            daophot.filter_daophot_out(prefix + ".coo", prefix + ".lst", args.daophot_xmin,args.daophot_xmax,args.daophot_ymin,args.daophot_ymix)
+
+
+def daophot_phot_and_allstar(args, cofes_files):
+    # run initial daophot phot & allstar
+    print("Running daophot phot & allstar ...")
+    # Copy configuration files for daophot and allstar.
+    shutil.copy2(args.daophot_photo_opt, os.path.join(wdir, "photo.opt") )
+    shutil.copy2(args.daophot_allstar_opt, os.path.join(wdir, "allstar.opt") )
+    shutil.copy2(args.daophot_phot_psf, os.path.join(wdir, "use.psf"))
+    with path.Path(wdir):
+        for f in cofes_files:
+            # first need to shorten file names such
+            # that daophot won't choke on them.
+            h,t = os.path.split(f)
+            prefix = t[5:20] + t[22:26]
+            daophot.daophot_phot(prefix)
+            daophot.allstar(prefix)
+
+cofes_files = copy_postage_stamps(args)
+#create_postage_stamp_matrix(args, cofes_files)
+#inital_daophot_find(args, cofes_files)
+daophot_phot_and_allstar(args, cofes_files)
+
 #if __name__ == "__main__":
 #    sys.exit(main())
 
