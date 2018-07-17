@@ -1,25 +1,31 @@
-# get called like
+# gets called like
 # ./runall1 20180611 017 13.8447 51.3479 1
 # ./runall1 NIGHT SHOTID RA0 DEC0 TRACK
+
+SHIFTS=/work/00115/gebhardt/maverick/sci/panacea/shifts
+REDUCTIONS=/work/04287/mxhf/maverick/red1/reductions
+WCSTOOLS=~gebhardt/wcs/wcstools-3.9.2/bin
+SHUFFLE=/work/00115/gebhardt/maverick/shuf
+
 mkdir -p $1v$2
 cd $1v$2
 
 # forget about these lines, never gets use
-cp /work/00115/gebhardt/maverick/sci/panacea/shifts/rimmask0 .
-cp /work/00115/gebhardt/maverick/sci/panacea/shifts/rimmask .
-cp /work/00115/gebhardt/maverick/sci/panacea/shifts/rimm .
+cp $SHIFTS/rimmask0 .
+cp $SHIFTS/rimmask .
+cp $SHIFTS/rimm .
 # chmod +x rimmask0; rimmask0
 
 # copy IFU postage stamps to current location
-cp /work/04287/mxhf/maverick/red1/reductions/$1/virus/virus0000$2/*/*/CoFeS* .
+cp $REDUCTIONS/$1/virus/virus0000$2/*/*/CoFeS* .
 
 # here we execute cofes_vis.py on the postage stamps to create a png. This is the
 # well known matix of IFU images 
-ls CoFeS*_*.fits | head -1 | cut -b 1-20 | awk '{print "python /work/00115/gebhardt/maverick/sci/panacea/shifts/cofes_vis.py",$1}' > j1 ; chmod +x j1 ; j1
+ls CoFeS*_*.fits | head -1 | cut -b 1-20 | awk '{print "python " $SHIFTS "/cofes_vis.py",$1}' > j1 ; chmod +x j1 ; j1
 
 
-# copy all script over
-cp /work/00115/gebhardt/maverick/sci/panacea/shifts/scripts/* .
+# copy all scripts over
+cp $SHIFTS/scripts/* .
 
 # awk is actually a script that creates four other scripts, namely run1, run2, run 4a and runb
 awk.dat
@@ -53,24 +59,30 @@ awk2.dat
 ls *.coo | awk '{print "rdsub",$1}' | sed s/.coo// > run4a; chmod +x run4a
 run4a
 
-exit 0
-
+#
 # runs mktot 20180611T054545 > j1 ; cat head j1 > 20180611T054545tot.als
 # mktot is many lines like
 #  cat $1_106.als | awk '{if($4>0&&$4<21&&$2>0&&$2<50&&$3>0&&$3<50) print $1,$2+300,$3+000,$4}'
 # which again rejects detections close to the edge of an IFU
+# and too bright and too faint stars?
 # and creates a long list which contains all the remaining detections space by constant chucks of 100" apart????
+# final result is 20180611T054545tot.als
 run6
 
-# reformat the ouput files of run6
-# pipes it to all.mch
+# creates single in in
+# all.mch like
+#  '20180611T054545tot.als        '     0.000     0.000   1.00000   0.00000   0.00000   1.00000     0.000    0.0000
 # and executes mkmch
-# mkmch in turn creates  all.mch
+# mkmch in turn creates new all.mch which containts multiple lines 
+# for all three dithers???? NOT TOO SURE WHAT THE POINT IS< ALSO NOT SURE MKMCH EVER GET EXECUTED.
 run6b
 
 # only executes "rmaster0 all"
 # which executes ~gebhardt/lib/daoprogs/moreprogs2/daomaster 
 run8b
+
+exit 0
+
 if [ -e all.raw ]
  then
    # runs - after some reformatting of "all.raw" runs ~gebhardt/bin/biwt
@@ -79,10 +91,13 @@ if [ -e all.raw ]
    echo "only one file"
 fi
 
+########### translated till here ##########################
+
 # copy over the shuffle information and scripts 
-cp /work/00115/gebhardt/maverick/shuf/shuffle.cfg .
-cp /work/00115/gebhardt/maverick/sci/panacea/shifts/fplane.txt .
-cp /work/00115/gebhardt/maverick/shuf/rdo_shuffle .
+cp $SHUFFLE/shuffle.cfg .
+cp $SHIFTS/fplane.txt .
+cp $SHUFFLE/rdo_shuffle .
+
 
 # rerun shuffle code to get SDSS stars with RA/DEC
 echo "rdo_shuffle" $3 $4 0 $5 0 0 0 $1"v"$2 > rshuf
@@ -90,7 +105,7 @@ chmod +x rshuf; rshuf
 # reformat shuffle output 
 grep 000001 $1v$2.ifu | awk '{print $3,$4,$5,$6,$2}' > shout.ifu
 # read RA/DEC and PA from multi_???_*LL*fits
-~gebhardt/wcs/wcstools-3.9.2/bin/gethead -p /work/04287/mxhf/maverick/red1/reductions/$1/virus/virus0000$2/*/*/multi_???_*LL*fits TRAJCRA TRAJCDEC PARANGLE | awk '{print $2,$3,$4}' | head -1 > radec.orig
+$WCSTOOLS/gethead -p $REDUCTIONS/$1/virus/virus0000$2/*/*/multi_???_*LL*fits TRAJCRA TRAJCDEC PARANGLE | awk '{print $2,$3,$4}' | head -1 > radec.orig
 
 # ACTUAL ASTROMETRIC FIT, IN THREE ITERATIONS with INCREASINGLY SMALLER MATCHING RADII
 rastrom3 $1 $2  0.1

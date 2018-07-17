@@ -85,6 +85,41 @@ n
 class DaophotException(Exception):
     pass
 
+from astropy.table import Table
+
+class DAOPHOT_ALS(object):
+    """
+    Reads DAOPHOT ALS files.
+    """
+    def __init__(self, NL, NX, NY, LOWBAD, HIGHBAD, THRESH, AP1, PH_ADU, RNOISE, FRAD, data):
+        self.NL      = NL
+        self.NX      = NX
+        self.NY      = NY
+        self.LOWBAD  = LOWBAD
+        self.HIGHBAD = HIGHBAD
+        self.THRESH  = THRESH
+        self.AP1     = AP1
+        self.PH_ADU  = PH_ADU
+        self.RNOISE  = RNOISE
+        self.FRAD    = FRAD
+        self.data    = data
+
+    @staticmethod
+    def read(als_file):
+        with open(als_file) as f:
+            ll = f.readlines()
+        tt = ll[1].split()
+        NL, NX, NY, LOWBAD, HIGHBAD, THRESH, AP1, PH_ADU, RNOISE, FRAD = \
+                [int(t) for t in tt[:3]] + [float(t) for t in tt[3:]]
+        names = ["ID", "X", "Y", "MAG", "MAG_ERR", "SKY", "NITER", "CHI", "SHARP"]
+        dtype = [int,float,float,float,float,float,float,float,float]
+        t = Table.read(ll[3:], format='ascii')
+        for i,n,d in zip(range(len(t.columns)),names,dtype):
+            t.columns[i].name = n
+            t.columns[i].dtype = d
+        #, format='ascii', names=names, dtype=dtype)
+        return DAOPHOT_ALS(NL, NX, NY, LOWBAD, HIGHBAD, THRESH, AP1, PH_ADU, RNOISE, FRAD, t)
+
 
 def test_input_files_exist(input_files):
     """

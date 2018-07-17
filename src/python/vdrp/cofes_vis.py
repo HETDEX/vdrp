@@ -9,7 +9,7 @@ import argparse
 from collections import Counter
 cmap = plt.get_cmap('Greys')
 
-def cofes_plots(ifunums, filename_array, outfile_name, vmin=-15, vmax=25):
+def cofes_plots(ifunums, filename_array, outfile_name, vmin=-15, vmax=25, logging=None):
     """
     filename_array is an array-like object that contains the filenames
     of fits files to plot. The output plot will be the shape of the input array.
@@ -43,7 +43,11 @@ def cofes_plots(ifunums, filename_array, outfile_name, vmin=-15, vmax=25):
                     ax.imshow(data,vmin=vmin,vmax=vmax,interpolation='nearest',origin='lower',cmap=cmap)
             
                 except IOError:
-                    print(f, "not found. Skipping...")
+                    msg = "cofes_plots: File {} not found. Skipping...".format(f)
+                    if logging != None:
+                        logging.warning(msg)
+                    else:
+                        print( msg )
                     ax.imshow(np.zeros((49,49)),vmin=1,vmax=2,interpolation='nearest',origin='lower',cmap=cmap)
 
     plt.text(-335,-11.0,"01",weight='bold')
@@ -73,7 +77,7 @@ def cofes_plots(ifunums, filename_array, outfile_name, vmin=-15, vmax=25):
 
     
     
-def cofes_4x4_plots(prefix="", outfile_name = 'CoFeS_plots.png', vmin=-15, vmax = 25):
+def cofes_4x4_plots(prefix="", outfile_name = 'CoFeS_plots.png', vmin=-15, vmax = 25, logging=None):
     """
     dir is a string containing the directory with the CoFeS files you wish
     to plot. If its the local directory you can leave it as an empty string
@@ -135,7 +139,7 @@ def cofes_4x4_plots(prefix="", outfile_name = 'CoFeS_plots.png', vmin=-15, vmax 
         filename_list.append(prefix + '_' + i + '_sci.fits')
     filename_array = np.array(filename_list)
 #    filename_array = filename_array.reshape(ifunums.shape[0], ifunums.shape[1])
-    cofes_plots(ifunums, filename_array, outfile_name, vmin, vmax)
+    cofes_plots(ifunums, filename_array, outfile_name, vmin, vmax, logging=logging)
     
 def main():
     """
@@ -150,7 +154,6 @@ def main():
 
     if args.output is None:
         args.output = args.prefix + '.png'
-    print(args.prefix, args.output, args.vmin, args.vmax)
     cofes_4x4_plots(prefix = args.prefix, outfile_name = args.output, vmin = args.vmin, vmax = args.vmax)
     
     
