@@ -7,13 +7,16 @@ import shutil
 import sys
 import ConfigParser
 import logging
+import subprocess
 
 import path
 from astropy.table import Table
 from astropy.stats import biweight_location as biwgt_loc
+from astropy.io import fits
 
 from vdrp.cofes_vis import cofes_4x4_plots
 from vdrp import daophot
+
 
 def parseArgs():
     # Do argv default this way, as doing it in the functional
@@ -72,6 +75,11 @@ def parseArgs():
     defaults["fluxnorm_mag_max"] = 19.
     defaults["fplane_txt"] = "vdrp/config/fplane.txt"
     defaults["shuffle_cfg"] = "vdrp/config/shuffle.cfg"
+    defaults["acam_magadd"] = 5.
+    defaults["wfs1_magadd"] = 5.
+    defaults["wfs2_magadd"] = 5.
+
+
 
     if args.conf_file:
         config = ConfigParser.SafeConfigParser()
@@ -120,6 +128,9 @@ def parseArgs():
     parser.add_argument("--fluxnorm_mag_max",  type=float)
     parser.add_argument("--fplane_txt",  type=str)
     parser.add_argument("--shuffle_cfg",  type=str)
+    parser.add_argument("--acam_magadd",  type=float) 
+    parser.add_argument("--wfs1_magadd",  type=float)
+    parser.add_argument("--wfs2_magadd",  type=float)
 
     # positional arguments
     parser.add_argument('night', metavar='night', type=str,
@@ -130,7 +141,7 @@ def parseArgs():
             help='RA of the target in decimal hours.')
     parser.add_argument('dec', metavar='dec', type=float,
             help='Dec of the target in decimal hours degree.')
-    parser.add_argument('track', metavar='track', type=int, , choices=[0, 1],
+    parser.add_argument('track', metavar='track', type=int, choices=[0, 1],
             help='Type of track: 0: East 1: West')
 
 
@@ -224,8 +235,6 @@ def daophot_phot_and_allstar(args, wdir, prefixes):
         for prefix in prefixes:
             # first need to shorten file names such
             # that daophot won't choke on them.
-            h,t = os.path.split(f)
-            prefix = t[5:20] + t[22:26]
             daophot.daophot_phot(prefix)
             daophot.allstar(prefix)
 
@@ -345,11 +354,50 @@ def fluxNorm(args, wdir, infile='all.raw', outfile='norm.dat'):
     with path.Path(wdir):
         all_raw = loadtxt(infile, skiprows=3)
         n1,n2,n3 = getNorm(all_raw, mag_max )
-        logging.info("Flux normalisation is {:10.8f} {:10.8f} {:10.8f}".format(n1,n2,n3) )
+        logging.info("fluxNorm: Flux normalisation is {:10.8f} {:10.8f} {:10.8f}".format(n1,n2,n3) )
         with open(outfile, 'w') as f:
             s = "{:10.8f} {:10.8f} {:10.8f}".format(n1,n2,n3)
             f.write(s)
 
+def redo_shuffle(args, wdir):
+    shutil.copy2(args.shuffle_cfg, wdir)
+    shutil.copy2(args.fplane_txt, wdir)
+    with path.Path(wdir):
+        try:
+            os.remove(shout.ifustars)
+        except:
+            pass
+
+        RA0      = args.ra
+        DEC0     = args.dec
+        radius   = 0.
+        track    = args.track
+        ifuslot  = 0
+        x_offset = 0.
+        y_offset = 0
+
+        logging.info("Rerunning shuffle for RA = {}, Dec = {} and track = {} ...".format(RA0, DEC0, track))
+        cmd  = "do_shuffle -v --acam_magadd {:.2f} --wfs1_magadd {:.2f} --wfs2_magadd {:.2f}".format(args.acam_magadd, args.wfs1_magadd, args.wfs2_magadd)
+        cmd += " {:.6f} {:.6f} {:.1f} {:d} {:d} {:.1f} {:.1f}".format(RA0, DEC0, radius, track, ifuslot, x_offset, y_offset )
+        logging.info("redo_shuffle: Calling shuffle with {}.".format(cmd))
+        subprocess.call(cmd, shell=True)
+
+
+def get_ra_dec_orig(args,wdir):
+    pattern = os.path.join( args.reduction_dir, "{}/virus/virus0000{}/*/*/multi_???_*LL*fits".format( args.night, args.shotid ) )
+    print(pattern)
+    multi_files = glob.glob(pattern)
+    if len(multi_files) == 0:
+        raise Exception("Found no multi file in {}. Please check reduction_dir in configuration file.".format(args.reduction_dir))
+    h = fits.getheader(multi_files[0])
+    ra0  = h["TRAJCRA"]
+    dec0 = h["TRAJCDEC"]
+    pa0  = h["PARANGLE"]
+    logging.info("get_ra_dec_orig: Original RA,DEC,PA = {},{},{}".format(ra0, dec0, pa0))
+    with path.Path(wdir):
+        with open("radec.orig",'w') as f:
+            s = "{} {} {}".format(ra0, dec0, pa0)
+            f.write(s)
 
 # Parse config file and command line paramters
 # command line parameters overwrite config file.
@@ -380,58 +428,28 @@ cofes_files = copy_postage_stamps(args, wdir)
 prefixes = rename_cofes(args,  wdir, cofes_files)
 
 # Run initial object detection in postage stamps.
-#inital_daophot_find(args, prefixes)
+#inital_daophot_find(args, wdir, prefixes)
 
 # Run photometry 
-#daophot_phot_and_allstar(args, prefixes)
+#daophot_phot_and_allstar(args, wdir, prefixes)
 
 # Combine detections accross all IFUs.
 #mktot(args, wdir, prefixes)
 
 # Run daophot master to ???
-#rmaster(args, wdir)
+rmaster(args, wdir)
 
 # Compute relative flux normalisation.
 #fluxNorm(args, wdir)
 
-import subprocess
 
-def redo_shuffle(args):
-    logging.info("Rerunning shuffle for RA = {}, Dec = {} and track = {} ...".format(RA0, DEC0, track))
-    shutil.copy2(args.shuffle_cfg, wdir)
-    shutil.copy2(args.fplane_txt, wdir)
-    with Path(wdir):
-        try:
-            os.remove(shout.ifustars)
-        except:
-            pass
+# Rerun shuffle to get IFU stars
+# redo_shuffle(args, wdir)
+# YET NEED TO REFORMAT OUTPUT
 
-    RA0      = args.ra
-    DEC0     = args.dec
-    radius   = 0.
-    track    = args.track
-    ifuslot  = 0
-    x_offset = 0.
-    y_offset = 0
+# Retrieve original RA DEC from one of the multi files.
+get_ra_dec_orig(args, wdir)
 
-    cmd  = "do_shuffle -v --acam_magadd {:d} --wfs1_magadd {:d --wfs2_magadd {:d}".format(acam_magadd, wfs1_magadd, wfs2_magadd)
-    cmd += "{:.6f} {:.6f} {:.1f} {:d} {:d} {:.1f} {:.1f}".format(RA0, DEC0, radius, track, ifuslot, x_offset, y_offset )
-
-    subprocess.call(cmd, shell=True)
-
-
-from astropy.io import fits
-def get_ra_dec_orig(args):
-    logging.info("")
-    pattern = os.path.join( args.reduction_dir, "/$1/virus/virus0000$2/*/*/multi_???_*LL*fits".format( args.night, args.shotid ) )
-    multi_files = glob.glob(pattern)
-    h = fits.getheader(multi_files[0])
-    ra0  = h["TRAJCRA"]
-    dec0 = h["TRAJCDEC"]
-    pa0  = h["PARANGLE"]
-    with open("radec.orig") as f:
-        s = "{} {} {}".format(ra0, dec0, pa0)
-        f.write(s)
 
 
 #20180611v017"

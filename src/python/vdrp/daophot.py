@@ -149,7 +149,6 @@ def daophot_find(prefix, sigma):
     Requires daophot.opt to be in place.
     """
     global DAOPHOT_FIND_CMD
-    
     input_files = ["daophot.opt", prefix + ".fits"]
     test_input_files_exist(input_files)
 
