@@ -2,3 +2,7 @@
 *.swo
 .ipynb_checkpoints
 *.pyc
+src/python/vdrp/__pycache__
+src/python/tests/__pycache__
+.ipynb_checkpoints
+.DS_Store

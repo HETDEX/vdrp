@@ -107,17 +107,17 @@ chmod +x rshuf; rshuf
 grep 000001 $1v$2.ifu | awk '{print $3,$4,$5,$6,$2}' > shout.ifu
 # read RA/DEC and PA from multi_???_*LL*fits
 $WCSTOOLS/gethead -p $REDUCTIONS/$1/virus/virus0000$2/*/*/multi_???_*LL*fits TRAJCRA TRAJCDEC PARANGLE | awk '{print $2,$3,$4}' | head -1 > radec.orig
-########### translated till here ##########################
 
 # ACTUAL ASTROMETRIC FIT, IN THREE ITERATIONS with INCREASINGLY SMALLER MATCHING RADII
 rastrom3 $1 $2  0.1
 
+########### translated till here ##########################
 # reformat output
 grep . getoff_*.out | awk '{if($6>0) print $1,sqrt(($4*$4+$5*$5)/2./$6),$6; else print $1,0,$6}' | sed s/getoff_// | sed s/.out:// | sort -g > $1v$2.alloff
 # build mosaic, and rotate to 0 PA?
 awk '{print "rtf",360-($3+90+1.8)}' radec2.dat > rtf2
-# rtf2 cals rtf with PA as single argument
-# rtf in turn build a mosaic and rotates it to 0 PA?
+# rtf2 calls rtf with PA as single argument
+# rtf in turn builds a mosaic and rotates it to 0 PA?
 # rtf creates and calls rtf0 and rtf1
 # which all create a text files "infp" wich contains many lines like
 # "20180611T054545_042.fits 042 -149.615 250.167"

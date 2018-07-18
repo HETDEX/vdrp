@@ -22,6 +22,7 @@ runrd0
 
 # now compute offsets
 awk '{print $10,$11,$12}' tmp.out  > j3
+# reads j3 and shout.ifu and computes offsets
 /work/00115/gebhardt/maverick/sci/progs/getoff2 << eof
 11
 eof

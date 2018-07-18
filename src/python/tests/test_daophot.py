@@ -10,36 +10,9 @@ import tempfile
 import path
 import glob
 
-class TestDaophot(unittest.TestCase):
-    """
-    Provides funtionality to set up test directory with
-    predifined list of input data.
-    """
-    ff = []
+from testbase import TestBase
 
-    @classmethod
-    def setUpClass(cls):
-
-        print("Setting class up.")
-        # Create a temporary directory
-        cls.test_dir = tempfile.mkdtemp()
-        print("Testdir is {}".format(cls.test_dir))
-        print("Copy test data...")
-        p = vdrp.__path__
-        ptestdata = os.path.join(p[0], '../tests/testdata')
-        ptestdata = os.path.realpath(ptestdata)
-        for f in cls.ff:
-            shutil.copy2(os.path.join(ptestdata,f), cls.test_dir)
-
-    @classmethod
-    def tearDownClass(cls):
-        print("Tearing class down.")
-        # Remove the directory after the test
-        shutil.rmtree(cls.test_dir)
-        #print("WARNING: NOT REMOVIN TEMPORARY DIRECTORY")
-
-
-class TestDaophotFind(TestDaophot):
+class TestDaophotFind(TestBase):
     ff = ["20180611T054545_034.fits", "daophot.opt"]
 
     def test_daophot_find(self):
@@ -51,7 +24,7 @@ class TestDaophotFind(TestDaophot):
             self.assertTrue(os.path.exists(prefix + ".coo"))
             print("Files after: ", glob.glob("*"))
 
-class TestDaophotPhot(TestDaophot):
+class TestDaophotPhot(TestBase):
     ff = ["20180611T054545_034.fits", "daophot.opt", "photo.opt", "20180611T054545_034.coo"]
 
     def test_daophot_phot(self):
@@ -63,7 +36,7 @@ class TestDaophotPhot(TestDaophot):
             print("Files after: ", glob.glob("*"))
 
 
-class TestAllstar(TestDaophot):
+class TestAllstar(TestBase):
     ff = ["20180611T054545_034.fits", "allstar.opt", "use.psf", "20180611T054545_034.ap"]
 
     def test_allstar(self):
@@ -76,17 +49,17 @@ class TestAllstar(TestDaophot):
             print("Files after: ", glob.glob("*"))
 
 
-class TestDaomaster(TestDaophot):
+class TestDaomaster(TestBase):
     ff = ["all.mch", "20180611T054545tot.als","20180611T055249tot.als","20180611T060006tot.als"]
 
-    def test_allstar(self):
+    def test_daomaster(self):
         with path.Path(self.test_dir):
             print("Files before: ",glob.glob("*"))
             daophot.daomaster()
             print("Files after: ", glob.glob("*"))
             self.assertTrue(os.path.exists("all.raw"))
 
-class TestFilterDaophot(TestDaophot):
+class TestFilterDaophot(TestBase):
     ff = ["20180611T055249_053.coo"]
 
     def test_filter_daophot_out(self):
@@ -111,7 +84,7 @@ class TestFilterDaophot(TestDaophot):
                     self.assertTrue(y > ymin)
                     self.assertTrue(y < ymax)
 
-class TestDaophotAls(TestDaophot):
+class TestDaophotAls(TestBase):
     ff = ["20180611T054545_015.als"]
 
     def test_daophot_als_read(self):

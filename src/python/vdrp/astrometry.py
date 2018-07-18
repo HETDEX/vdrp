@@ -8,15 +8,19 @@ import sys
 import ConfigParser
 import logging
 import subprocess
+from collections import OrderedDict
 
 import path
+from astropy import table
 from astropy.table import Table
+
 from astropy.stats import biweight_location as biwgt_loc
 from astropy.io import fits
 
+from pyhetdex.het import fplane
+
 from vdrp.cofes_vis import cofes_4x4_plots
 from vdrp import daophot
-
 
 def parseArgs():
     # Do argv default this way, as doing it in the functional
@@ -40,7 +44,7 @@ def parseArgs():
     args, remaining_argv = conf_parser.parse_known_args()
 
     defaults = {}
-    defaults["option"]  = "default"
+    defaults["option"]  = 1
     defaults["logfile"] = "astrometry.log"
     defaults["reduction_dir"] = "/work/04287/mxhf/maverick/red1/reductions/"
     defaults["cofes_vis_vmin"] = -15.
@@ -78,7 +82,8 @@ def parseArgs():
     defaults["acam_magadd"] = 5.
     defaults["wfs1_magadd"] = 5.
     defaults["wfs2_magadd"] = 5.
-
+    defaults["add_radec_angoff"] = 0.1
+    defaults["getoff2_radii"] = 11.,5.,3.
 
 
     if args.conf_file:
@@ -93,7 +98,6 @@ def parseArgs():
     parents=[conf_parser]
     )
     parser.set_defaults(**defaults)
-    parser.add_argument("--option")
     parser.add_argument("--reduction_dir")
     parser.add_argument("--cofes_vis_vmin", type=float)
     parser.add_argument("--cofes_vis_vmax", type=float)
@@ -131,6 +135,9 @@ def parseArgs():
     parser.add_argument("--acam_magadd",  type=float) 
     parser.add_argument("--wfs1_magadd",  type=float)
     parser.add_argument("--wfs2_magadd",  type=float)
+    parser.add_argument("--add_radec_angoff",  type=float)
+    parser.add_argument('--getoff2_radii', type=str)
+
 
     # positional arguments
     parser.add_argument('night', metavar='night', type=str,
@@ -144,9 +151,12 @@ def parseArgs():
     parser.add_argument('track', metavar='track', type=int, choices=[0, 1],
             help='Type of track: 0: East 1: West')
 
-
     args = parser.parse_args(remaining_argv)
- 
+
+    # shoudl in principle be able to do this with accumulate???
+    args.getoff2_radii = [float(t) for t in args.getoff2_radii.split(",")]
+    #print(args.accumulate(args.getoff2_radii))
+    
     return args
 
 
@@ -382,7 +392,6 @@ def redo_shuffle(args, wdir):
         logging.info("redo_shuffle: Calling shuffle with {}.".format(cmd))
         subprocess.call(cmd, shell=True)
 
-
 def get_ra_dec_orig(args,wdir):
     pattern = os.path.join( args.reduction_dir, "{}/virus/virus0000{}/*/*/multi_???_*LL*fits".format( args.night, args.shotid ) )
     print(pattern)
@@ -398,6 +407,140 @@ def get_ra_dec_orig(args,wdir):
         with open("radec.orig",'w') as f:
             s = "{} {} {}".format(ra0, dec0, pa0)
             f.write(s)
+
+def add_ra_dec(args, wdir, prefixes):
+    """
+    Call add_ra_dec to compute for detections in IFU space the corresponding RA/DEC
+    coordinates.
+    Requires, fplane.txt, radec.orig.
+    Creates primarely EXPOSURE_tmp.csv but also radec.dat.
+    """
+    global logging
+
+    # read IFU grid definition file (needs to be replaced by fplane.txt)
+    ifugird = Table.read(args.mktot_ifu_grid, format='ascii')
+
+    radec_outfiles = OrderedDict()
+    with path.Path(wdir):
+        fp = fplane.FPlane("fplane.txt")
+        exposures = np.unique([p[:15] for p in prefixes])
+        # for now only do first exposure, later can do them all
+        for exp in exposures[0:1]:
+            count = 0
+            # collect all als files for this exposure
+            als_files = []
+            for prefix in prefixes:
+                if not prefix.startswith(exp):
+                    continue
+                ifuslot = prefix[-3:]
+                if not ifuslot in fp.ifuslots:
+                    logging.warning("IFU slot {} not contained in fplane.txt.".format(ifuslot))
+                    continue
+                fn = prefix + ".als"
+                als_files.append(fn)
+
+            # Convert radec.orig to radec.dat, convert RA to degress and add angular offset
+            # mF: Not sure if we will need radec.dat later, creating it for now.
+            # NEEDS TO BE MODIFIED ONCE WE DO ALL THREE EXPOSURES, NEED ONE FILENAME PER EXPOSURE
+            with open("radec.orig") as fradec:
+                ll = fradec.readlines()
+            tt = ll[0].split()
+            ra,dec,pa = float(tt[0]), float(tt[1]), float(tt[2])
+            with open("radec.dat",'w') as fradec:
+                s = "{} {} {}".format(ra,dec,pa + args.add_radec_angoff)
+                fradec.write(s)
+
+            # call add_ra_dec
+            # NEEDS TO BE MODIFIED ONCE WE DO ALL THREE EXPOSURES, NEED ONE FILENAME PER EXPOSURE
+            radec_outfile = "tmp.csv" 
+            new_ra, new_dec, new_pa = ra * 15., dec, pa + args.add_radec_angoff
+            daophot.rm(['tmp.csv'])
+            cmd = 'add_ra_dec --fplane fplane.txt --fout {} --ftype daophot_allstar --astrometry {} {} {} --ihmp-regex "(\d\d\d)(\.)" '.format(radec_outfile, new_ra, new_dec, new_pa)
+            logging.info("Calling {} ".format(cmd))
+            for f in als_files:
+                logging.info("        {}".format(f))
+                cmd += " {}".format(f)
+            subprocess.call(cmd, shell=True)
+
+            radec_outfiles[exp] = radec_outfile
+    return radec_outfiles
+
+
+import cltools
+def computeOffset(args,wdir,radec_outfiles):
+    """
+    Compute offset in RA DEC  by matching detected stars in IFUs
+    against the shuffle profived RA DEC coordinates.
+    Analogous to rastrom3.
+    """
+    with path.Path(wdir):
+        radii = args.getoff2_radii
+        # preparing to do all three exposures here, for now will only do first
+        for k in radec_outfiles:
+            logging.info("Computing offsets for {}".format(radec_outfiles[k]))
+            ra_offset, dec_offset = 0., 0.
+            for i, radius in enumerate(radii):
+                fnout = "radec_iter{}.dat" .format(i+1)
+                logging.info("Start getoff2 iteration {}".format(i+1))
+                ra_offset, dec_offset = cltools.getoff2(radec_outfiles[k], "shout.ifustars", radius, fnout, ra_offset, dec_offset, logging=logging)
+                logging.info("End getoff2 iteration {}  ra_offset, dec_offset = {}, {}".format(i+1, ra_offset, dec_offset))
+                logging.info("")
+                logging.info("")
+
+            # read ra,dec, pa from radec.dat
+            with open("radec.dat",'r') as f:
+                l = f.readline()
+                tt = l.split()
+                ra,dec,pa = float(tt[0]), float(tt[1]), float(tt[2])
+
+            # read ra,dec, pa from radec.dat
+            with open("radec2.dat",'w') as f:
+                s = "{} {} {}".format(ra+ra_offset,dec+dec_offset,pa )
+                f.write(s)
+
+def add_ifu_xy(args, wdir):
+    """
+    Add IFU x y information to stars used for matching,
+    and save to xy.dat.
+    Requires: getoff.out, radec2.dat
+    Analogous to rastrom3.
+    """
+    with path.Path(wdir):
+        # read ra dec postions of reference stars and detections
+        # from getoff.out
+        # Produce new tables that add_ifu_xy understands.
+        fngetoff_out = "getoff.out"
+        t = Table.read("getoff.out", format="ascii.fast_no_header")
+        t1 = Table([t['col3'], t['col4'], t['col7']], names=["RA","DEC","IFUSLOT"])
+        t2 = Table([t['col5'], t['col6'], t['col7']], names=["RA","DEC","IFUSLOT"])
+        t1.write("t1.csv", format="ascii.fast_csv", overwrite=True)
+        t2.write("t2.csv", format="ascii.fast_csv", overwrite=True)
+
+        # read ra,dec, pa from radec2.dat
+        with open("radec2.dat") as f:
+            l = f.readline()
+            tt = l.split()
+            ra,dec,pa = float(tt[0]), float(tt[1]), float(tt[2])
+
+        daophot.rm(["t3.csv","t4.csv"])
+        cmd = "add_ifu_xy --fplane fplane.txt --ra-name RA --dec-name DEC --astrometry {:.6f} {:.6f} {:.6f} t1.csv t3.csv".format(ra,dec,pa)
+        subprocess.call(cmd, shell=True)
+        cmd = "add_ifu_xy --fplane fplane.txt --ra-name RA --dec-name DEC --astrometry {:.6f} {:.6f} {:.6f} t2.csv t4.csv".format(ra,dec,pa)
+        subprocess.call(cmd, shell=True)
+
+        t3 = Table.read("t3.csv", format="ascii.fast_csv")
+        t4 = Table.read("t4.csv", format="ascii.fast_csv")
+
+        for c in t3.columns:
+            t3.columns[c].name = t3.columns[c].name + "1"
+        for c in t4.columns:
+            t4.columns[c].name = t4.columns[c].name + "1"
+
+        t = table.hstack([t3,t4])
+        t.write('xy.dat', format="ascii.fixed_width", overwrite=True)
+        # this would be analogous to Karl's format
+        #t.write('xy.dat', format="ascii.fast_no_header"
+
 
 # Parse config file and command line paramters
 # command line parameters overwrite config file.
@@ -437,27 +580,27 @@ prefixes = rename_cofes(args,  wdir, cofes_files)
 #mktot(args, wdir, prefixes)
 
 # Run daophot master to ???
-rmaster(args, wdir)
+#rmaster(args, wdir)
 
 # Compute relative flux normalisation.
 #fluxNorm(args, wdir)
 
 
 # Rerun shuffle to get IFU stars
-# redo_shuffle(args, wdir)
-# YET NEED TO REFORMAT OUTPUT
+#redo_shuffle(args, wdir)
 
 # Retrieve original RA DEC from one of the multi files.
-get_ra_dec_orig(args, wdir)
-
-
-
-#20180611v017"
-#grep -v "#" shout.ifustars > NIGHT.ifu
+# store in radec.orig
+#get_ra_dec_orig(args, wdir)
 
 #if __name__ == "__main__":
 #    sys.exit(main())
 
+radec_outfiles = add_ra_dec(args, wdir, prefixes)
 
 
+# Compute offsets by matching 
+# detected stars to sdss stars from shuffle.
+computeOffset(args,wdir,radec_outfiles)
 
+add_ifu_xy(args, wdir)
