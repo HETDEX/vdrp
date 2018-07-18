@@ -180,7 +180,7 @@ def copy_postage_stamps(args, wdir):
         h,t = os.path.split(f)
         if os.path.exists(os.path.join(wdir,t)):
             if not already_warned:
-                print("{} already exists in {}, skipping, won't warn about other files....".format(t,wdir))
+                logging.warning("{} already exists in {}, skipping, won't warn about other files....".format(t,wdir))
                 already_warned = True
             continue
         shutil.copy2(f, wdir)
@@ -222,7 +222,7 @@ def inital_daophot_find(args,  wdir, prefixes):
         daophot.mk_daophot_opt(args)
         for prefix in prefixes:
             # execute daophot
-            daophot.daophot_find(prefix, args.daophot_sigma)
+            daophot.daophot_find(prefix, args.daophot_sigma,logging=logging)
             # filter ouput
             daophot.filter_daophot_out(prefix + ".coo", prefix + ".lst", args.daophot_xmin,args.daophot_xmax,args.daophot_ymin,args.daophot_ymix)
     return prefixes
@@ -245,8 +245,8 @@ def daophot_phot_and_allstar(args, wdir, prefixes):
         for prefix in prefixes:
             # first need to shorten file names such
             # that daophot won't choke on them.
-            daophot.daophot_phot(prefix)
-            daophot.allstar(prefix)
+            daophot.daophot_phot(prefix,logging=logging)
+            daophot.allstar(prefix,logging=logging)
 
 
 def mktot(args, wdir, prefixes):
@@ -329,7 +329,7 @@ def rmaster(args,wdir):
     global logging
     logging.info("Running daomaster.")
     with path.Path(wdir):
-        daophot.daomaster()
+        daophot.daomaster(logging=logging)
 
 
 def getNorm(all_raw, mag_max ):
@@ -394,7 +394,6 @@ def redo_shuffle(args, wdir):
 
 def get_ra_dec_orig(args,wdir):
     pattern = os.path.join( args.reduction_dir, "{}/virus/virus0000{}/*/*/multi_???_*LL*fits".format( args.night, args.shotid ) )
-    print(pattern)
     multi_files = glob.glob(pattern)
     if len(multi_files) == 0:
         raise Exception("Found no multi file in {}. Please check reduction_dir in configuration file.".format(args.reduction_dir))
@@ -542,65 +541,65 @@ def add_ifu_xy(args, wdir):
         #t.write('xy.dat', format="ascii.fast_no_header"
 
 
-# Parse config file and command line paramters
-# command line parameters overwrite config file.
-args = parseArgs()
+def main():
+    # Parse config file and command line paramters
+    # command line parameters overwrite config file.
+    args = parseArgs()
 
-# Set up logging to file - see previous section for more details
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                    datefmt='%m-%d %H:%M',
-                    handlers=[
-                        logging.FileHandler(args.logfile),
-                        logging.StreamHandler()
-                    ],
-                    filemode='w')
+    # Set up logging to file - see previous section for more details
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                        datefmt='%m-%d %H:%M',
+                        handlers=[
+                            logging.FileHandler(args.logfile),
+                            logging.StreamHandler()
+                        ],
+                        filemode='w')
 
-# Create work directory for given night and shot
-cwd = os.getcwd()
-wdir = os.path.join(cwd, "{}v{}".format(args.night, args.shotid))
-createDir(wdir)
+    # Create work directory for given night and shot
+    cwd = os.getcwd()
+    wdir = os.path.join(cwd, "{}v{}".format(args.night, args.shotid))
+    createDir(wdir)
 
-# Copy over collapsed IFU cubes, aka IFU postage stamps.
-cofes_files = copy_postage_stamps(args, wdir)
+    # Copy over collapsed IFU cubes, aka IFU postage stamps.
+    cofes_files = copy_postage_stamps(args, wdir)
 
-# Creat IFU postage stamp matrix image.
-#create_postage_stamp_matrix(args, wdir, cofes_files)
+    # Creat IFU postage stamp matrix image.
+    create_postage_stamp_matrix(args, wdir, cofes_files)
 
-# Rename IFU postage stamps as daophot can't handle long file names.
-prefixes = rename_cofes(args,  wdir, cofes_files)
+    # Rename IFU postage stamps as daophot can't handle long file names.
+    prefixes = rename_cofes(args,  wdir, cofes_files)
 
-# Run initial object detection in postage stamps.
-#inital_daophot_find(args, wdir, prefixes)
+    # Run initial object detection in postage stamps.
+    inital_daophot_find(args, wdir, prefixes)
 
-# Run photometry 
-#daophot_phot_and_allstar(args, wdir, prefixes)
+    # Run photometry 
+    daophot_phot_and_allstar(args, wdir, prefixes)
 
-# Combine detections accross all IFUs.
-#mktot(args, wdir, prefixes)
+    # Combine detections accross all IFUs.
+    mktot(args, wdir, prefixes)
 
-# Run daophot master to ???
-#rmaster(args, wdir)
+    # Run daophot master to ???
+    rmaster(args, wdir)
 
-# Compute relative flux normalisation.
-#fluxNorm(args, wdir)
+    # Compute relative flux normalisation.
+    fluxNorm(args, wdir)
 
+    # Rerun shuffle to get IFU stars
+    redo_shuffle(args, wdir)
 
-# Rerun shuffle to get IFU stars
-#redo_shuffle(args, wdir)
+    # Retrieve original RA DEC from one of the multi files.
+    # store in radec.orig
+    get_ra_dec_orig(args, wdir)
 
-# Retrieve original RA DEC from one of the multi files.
-# store in radec.orig
-#get_ra_dec_orig(args, wdir)
+    radec_outfiles = add_ra_dec(args, wdir, prefixes)
 
-#if __name__ == "__main__":
-#    sys.exit(main())
+    # Compute offsets by matching 
+    # detected stars to sdss stars from shuffle.
+    computeOffset(args,wdir,radec_outfiles)
 
-radec_outfiles = add_ra_dec(args, wdir, prefixes)
+    add_ifu_xy(args, wdir)
 
-
-# Compute offsets by matching 
-# detected stars to sdss stars from shuffle.
-computeOffset(args,wdir,radec_outfiles)
-
-add_ifu_xy(args, wdir)
+    logging.info("Done.")
+if __name__ == "__main__":
+    sys.exit(main())

@@ -142,7 +142,7 @@ def rm(ff):
             pass
 
 
-def daophot_find(prefix, sigma):
+def daophot_find(prefix, sigma, logging=None):
     """
     Interface to daophot find.
     Replaces second part of rdcoo.
@@ -153,15 +153,18 @@ def daophot_find(prefix, sigma):
     test_input_files_exist(input_files)
 
     rm([prefix + ".coo",prefix + ".lst",prefix + "jnk.fits"])
-    #proc = subprocess.Popen("daophot", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    proc = subprocess.Popen("daophot", stdin=subprocess.PIPE)
+    proc = subprocess.Popen("daophot", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     s = DAOPHOT_FIND_CMD.format(prefix, sigma)
     so,se = proc.communicate(input=s)
-    print so
+    for l in so.split("\n"):
+        if logging != None:
+            logging.info(l)
+        else:
+            print(l)
     p_status = proc.wait()
     rm([prefix + "jnk.fits"])
 
-def daophot_phot(prefix):
+def daophot_phot(prefix, logging=None):
     """
     Interface to daophot phot.
     Replaces first part of rdsub.
@@ -173,16 +176,19 @@ def daophot_phot(prefix):
     test_input_files_exist(input_files)
 
     rm([prefix + ".ap",prefix + "1s.fits",prefix + ".als", prefix + "jnk.fits"])
-    #proc = subprocess.Popen("daophot", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    proc = subprocess.Popen("daophot", stdin=subprocess.PIPE)
+    proc = subprocess.Popen("daophot", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     s = DAOPHOT_PHOT_CMD.format(prefix, prefix, prefix)
     so,se = proc.communicate(input=s)
-    print so
+    for l in so.split("\n"):
+        if logging != None:
+            logging.info(l)
+        else:
+            print(l)
     p_status = proc.wait()
     rm([prefix + "jnk.fits"])
 
 
-def allstar(prefix, psf="use.psf"):
+def allstar(prefix, psf="use.psf", logging=None):
     """
     Interface to allstar.
     Replaces second part of rdsub.
@@ -194,15 +200,18 @@ def allstar(prefix, psf="use.psf"):
     test_input_files_exist(input_files)
 
     rm([prefix + "s.fits",prefix + ".als", prefix + "jnk.fits"])
-    #proc = subprocess.Popen("allstar", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    proc = subprocess.Popen("allstar", stdin=subprocess.PIPE)
+    proc = subprocess.Popen("allstar", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     s = ALLSTAR_CMD.format(prefix, psf, prefix)
     so,se = proc.communicate(input=s)
-    print so
+    for l in so.split("\n"):
+        if logging != None:
+            logging.info(l)
+        else:
+            print(l)
     p_status = proc.wait()
 
 
-def daomaster():
+def daomaster(logging=None):
     """
     Interface to daomaster
     replaces "rmaster0".
@@ -216,11 +225,14 @@ def daomaster():
     test_input_files_exist(input_files)
 
     #rm([prefix + ".raw"])
-    #proc = subprocess.Popen("daomaster", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    proc = subprocess.Popen("daomaster", stdin=subprocess.PIPE)
+    proc = subprocess.Popen("daomaster", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     s = DAOMASTER_CMD
     so,se = proc.communicate(input=s)
-    print so
+    for l in so.split("\n"):
+        if logging != None:
+            logging.info(l)
+        else:
+            print(l)
     p_status = proc.wait()
 
 
@@ -260,8 +272,3 @@ def filter_daophot_out(file_in, file_out, xmin, xmax, ymin, ymax):
             if x > xmin and y < xmax and y > ymin and y < ymax:
                 fout.write(l)
 
-def test():
-    prefix = "20180611T054545_034"
-    sigma = 2
-
-    daophot(prefix, sigma)
