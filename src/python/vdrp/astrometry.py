@@ -9,6 +9,7 @@ import ConfigParser
 import logging
 import subprocess
 from collections import OrderedDict
+from astropy.io import fits
 
 import path
 from astropy import table
@@ -84,7 +85,7 @@ def parseArgs():
     defaults["wfs2_magadd"] = 5.
     defaults["add_radec_angoff"] = 0.1
     defaults["getoff2_radii"] = 11.,5.,3.
-
+    defaults["mkmosaic_angoff"] = 1.8
 
     if args.conf_file:
         config = ConfigParser.SafeConfigParser()
@@ -137,7 +138,7 @@ def parseArgs():
     parser.add_argument("--wfs2_magadd",  type=float)
     parser.add_argument("--add_radec_angoff",  type=float)
     parser.add_argument('--getoff2_radii', type=str)
-
+    parser.add_argument("--mkmosaic_angoff",  type=float)
 
     # positional arguments
     parser.add_argument('night', metavar='night', type=str,
@@ -580,13 +581,13 @@ def main():
     mktot(args, wdir, prefixes)
 
     # Run daophot master to ???
-    rmaster(args, wdir)
+    #rmaster(args, wdir)
 
     # Compute relative flux normalisation.
     fluxNorm(args, wdir)
 
     # Rerun shuffle to get IFU stars
-    redo_shuffle(args, wdir)
+    #redo_shuffle(args, wdir)
 
     # Retrieve original RA DEC from one of the multi files.
     # store in radec.orig
@@ -601,5 +602,49 @@ def main():
     add_ifu_xy(args, wdir)
 
     logging.info("Done.")
+
+    def mkmosaic(args, wdir, prefixes):
+        """
+        """
+        global logging
+
+        with path.Path(wdir):
+            logging.logging("mkmosaic: Creating mosaic image.")
+            # build mosaic from IFU images
+            exposures = np.unique([p[:15] for p in prefixes])
+            exp1 = exposures[0:1]
+            # collect all als files for the first exposure
+            pp = filter(lambda x : x.startswith(exp1), list)
+            cltools.immosaicv(pp, fplane_file = "fplane.txt", logging=logging)
+
+            # rotate mosaic to correct PA on sky
+            with open('radec2.dat','r') as f:
+                l = f.readline()
+            tt = l.split()
+            alpha = 360. - tt[2] + 90. + args.mkmosaic_angoff
+            ra,dec = float(tt[0]), float(tt[1])
+
+            cltools.imrot("immosaic.fits", alpha, logging=logging)
+            hdu = fits.open(imrot.fits)
+
+            h = hdu[0].header
+            h["CRVAL1"] = ra
+            h["CRVAL2"] = dec
+            h["CTYPE1"] = RA---TAN
+            h["CTYPE2"] = DEC--TAN
+            h["CD1_1"] = -0.0002777
+            h["CD1_2"] = 0.
+            h["CD2_2"] = 0.0002777
+            h["CD2_1"] = 0
+            h["CRPIX1"] = 650.0
+            h["CRPIX2"] = 650.0
+            h["CUNIT1"] = deg
+            h["CUNIT2"] = deg
+            h["EQUINOX"] = 2000
+
+            hdu.writeto("{}fp.fits".format(args.night, args.shotid))
+
+
+
 if __name__ == "__main__":
     sys.exit(main())

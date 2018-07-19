@@ -1,6 +1,8 @@
 
 from astropy.table import Table
 import  subprocess
+from pyhetdex.het import fplane
+import os
 
 def getoff2(fnradec, fnshuffle_ifustars, radius, fnout, ra_offset, dec_offset, logging=None):
     """
@@ -43,3 +45,72 @@ def getoff2(fnradec, fnshuffle_ifustars, radius, fnout, ra_offset, dec_offset, l
     tt = l.split()
     new_ra_offset, new_dec_offset = float(tt[0]), float(tt[1])
     return new_ra_offset+ra_offset, new_dec_offset+dec_offset
+
+
+
+def immosaicv(prefixes, fplane_file = "fplane.txt", logging=None):
+    """
+    Interface to immosaicv which creates
+    a mosaic give a set of fits files and x y coordinates.
+    Requires infp.
+    This function will prepare the necessary infp file that is read by immosaicv
+    command line tool.
+    Format of the latter is 
+    20180611T054545_015.fits 015 -450.0 -50.0
+    20180611T054545_022.fits 022 -349.743 250.336
+    20180611T054545_023.fits 023 -349.798 150.243
+    20180611T054545_024.fits 024 -350.0 50.0
+    ...
+    """
+    fp = fplane.FPlane(fplane_file)
+
+    with open('infp', 'w') as infp:
+        for f in prefixes:
+            ifuslot = f[-3:]
+            if not ifuslot in fp.ifuslots:
+                msg = "IFU slot {} for file {}.fits not found int {}.".format(ifuslot, f, fplane_file)
+                if logging != None:
+                    logging.warning("IFU slot {} for file {}.fits not found int {}.".format(ifuslot, f, fplane_file))
+                else:
+                    print(msg)
+                continue
+
+            if not os.path.exists(f + ".fits"):
+                msg = "File {}.fits not found.".format(f)
+                if logging != None:
+                    logging.warning(msg)
+                else:
+                    print(msg)
+                continue
+
+                ifu = fp.by_ifuslot(ifuslot)
+                s = "{}.fits {} {} {}".format(f, ifuslot, ifu.x, ifu.y)
+                infp,write(s)
+
+    # run immosaicv
+    proc = subprocess.Popen("immosaicv", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    for l in so.split("\n"):
+        if logging != None:
+            logging.info(l)
+        else:
+            print(l)
+    p_status = proc.wait()
+
+
+def imrot(fitsfile, angle, logging=None):
+    """
+    Interface to getoff2.
+    Rotates fits image by given angle.
+    """
+    CMD_IMROT="\n{}\n1\n{}\n"
+
+    # run imrot
+    proc = subprocess.Popen("imrot", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    s = GETOFF_CMD.format(fitsfile, angle)
+    so,se = proc.communicate(input=s)
+    for l in so.split("\n"):
+        if logging != None:
+            logging.info(l)
+        else:
+            print(l)
+

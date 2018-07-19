@@ -18,6 +18,7 @@ cat c1 com0c c2 com0d > runrd
 chmod +x runrd
 rm -f tmp.out
 # runrd0 call runrd for every IFU
+# result will be tmp.out which contains (amongst other ) RA DEC for all detections in all IFUs
 runrd0
 
 # now compute offsets

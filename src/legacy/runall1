@@ -111,7 +111,6 @@ $WCSTOOLS/gethead -p $REDUCTIONS/$1/virus/virus0000$2/*/*/multi_???_*LL*fits TRA
 # ACTUAL ASTROMETRIC FIT, IN THREE ITERATIONS with INCREASINGLY SMALLER MATCHING RADII
 rastrom3 $1 $2  0.1
 
-########### translated till here ##########################
 # reformat output
 grep . getoff_*.out | awk '{if($6>0) print $1,sqrt(($4*$4+$5*$5)/2./$6),$6; else print $1,0,$6}' | sed s/getoff_// | sed s/.out:// | sort -g > $1v$2.alloff
 # build mosaic, and rotate to 0 PA?
@@ -124,10 +123,23 @@ awk '{print "rtf",360-($3+90+1.8)}' radec2.dat > rtf2
 # which is then read by ~gebhardt/bin/immosaicv
 # to create a mosaic image
 #
+#    rtf2
+#      └─ calls           -> rtf
+#                             ├─ creates & calls -> rtf0                         # creates list of all 20180611T054545_???.fits
+#                             ├─ creates & calls -> rtf1                         # calls rfp1 for all IFU slots 015
+#                             │                      └── calls           -> rpf1 # reads focal plane coordinates from fplane.txt
+#                             │                                                  #  awk '{if($1==id0) print $1,$2,$3}' id0=$id /work/00115/gebhardt/maverick/sci/panacea/shifts/fplane_all.txt
+#                             ├─ calls           -> immosaicv                    # creates image mosaic
+#                             └─ calls           -> imrot                        # rotates mosaic to correct PA
+#
+#
+#
+#
 chmod +x rtf2; rtf2
 
+########### translated till here ##########################
 # these lines serve to add wcs to final image "by raddwcsfp"
-# headfits call "headfits" a buch of times to add CRVAL1, CTYPE1 and so forth ....
+# calls "headfits" a bunch of times to add CRVAL1, CTYPE1 and so forth ....
 awk '{print "raddwcsfp",$1,$2}' radec2.dat > rtf3
 chmod +x rtf3; rtf3
 mv imrot.fits $1v$2fp.fits
