@@ -21,7 +21,7 @@ cp $REDUCTIONS/$1/virus/virus0000$2/*/*/CoFeS* .
 
 # here we execute cofes_vis.py on the postage stamps to create a png. This is the
 # well known matix of IFU images 
-ls CoFeS*_*.fits | head -1 | cut -b 1-20 | awk '{print "python " $SHIFTS "/cofes_vis.py",$1}' > j1 ; chmod +x j1 ; j1
+ls CoFeS*_*.fits | head -1 | cut -b 1-20 | awk -v SHIFTS=$SHIFTS '{print "python " SHIFTS "/cofes_vis.py",$1}' > j1 ; chmod +x j1 ; j1
 
 
 # copy all scripts over
@@ -80,8 +80,6 @@ run6b
 # only executes "rmaster0 all"
 # which executes ~gebhardt/lib/daoprogs/moreprogs2/daomaster 
 run8b
-
-exit 0
 
 if [ -e all.raw ]
  then

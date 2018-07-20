@@ -338,7 +338,7 @@ def mktot(args, wdir, prefixes):
                     ifugird['X'][jj][0]
                     ifugird['Y'][jj][0]
                     xoff = ifugird['X'][jj][0]
-                    yoff = ifugird['X'][jj][0]
+                    yoff = ifugird['Y'][jj][0]
 
                     # read daophot als input file
                     try:
@@ -358,7 +358,8 @@ def mktot(args, wdir, prefixes):
                     count += sum(ii)
 
                     for d in als.data[ii]:
-                        s = "{:03d} {:8.3f} {:8.3f} {:8.3f}\n".format( d['ID'], d['X']+xoff, d['Y']+yoff, d['MAG'] )
+                        #s = "{:03d} {:8.3f} {:8.3f} {:8.3f}\n".format( d['ID'], d['X']+xoff, d['Y']+yoff, d['MAG'] )
+                        s = "{:d} {:8.3f} {:8.3f} {:8.3f}\n".format( d['ID'], d['X']+xoff, d['Y']+yoff, d['MAG'] )
                         fout.write(s)
 
                 logging.info("{} stars in {}.".format(count, fnout))
@@ -383,6 +384,7 @@ def rmaster(args,wdir):
     """
     logging.info("Running daomaster.")
     with path.Path(wdir):
+        daophot.rm(["all.raw"])
         daophot.daomaster(logging=logging)
 
 
@@ -483,7 +485,7 @@ def get_ra_dec_orig(args,wdir):
     logging.info("get_ra_dec_orig: Original RA,DEC,PA = {},{},{}".format(ra0, dec0, pa0))
     with path.Path(wdir):
         with open("radec.orig",'w') as f:
-            s = "{} {} {}".format(ra0, dec0, pa0)
+            s = "{} {} {}\n".format(ra0, dec0, pa0)
             f.write(s)
 
 def add_ra_dec(args, wdir, prefixes):
@@ -529,7 +531,7 @@ def add_ra_dec(args, wdir, prefixes):
             tt = ll[0].split()
             ra,dec,pa = float(tt[0]), float(tt[1]), float(tt[2])
             with open("radec.dat",'w') as fradec:
-                s = "{} {} {}".format(ra,dec,pa + args.add_radec_angoff)
+                s = "{} {} {}".format(ra*15.,dec,pa + args.add_radec_angoff)
                 fradec.write(s)
 
             # call add_ra_dec
@@ -551,7 +553,7 @@ def add_ra_dec(args, wdir, prefixes):
 def compute_offset(args,wdir,radec_outfiles):
     """
     Requires, fplane.txt, radec.orig.
-    Creates primarely EXPOSURE_tmp.csv but also radec.dat.
+    Creates primarely EXPOSURE_tmp.csv but also radec2.dat.
 
     Compute offset in RA DEC  by matching detected stars in IFUs
     against the shuffle profived RA DEC coordinates.
@@ -582,9 +584,9 @@ def compute_offset(args,wdir,radec_outfiles):
                 tt = l.split()
                 ra,dec,pa = float(tt[0]), float(tt[1]), float(tt[2])
 
-            # read ra,dec, pa from radec.dat
+            # write results to radec2.dat
             with open("radec2.dat",'w') as f:
-                s = "{} {} {}".format(ra+ra_offset,dec+dec_offset,pa )
+                s = "{} {} {}\n".format(ra+ra_offset,dec+dec_offset,pa )
                 f.write(s)
 
 def add_ifu_xy(args, wdir):
@@ -630,7 +632,7 @@ def add_ifu_xy(args, wdir):
             t4.columns[c].name = t4.columns[c].name + "1"
 
         t = table.hstack([t3,t4])
-        t.write('xy.dat', format="ascii.fixed_width", overwrite=True)
+        t.write('xy.dat', format="ascii.fixed_width", delimiter='', overwrite=True)
         # this would be analogous to Karl's format
         #t.write('xy.dat', format="ascii.fast_no_header"
 
@@ -651,6 +653,7 @@ def mkmosaic(args, wdir, prefixes):
         # collect all als files for the first exposure
         pp = filter(lambda x : x.startswith(exp1), prefixes)
         logging.info("mkmosaic: Calling immosaicv ....")
+        daophot.rm(['immosaic.fits'])
         cltools.immosaicv(pp, fplane_file = "fplane.txt", logging=logging)
 
         # rotate mosaic to correct PA on sky
@@ -661,6 +664,7 @@ def mkmosaic(args, wdir, prefixes):
         ra,dec = float(tt[0]), float(tt[1])
 
         logging.info("mkmosaic: Calling imrot (can take a minute) ....")
+        daophot.rm(['imrot.fits'])
         cltools.imrot("immosaic.fits", alpha, logging=logging)
         hdu = fits.open("imrot.fits")
 
@@ -679,7 +683,7 @@ def mkmosaic(args, wdir, prefixes):
         h["CUNIT2"]  = "deg"
         h["EQUINOX"] = 2000
 
-        hdu.writeto("{}fp.fits".format(args.night, args.shotid))
+        hdu.writeto("{}fp.fits".format(args.night, args.shotid),overwrite=True)
 
 
 def get_cofes_files(wdir):
