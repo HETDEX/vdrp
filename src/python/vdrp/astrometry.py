@@ -1,3 +1,10 @@
+""" Astrometry routine
+
+Module to add astrometry to HETDEX catalgoues and images
+Contains python translation of Karl Gebhardt
+
+.. moduleauthor:: Maximilian Fabricius <mxhf@mpe.mpg.de>
+"""
 import numpy as np
 from numpy import loadtxt
 import argparse
@@ -25,6 +32,14 @@ from vdrp import daophot
 from vdrp import cltools
 
 def parseArgs():
+    """ Parses configuration file and command line arguments.
+    Command line arguments overwrite configuration file settiongs which
+    in turn overwrite default values.
+
+    Args:
+        args (argparse.Namespace): Return the populated namespace.
+    """
+
     # Do argv default this way, as doing it in the functional
     # declaration sets it at compile time.
     argv=None
@@ -87,6 +102,7 @@ def parseArgs():
     defaults["add_radec_angoff"] = 0.1
     defaults["getoff2_radii"] = 11.,5.,3.
     defaults["mkmosaic_angoff"] = 1.8
+    defaults["task"] = "all"
 
     if args.conf_file:
         config = ConfigParser.SafeConfigParser()
@@ -140,6 +156,7 @@ def parseArgs():
     parser.add_argument("--add_radec_angoff",  type=float)
     parser.add_argument('--getoff2_radii', type=str)
     parser.add_argument("--mkmosaic_angoff",  type=float)
+    parser.add_argument("-t", "--task",  type=str)
 
     # positional arguments
     parser.add_argument('night', metavar='night', type=str,
@@ -158,12 +175,17 @@ def parseArgs():
     # shoudl in principle be able to do this with accumulate???
     args.getoff2_radii = [float(t) for t in args.getoff2_radii.split(",")]
     #print(args.accumulate(args.getoff2_radii))
-    
+
     return args
 
 
 def createDir(directory):
-    global logging
+    """ Creates a directory.
+    Does not raise an excpetion if the directory already exists.
+
+    Args:
+        directory (string): Name for directory to create.
+    """
     try:
         if not os.path.exists(directory):
             os.makedirs(directory)
@@ -171,8 +193,13 @@ def createDir(directory):
         logging.error('Creating directory. ' +  directory)
 
 
-def copy_postage_stamps(args, wdir):
-    global logging
+def cp_post_stamps(args, wdir):
+    """ Copy CoFeS (collapsed IFU images). 
+
+    Args:
+        args (argparse.Namespace): Parsed configuration parameters.
+        wdir (str): Work directory.
+    """
     ## find the IFU postage stamp fits files and copy them over
     logging.info("Copy CoFeS* files to {}".format(wdir))
     pattern = os.path.join( args.reduction_dir, "{}/virus/virus0000{}/*/*/CoFeS*".format( args.night, args.shotid ) )
@@ -186,10 +213,16 @@ def copy_postage_stamps(args, wdir):
                 already_warned = True
             continue
         shutil.copy2(f, wdir)
-    return cofes_files
 
-def create_postage_stamp_matrix(args,  wdir, cofes_files):
-    global logging
+
+def mk_post_stamp_matrix(args,  wdir, cofes_files):
+    """ Create the IFU postage stamp matrix image.
+
+    Args:
+        args (argparse.Namespace): Parsed configuration parameters.
+        wdir (str): Work directory.
+        cofes_files (list): List of CoFeS file names (collapsed IFU images).
+    """
     # create the IFU postage stamp matrix image
     logging.info("Creating the IFU postage stamp matrix image...")
     prefix = os.path.split(cofes_files[0])[-1][:20]
@@ -199,8 +232,13 @@ def create_postage_stamp_matrix(args,  wdir, cofes_files):
 
 
 def rename_cofes(args,  wdir, cofes_files):
-    global logging
-    # run initial daophot find
+    """ Rename CoFeS files to PREFIX_IFU.fits naming scheme.
+
+    Args:
+        args (argparse.Namespace): Parsed configuration parameters.
+        wdir (string): Work directory.
+        cofes_files (list): List of CoFeS file names (collapsed IFU images).
+    """
     logging.info("Renaming CoFeS* files ...")
     prefixes = []
     with path.Path(wdir):
@@ -211,12 +249,16 @@ def rename_cofes(args,  wdir, cofes_files):
             prefix = t[5:20] + t[22:26]
             prefixes.append(prefix)
             os.rename(t, prefix + ".fits")
-    return prefixes
 
 
-def inital_daophot_find(args,  wdir, prefixes):
-    global logging
-    # run initial daophot find
+def daophot_find(args,  wdir, prefixes):
+    """ Run initial daophot find.
+
+    Args:
+        args (argparse.Namespace): Parsed configuration parameters.
+        wdir (str): Work directory.
+        prefixes (list): List file name prefixes for the collapsed IFU images.
+    """
     logging.info("Running initial daophot find...")
     # Create configuration file for daophot.
     prefixes = []
@@ -227,16 +269,18 @@ def inital_daophot_find(args,  wdir, prefixes):
             daophot.daophot_find(prefix, args.daophot_sigma,logging=logging)
             # filter ouput
             daophot.filter_daophot_out(prefix + ".coo", prefix + ".lst", args.daophot_xmin,args.daophot_xmax,args.daophot_ymin,args.daophot_ymix)
-    return prefixes
 
 
 def daophot_phot_and_allstar(args, wdir, prefixes):
-    """
-    Runs daophot photo and allstar on all IFU postage stamps.
+    """ Runs daophot photo and allstar on all IFU postage stamps.
     Produces *.ap and *.als files.
     Analogous to run4a.
+
+    Args:
+        args (argparse.Namespace): Parsed configuration parameters.
+        wdir (str): Work directory.
+        prefixes (list): List file name prefixes for the collapsed IFU images.
     """
-    global logging
     # run initial daophot phot & allstar
     logging.info("Running daophot phot & allstar ...")
     # Copy configuration files for daophot and allstar.
@@ -252,15 +296,19 @@ def daophot_phot_and_allstar(args, wdir, prefixes):
 
 
 def mktot(args, wdir, prefixes):
-    """
-    Read all *.als files. Put detections on a grid
+    """ Reads all *.als files. Put detections on a grid
     corresponding to the IFU position in the focal plane as defined in
     config/ifu_grid.txt (should later become fplane.txt.
-    Then produce all.mch.
-    (Analogous to run6 and run6b)
-    """
-    global logging
+    Then produces all.mch.
 
+    Note:
+        Analogous to run6 and run6b.
+
+    Args:
+        args (argparse.Namespace): Parsed configuration parameters.
+        wdir (string): Work directory.
+        prefixes (list): List file name prefixes for the collapsed IFU images.
+    """
     # read IFU grid definition file (needs to be replaced by fplane.txt)
     ifugird = Table.read(args.mktot_ifu_grid, format='ascii')
 
@@ -324,20 +372,30 @@ def mktot(args, wdir, prefixes):
 
 
 def rmaster(args,wdir):
+    """ Executes daomaster. This registers the sets of detections
+    for the thre different exposrues with respec to each other.
+
+    Note:
+        Analogous to run8b.
+
+    Args:
+        args (argparse.Namespace): Parsed configuration parameters.
+        wdir (str): Work directory.
     """
-    Executed daomaster.
-    Analogous to run8b.
-    """
-    global logging
     logging.info("Running daomaster.")
     with path.Path(wdir):
         daophot.daomaster(logging=logging)
 
 
 def getNorm(all_raw, mag_max ):
-    """
-    Comutes the actual normalisation for fluxNorm.
-    Analogous to run9.
+    """ Comutes the actual normalisation for flux_norm.
+
+    Note:
+        Analogous to run9.
+
+    Args:
+        all_raw (str): Output file name of daomaster, usuall all.raw.
+        mag_max (float): Magnitude cutoff for normalisation. Fainter objects will be ignored.
     """
     def mag2flux(m):
         return 10**((25-m)/2.5)
@@ -354,24 +412,37 @@ def getNorm(all_raw, mag_max ):
     return biwgt_loc(f1/favg),biwgt_loc(f2/favg),biwgt_loc(f3/favg)
 
 
-def fluxNorm(args, wdir, infile='all.raw', outfile='norm.dat'):
-    """
-    Reads all.raw and compute relative flux normalisation
+def flux_norm(args, wdir, infile='all.raw', outfile='norm.dat'):
+    """ Reads all.raw and compute relative flux normalisation
     for the three exposures.
-    Analogous to run9.
+
+    Note:
+        Analogous to run9.
+
+    Args:
+        args (argparse.Namespace): Parsed configuration parameters.
+        wdir (str): Work directory.
+        infile (str): Output file of daomaster.
+        outfile (str): Filename for result file.
     """
-    global logging
     logging.info("Computing flux normalisation between exposures 1,2 and 3.")
     mag_max = args.fluxnorm_mag_max
     with path.Path(wdir):
         all_raw = loadtxt(infile, skiprows=3)
         n1,n2,n3 = getNorm(all_raw, mag_max )
-        logging.info("fluxNorm: Flux normalisation is {:10.8f} {:10.8f} {:10.8f}".format(n1,n2,n3) )
+        logging.info("flux_norm: Flux normalisation is {:10.8f} {:10.8f} {:10.8f}".format(n1,n2,n3) )
         with open(outfile, 'w') as f:
             s = "{:10.8f} {:10.8f} {:10.8f}".format(n1,n2,n3)
             f.write(s)
 
 def redo_shuffle(args, wdir):
+    """
+    Reruns shuffle to obtain catalog of IFU stars.
+
+    Args:
+        args (argparse.Namespace): Parsed configuration parameters.
+        wdir (str): Work directory.
+    """
     shutil.copy2(args.shuffle_cfg, wdir)
     shutil.copy2(args.fplane_txt, wdir)
     with path.Path(wdir):
@@ -395,6 +466,13 @@ def redo_shuffle(args, wdir):
         subprocess.call(cmd, shell=True)
 
 def get_ra_dec_orig(args,wdir):
+    """
+    Reads first of the many multi* file'd headers to get the RA, DEC, PA guess from the telescope.
+
+    Args:
+        args (argparse.Namespace): Parsed configuration parameters.
+        wdir (str): Work directory.
+    """
     pattern = os.path.join( args.reduction_dir, "{}/virus/virus0000{}/*/*/multi_???_*LL*fits".format( args.night, args.shotid ) )
     multi_files = glob.glob(pattern)
     if len(multi_files) == 0:
@@ -413,11 +491,15 @@ def add_ra_dec(args, wdir, prefixes):
     """
     Call add_ra_dec to compute for detections in IFU space the corresponding RA/DEC
     coordinates.
+
     Requires, fplane.txt, radec.orig.
     Creates primarely EXPOSURE_tmp.csv but also radec.dat.
-    """
-    global logging
 
+    Args:
+        args (argparse.Namespace): Parsed configuration parameters.
+        wdir (str): Work directory.
+        prefixes (list): List file name prefixes for the collapsed IFU images.
+    """
     # read IFU grid definition file (needs to be replaced by fplane.txt)
     ifugird = Table.read(args.mktot_ifu_grid, format='ascii')
 
@@ -467,11 +549,19 @@ def add_ra_dec(args, wdir, prefixes):
     return radec_outfiles
 
 
-def computeOffset(args,wdir,radec_outfiles):
+def compute_offset(args,wdir,radec_outfiles):
     """
+    Requires, fplane.txt, radec.orig.
+    Creates primarely EXPOSURE_tmp.csv but also radec.dat.
+
     Compute offset in RA DEC  by matching detected stars in IFUs
     against the shuffle profived RA DEC coordinates.
     Analogous to rastrom3.
+
+    Args:
+        args (argparse.Namespace): Parsed configuration parameters.
+        wdir (str): Work directory.
+        radec_outfiles (list): List file names that contain the ad_ra_dec outputs.
     """
     with path.Path(wdir):
         radii = args.getoff2_radii
@@ -499,12 +589,16 @@ def computeOffset(args,wdir,radec_outfiles):
                 f.write(s)
 
 def add_ifu_xy(args, wdir):
-    """
-    Add IFU x y information to stars used for matching,
+    """ Adds IFU x y information to stars used for matching,
     and save to xy.dat.
     Requires: getoff.out, radec2.dat
     Analogous to rastrom3.
+
+    Args:
+        args (argparse.Namespace): Parsed configuration parameters.
+        wdir (str): Work directory.
     """
+    logging.info("Creating xy.dat...")
     with path.Path(wdir):
         # read ra dec postions of reference stars and detections
         # from getoff.out
@@ -541,11 +635,15 @@ def add_ifu_xy(args, wdir):
         # this would be analogous to Karl's format
         #t.write('xy.dat', format="ascii.fast_no_header"
 
-def mkmosaic(args, wdir, prefixes):
-    """
-    """
-    global logging
 
+def mkmosaic(args, wdir, prefixes):
+    """Creates mosaic fits image.
+
+    Args:
+        args (argparse.Namespace): Parsed configuration parameters.
+        wdir (str): Work directory.
+        prefixes (list): List file name prefixes for the collapsed IFU images.
+    """
     with path.Path(wdir):
         logging.info("mkmosaic: Creating mosaic image.")
         # build mosaic from IFU images
@@ -568,23 +666,55 @@ def mkmosaic(args, wdir, prefixes):
         hdu = fits.open("imrot.fits")
 
         h = hdu[0].header
-        h["CRVAL1"] = ra
-        h["CRVAL2"] = dec
-        h["CTYPE1"] = "RA---TAN"
-        h["CTYPE2"] = "DEC--TAN"
-        h["CD1_1"] = -0.0002777
-        h["CD1_2"] = 0.
-        h["CD2_2"] = 0.0002777
-        h["CD2_1"] = 0
-        h["CRPIX1"] = 650.0
-        h["CRPIX2"] = 650.0
-        h["CUNIT1"] = "deg"
-        h["CUNIT2"] = "deg"
+        h["CRVAL1"]  = ra
+        h["CRVAL2"]  = dec
+        h["CTYPE1"]  = "RA---TAN"
+        h["CTYPE2"]  = "DEC--TAN"
+        h["CD1_1"]   = -0.0002777
+        h["CD1_2"]   = 0.
+        h["CD2_2"]   = 0.0002777
+        h["CD2_1"]   = 0
+        h["CRPIX1"]  = 650.0
+        h["CRPIX2"]  = 650.0
+        h["CUNIT1"]  = "deg"
+        h["CUNIT2"]  = "deg"
         h["EQUINOX"] = 2000
 
         hdu.writeto("{}fp.fits".format(args.night, args.shotid))
 
+
+def get_cofes_files(wdir):
+   """
+   Create list of all CoFeS* files in the current directory.
+
+   Args:
+       wdir (str): Work directory.
+   """
+   ff = []
+   with path.Path(wdir):
+       ff = glob.glob('CoFeS????????T??????.?_???_sci.fits')
+   return ff
+
+
+def get_prefixes(wdir):
+   """
+   Create list of all file prefixes based
+   on the existing collapsed IFU files in the current directory.
+
+
+   Args:
+       wdir (str): Work directory.
+   """
+   ff = []
+   with path.Path(wdir):
+       ff = glob.glob('2???????T??????_???.fits')
+   return [f[:19] for f in ff]
+
+
 def main():
+    """
+    Main function.
+    """
     # Parse config file and command line paramters
     # command line parameters overwrite config file.
     args = parseArgs()
@@ -604,47 +734,64 @@ def main():
     wdir = os.path.join(cwd, "{}v{}".format(args.night, args.shotid))
     createDir(wdir)
 
-    # Copy over collapsed IFU cubes, aka IFU postage stamps.
-    cofes_files = copy_postage_stamps(args, wdir)
+    if args.task in ["cp_post_stamps","all"]:
+        # Copy over collapsed IFU cubes, aka IFU postage stamps.
+        cp_post_stamps(args, wdir)
 
-    # Creat IFU postage stamp matrix image.
-    create_postage_stamp_matrix(args, wdir, cofes_files)
+    elif args.task in ["mk_post_stamp_matrix","all"]:
+        # Creat IFU postage stamp matrix image.
+        mk_post_stamp_matrix(args, wdir, get_cofes_files(wdir))
 
-    # Rename IFU postage stamps as daophot can't handle long file names.
-    prefixes = rename_cofes(args,  wdir, cofes_files)
+    elif args.task in ["rename_cofes","all"]:
+        # Rename IFU postage stamps as daophot can't handle long file names.
+        rename_cofes(args,  wdir, get_cofes_files(wdir))
 
-    # Run initial object detection in postage stamps.
-    inital_daophot_find(args, wdir, prefixes)
+    elif args.task in ["daophot_find","all"]:
+        # Run initial object detection in postage stamps.
+        daophot_find(args, wdir, get_prefixes(wdir))
 
-    # Run photometry 
-    daophot_phot_and_allstar(args, wdir, prefixes)
+    elif args.task in ["daophot_phot_and_allstar","all"]:
+        # Run photometry 
+        daophot_phot_and_allstar(args, wdir, get_prefixes(wdir))
 
-    # Combine detections accross all IFUs.
-    mktot(args, wdir, prefixes)
+    elif args.task in ["mktot","all"]:
+        # Combine detections accross all IFUs.
+        mktot(args, wdir, get_prefixes(wdir))
 
-    # Run daophot master to ???
-    rmaster(args, wdir)
+    elif args.task in ["rmaster","all"]:
+        # Run daophot master to ???
+        rmaster(args, wdir)
 
-    # Compute relative flux normalisation.
-    fluxNorm(args, wdir)
+    elif args.task in ["flux_norm","all"]:
+        # Compute relative flux normalisation.
+        flux_norm(args, wdir)
 
-    # Rerun shuffle to get IFU stars
-    redo_shuffle(args, wdir)
+    elif args.task in ["redo_shuffle","all"]:
+        # Rerun shuffle to get IFU stars
+        redo_shuffle(args, wdir)
 
-    # Retrieve original RA DEC from one of the multi files.
-    # store in radec.orig
-    get_ra_dec_orig(args, wdir)
+    elif args.task in ["get_ra_dec_orig","all"]:
+        # Retrieve original RA DEC from one of the multi files.
+        # store in radec.orig
+        get_ra_dec_orig(args, wdir)
 
-    radec_outfiles = add_ra_dec(args, wdir, prefixes)
+    elif args.task in ["compute_offset","all"]:
+        # Call add_ra_dec to add RA DEC information to detections.
+        radec_outfiles = add_ra_dec(args, wdir, get_prefixes(wdir))
+        # Compute offsets by matching 
+        # detected stars to sdss stars from shuffle.
+        compute_offset(args,wdir,radec_outfiles)
 
-    # Compute offsets by matching 
-    # detected stars to sdss stars from shuffle.
-    computeOffset(args,wdir,radec_outfiles)
+    elif args.task in ["add_ifu_xy","all"]:
+        add_ifu_xy(args, wdir)
 
-    add_ifu_xy(args, wdir)
+    elif args.task in ["mkmosaic","all"]:
+        # build mosaic for focal plane
+        mkmosaic(args, wdir, get_prefixes(wdir))
 
-    # build mosaic for focal plane
-    mkmosaic(args, wdir, prefixes)
+    else:
+        logging.error("Task {} unknown.".format(args.task))
+
     logging.info("Done.")
 
 
