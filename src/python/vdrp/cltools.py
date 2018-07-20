@@ -1,3 +1,11 @@
+""" Interface to astrometry command line tools 
+
+
+Module provide interface routines to the command line
+tools that are use in Karl Gebhardt's astrometry procedure.
+
+.. moduleauthor:: Maximilian Fabricius <mxhf@mpe.mpg.de>
+"""
 
 from astropy.table import Table
 import  subprocess
@@ -7,6 +15,20 @@ import os
 def getoff2(fnradec, fnshuffle_ifustars, radius, ra_offset, dec_offset, logging=None):
     """
     Interface to getoff2.
+
+    Args:
+        fnradec (string): Filename for detections.
+        fnshuffle_ifustars (string): Filename of catalog of stars to match to.
+        radius (float): Matching radius.
+        ra_offset (float): RA offset to apply to detecions in `fnradec` before computeing offset.
+        dec_offset (float): Dec offset to apply to detecions in `fnradec` before computeing offset.
+        logging (module): Pass logging module if. Otherwise output is passed to the screen.
+
+    Notes:
+        Creates file `getoff2.out`.
+
+    Retruns:
+        new_ra_offset (float), new_dec_offset (float): New offset after matching (input offset added). 
     """
     GETOFF_CMD = "{}\n"
 
@@ -49,8 +71,7 @@ def getoff2(fnradec, fnshuffle_ifustars, radius, ra_offset, dec_offset, logging=
 
 
 def immosaicv(prefixes, fplane_file = "fplane.txt", logging=None):
-    """
-    Interface to immosaicv which creates
+    """Interface to immosaicv which creates
     a mosaic give a set of fits files and x y coordinates.
     Requires infp.
     This function will prepare the necessary infp file that is read by immosaicv
@@ -61,6 +82,11 @@ def immosaicv(prefixes, fplane_file = "fplane.txt", logging=None):
     20180611T054545_023.fits 023 -349.798 150.243
     20180611T054545_024.fits 024 -350.0 50.0
     ...
+
+    Args:
+        prefixes (list): List file name prefixes for the collapsed IFU images.
+        fplane_file (str): Fplane file name.
+        logging (module): Pass logging module if. Otherwise output is passed to the screen.
     """
     fp = fplane.FPlane(fplane_file)
 
@@ -102,6 +128,13 @@ def imrot(fitsfile, angle, logging=None):
     """
     Interface to getoff2.
     Rotates fits image by given angle.
+
+    Notes:
+        Creates file `imrot.fits`.
+
+    Args:
+        fitsfile (str): Input fits file name.
+        angle (float): Rotation angle.
     """
     CMD_IMROT="{}\n1\n{}"
 
