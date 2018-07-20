@@ -28,8 +28,8 @@ class TestBase(unittest.TestCase):
     def tearDownClass(cls):
         print("Tearing class down.")
         # Remove the directory after the test
-        shutil.rmtree(cls.test_dir)
-        #print("WARNING: NOT REMOVIN TEMPORARY DIRECTORY")
+        #shutil.rmtree(cls.test_dir)
+        print("WARNING: NOT REMOVING TEMPORARY DIRECTORY")
 
 
 

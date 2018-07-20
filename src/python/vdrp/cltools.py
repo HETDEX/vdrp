@@ -4,7 +4,7 @@ import  subprocess
 from pyhetdex.het import fplane
 import os
 
-def getoff2(fnradec, fnshuffle_ifustars, radius, fnout, ra_offset, dec_offset, logging=None):
+def getoff2(fnradec, fnshuffle_ifustars, radius, ra_offset, dec_offset, logging=None):
     """
     Interface to getoff2.
     """
@@ -83,12 +83,13 @@ def immosaicv(prefixes, fplane_file = "fplane.txt", logging=None):
                     print(msg)
                 continue
 
-                ifu = fp.by_ifuslot(ifuslot)
-                s = "{}.fits {} {} {}".format(f, ifuslot, ifu.x, ifu.y)
-                infp,write(s)
+            ifu = fp.by_ifuslot(ifuslot)
+            s = "{}.fits {} {} {}\n".format(f, ifuslot, ifu.x, ifu.y)
+            infp.write(s)
 
     # run immosaicv
     proc = subprocess.Popen("immosaicv", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    so,se = proc.communicate()
     for l in so.split("\n"):
         if logging != None:
             logging.info(l)
@@ -102,11 +103,11 @@ def imrot(fitsfile, angle, logging=None):
     Interface to getoff2.
     Rotates fits image by given angle.
     """
-    CMD_IMROT="\n{}\n1\n{}\n"
+    CMD_IMROT="{}\n1\n{}"
 
     # run imrot
     proc = subprocess.Popen("imrot", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    s = GETOFF_CMD.format(fitsfile, angle)
+    s = CMD_IMROT.format(fitsfile, angle)
     so,se = proc.communicate(input=s)
     for l in so.split("\n"):
         if logging != None:

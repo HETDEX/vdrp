@@ -22,6 +22,7 @@ from pyhetdex.het import fplane
 
 from vdrp.cofes_vis import cofes_4x4_plots
 from vdrp import daophot
+from vdrp import cltools
 
 def parseArgs():
     # Do argv default this way, as doing it in the functional
@@ -466,7 +467,6 @@ def add_ra_dec(args, wdir, prefixes):
     return radec_outfiles
 
 
-import cltools
 def computeOffset(args,wdir,radec_outfiles):
     """
     Compute offset in RA DEC  by matching detected stars in IFUs
@@ -480,9 +480,9 @@ def computeOffset(args,wdir,radec_outfiles):
             logging.info("Computing offsets for {}".format(radec_outfiles[k]))
             ra_offset, dec_offset = 0., 0.
             for i, radius in enumerate(radii):
-                fnout = "radec_iter{}.dat" .format(i+1)
+                #fnout = "radec_iter{}.dat" .format(i+1)
                 logging.info("Start getoff2 iteration {}".format(i+1))
-                ra_offset, dec_offset = cltools.getoff2(radec_outfiles[k], "shout.ifustars", radius, fnout, ra_offset, dec_offset, logging=logging)
+                ra_offset, dec_offset = cltools.getoff2(radec_outfiles[k], "shout.ifustars", radius, ra_offset, dec_offset, logging=logging)
                 logging.info("End getoff2 iteration {}  ra_offset, dec_offset = {}, {}".format(i+1, ra_offset, dec_offset))
                 logging.info("")
                 logging.info("")
@@ -541,6 +541,48 @@ def add_ifu_xy(args, wdir):
         # this would be analogous to Karl's format
         #t.write('xy.dat', format="ascii.fast_no_header"
 
+def mkmosaic(args, wdir, prefixes):
+    """
+    """
+    global logging
+
+    with path.Path(wdir):
+        logging.info("mkmosaic: Creating mosaic image.")
+        # build mosaic from IFU images
+        exposures = np.unique([p[:15] for p in prefixes])
+        exp1 = exposures[0]
+        # collect all als files for the first exposure
+        pp = filter(lambda x : x.startswith(exp1), prefixes)
+        logging.info("mkmosaic: Calling immosaicv ....")
+        cltools.immosaicv(pp, fplane_file = "fplane.txt", logging=logging)
+
+        # rotate mosaic to correct PA on sky
+        with open('radec2.dat','r') as f:
+            l = f.readline()
+        tt = l.split()
+        alpha = 360. - float(tt[2]) + 90. + args.mkmosaic_angoff
+        ra,dec = float(tt[0]), float(tt[1])
+
+        logging.info("mkmosaic: Calling imrot (can take a minute) ....")
+        cltools.imrot("immosaic.fits", alpha, logging=logging)
+        hdu = fits.open("imrot.fits")
+
+        h = hdu[0].header
+        h["CRVAL1"] = ra
+        h["CRVAL2"] = dec
+        h["CTYPE1"] = "RA---TAN"
+        h["CTYPE2"] = "DEC--TAN"
+        h["CD1_1"] = -0.0002777
+        h["CD1_2"] = 0.
+        h["CD2_2"] = 0.0002777
+        h["CD2_1"] = 0
+        h["CRPIX1"] = 650.0
+        h["CRPIX2"] = 650.0
+        h["CUNIT1"] = "deg"
+        h["CUNIT2"] = "deg"
+        h["EQUINOX"] = 2000
+
+        hdu.writeto("{}fp.fits".format(args.night, args.shotid))
 
 def main():
     # Parse config file and command line paramters
@@ -581,13 +623,13 @@ def main():
     mktot(args, wdir, prefixes)
 
     # Run daophot master to ???
-    #rmaster(args, wdir)
+    rmaster(args, wdir)
 
     # Compute relative flux normalisation.
     fluxNorm(args, wdir)
 
     # Rerun shuffle to get IFU stars
-    #redo_shuffle(args, wdir)
+    redo_shuffle(args, wdir)
 
     # Retrieve original RA DEC from one of the multi files.
     # store in radec.orig
@@ -601,49 +643,9 @@ def main():
 
     add_ifu_xy(args, wdir)
 
+    # build mosaic for focal plane
+    mkmosaic(args, wdir, prefixes)
     logging.info("Done.")
-
-    def mkmosaic(args, wdir, prefixes):
-        """
-        """
-        global logging
-
-        with path.Path(wdir):
-            logging.logging("mkmosaic: Creating mosaic image.")
-            # build mosaic from IFU images
-            exposures = np.unique([p[:15] for p in prefixes])
-            exp1 = exposures[0:1]
-            # collect all als files for the first exposure
-            pp = filter(lambda x : x.startswith(exp1), list)
-            cltools.immosaicv(pp, fplane_file = "fplane.txt", logging=logging)
-
-            # rotate mosaic to correct PA on sky
-            with open('radec2.dat','r') as f:
-                l = f.readline()
-            tt = l.split()
-            alpha = 360. - tt[2] + 90. + args.mkmosaic_angoff
-            ra,dec = float(tt[0]), float(tt[1])
-
-            cltools.imrot("immosaic.fits", alpha, logging=logging)
-            hdu = fits.open(imrot.fits)
-
-            h = hdu[0].header
-            h["CRVAL1"] = ra
-            h["CRVAL2"] = dec
-            h["CTYPE1"] = RA---TAN
-            h["CTYPE2"] = DEC--TAN
-            h["CD1_1"] = -0.0002777
-            h["CD1_2"] = 0.
-            h["CD2_2"] = 0.0002777
-            h["CD2_1"] = 0
-            h["CRPIX1"] = 650.0
-            h["CRPIX2"] = 650.0
-            h["CUNIT1"] = deg
-            h["CUNIT2"] = deg
-            h["EQUINOX"] = 2000
-
-            hdu.writeto("{}fp.fits".format(args.night, args.shotid))
-
 
 
 if __name__ == "__main__":

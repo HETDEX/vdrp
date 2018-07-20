@@ -9,3 +9,9 @@ export PATH=/Users/mxhf/work/MPE/hetdex/src/vdrp_rewrite/daoprogs/moreprogs2/:$P
 # to find getoff2
 export PATH=/Users/mxhf/work/MPE/hetdex/src/vdrp_rewrite/sciprogs/:$PATH
 
+3 to find
+~gebhardt/bin/immosaicv
+~gebhardt/bin/imrot << eof
+
+~gebhardt/bin/
+
