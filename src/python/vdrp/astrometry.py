@@ -261,7 +261,6 @@ def daophot_find(args,  wdir, prefixes):
     """
     logging.info("Running initial daophot find...")
     # Create configuration file for daophot.
-    prefixes = []
     with path.Path(wdir):
         daophot.mk_daophot_opt(args)
         for prefix in prefixes:
