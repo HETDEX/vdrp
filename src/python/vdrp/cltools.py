@@ -25,7 +25,7 @@ def getoff2(fnradec, fnshuffle_ifustars, radius, ra_offset, dec_offset, logging=
         logging (module): Pass logging module if. Otherwise output is passed to the screen.
 
     Notes:
-        Creates file `getoff2.out`.
+        Creates file `getoff2.out` and intermediate file `shout.ifu`.
 
     Retruns:
         new_ra_offset (float), new_dec_offset (float): New offset after matching (input offset added). 
@@ -126,7 +126,7 @@ def immosaicv(prefixes, fplane_file = "fplane.txt", logging=None):
 
 def imrot(fitsfile, angle, logging=None):
     """
-    Interface to getoff2.
+    Interface to imrot.
     Rotates fits image by given angle.
 
     Notes:

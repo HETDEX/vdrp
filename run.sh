@@ -26,6 +26,6 @@ CFG=vdrp.config
 #python vdrp/src/python/vdrp/astrometry.py -c $CFG $NIGHT $TARGET $RA $DEC $TRACK -t flux_norm
 #python vdrp/src/python/vdrp/astrometry.py -c $CFG $NIGHT $TARGET $RA $DEC $TRACK -t redo_shuffle
 #python vdrp/src/python/vdrp/astrometry.py -c $CFG $NIGHT $TARGET $RA $DEC $TRACK -t get_ra_dec_orig
-#python vdrp/src/python/vdrp/astrometry.py -c $CFG $NIGHT $TARGET $RA $DEC $TRACK -t compute_offset
-python vdrp/src/python/vdrp/astrometry.py -c $CFG $NIGHT $TARGET $RA $DEC $TRACK -t add_ifu_xy
+python vdrp/src/python/vdrp/astrometry.py -c $CFG $NIGHT $TARGET $RA $DEC $TRACK -t compute_offset
+#python vdrp/src/python/vdrp/astrometry.py -c $CFG $NIGHT $TARGET $RA $DEC $TRACK -t add_ifu_xy
 #python vdrp/src/python/vdrp/astrometry.py -c $CFG $NIGHT $TARGET $RA $DEC $TRACK -t mkmosaic
