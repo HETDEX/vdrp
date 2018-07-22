@@ -1,3 +1,9 @@
+""" Interface to daophot routines.
+
+Module provides interface to daophot.
+
+.. moduleauthor:: Maximilian Fabricius <mxhf@mpe.mpg.de>
+"""
 import os
 import subprocess
 import sys
