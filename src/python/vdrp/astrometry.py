@@ -493,10 +493,11 @@ def get_ra_dec_orig(args,wdir):
             s = "{} {} {}\n".format(ra0, dec0, pa0)
             f.write(s)
 
-def add_ra_dec(args, wdir, exp_prefixes, ifugrid_file, ra, dec, pa, radec_outfile='tmp.csv'):
+def add_ra_dec(args, wdir, exp_prefixes, ra, dec, pa, radec_outfile='tmp.csv'):
     """
     Call add_ra_dec to compute for detections in IFU space the corresponding RA/DEC
     coordinates.
+
 
     Requires, fplane.txt, radec.orig.
     Creates primarely EXPOSURE_tmp.csv but also radec.dat.
@@ -511,9 +512,6 @@ def add_ra_dec(args, wdir, exp_prefixes, ifugrid_file, ra, dec, pa, radec_outfil
         radec_outfile (str): Filename that will contain output from add_ra_dec (gets overwritten!).
 
     """
-    # read IFU grid definition file (needs to be replaced by fplane.txt)
-    ifugird = Table.read(ifugrid_file, format='ascii')
-
     with path.Path(wdir):
         fp = fplane.FPlane("fplane.txt")
 
@@ -552,8 +550,6 @@ def compute_offset(args, wdir, prefixes, shout_ifustars = 'shout.ifustars'):
     """
     shout_ifustars = 'shout.ifustars'
 
-    ifugrid_file =  os.path.abspath( args.mktot_ifu_grid )
-
     with path.Path(wdir):
         radii = args.getoff2_radii
         # collect the prefixes that belong to the first exposure
@@ -588,11 +584,11 @@ def compute_offset(args, wdir, prefixes, shout_ifustars = 'shout.ifustars'):
             logging.info("Adding RA & Dec to detections, applying offsets ra_offset,dec_offset,pa_offset = {},{},{}".format( ra_offset, dec_offset, args.add_radec_angoff) )
             # call add_ra_dec, add offsets first.
             new_ra, new_dec, new_pa = ra * 15. + ra_offset, dec + dec_offset, pa + args.add_radec_angoff
-            add_ra_dec(args, wdir, exp_prefixes, ifugrid_file, ra=new_ra, dec=new_dec, pa=new_pa, radec_outfile=radec_outfile)
+            add_ra_dec(args, wdir, exp_prefixes, ra=new_ra, dec=new_dec, pa=new_pa, radec_outfile=radec_outfile)
             logging.info("Computing offsets ...")
             dra_offset, ddec_offset = cltools.getoff2(radec_outfile, shout_ifustars, radius, ra_offset=0., dec_offset=0., logging=logging)
             ra_offset, dec_offset =  ra_offset+dra_offset, dec_offset+ddec_offset
-            logging.info("End getoff2 iteration {}: Offset get adjusted by {:.6f}, {:.6f} to {:.6f}, {:.6f}".format(i+1, dra_offset, ddec_offset, ra_offset, dec_offset))
+            logging.info("End getoff2 iteration {}: Offset adjusted by {:.6f}, {:.6f} to {:.6f}, {:.6f}".format(i+1, dra_offset, ddec_offset, ra_offset, dec_offset))
             logging.info("")
             logging.info("")
 
@@ -608,44 +604,6 @@ def compute_offset(args, wdir, prefixes, shout_ifustars = 'shout.ifustars'):
             f.write(s)
 
 
-def compute_offset_old(args,wdir,radec_outfiles):
-    """
-    Requires, fplane.txt, radec.orig.
-    Creates primarely EXPOSURE_tmp.csv but also radec2.dat.
-
-    Compute offset in RA DEC  by matching detected stars in IFUs
-    against the shuffle profived RA DEC coordinates.
-    Analogous to rastrom3.
-
-    Args:
-        args (argparse.Namespace): Parsed configuration parameters.
-        wdir (str): Work directory.
-        radec_outfiles (list): List file names that contain the ad_ra_dec outputs.
-    """
-    with path.Path(wdir):
-        radii = args.getoff2_radii
-        # preparing to do all three exposures here, for now will only do first
-        for k in radec_outfiles:
-            logging.info("Computing offsets for {}".format(radec_outfiles[k]))
-            ra_offset, dec_offset = 0., 0.
-            for i, radius in enumerate(radii):
-                #fnout = "radec_iter{}.dat" .format(i+1)
-                logging.info("Start getoff2 iteration {}".format(i+1))
-                ra_offset, dec_offset = cltools.getoff2(radec_outfiles[k], "shout.ifustars", radius, ra_offset, dec_offset, logging=logging)
-                logging.info("End getoff2 iteration {}  ra_offset, dec_offset = {}, {}".format(i+1, ra_offset, dec_offset))
-                logging.info("")
-                logging.info("")
-
-            # read ra,dec, pa from radec.dat
-            with open("radec.dat",'r') as f:
-                l = f.readline()
-                tt = l.split()
-                ra,dec,pa = float(tt[0]), float(tt[1]), float(tt[2])
-
-            # write results to radec2.dat
-            with open("radec2.dat",'w') as f:
-                s = "{} {} {}\n".format(ra+ra_offset,dec+dec_offset,pa )
-                f.write(s)
 
 def add_ifu_xy(args, wdir):
     """ Adds IFU x y information to stars used for matching,
