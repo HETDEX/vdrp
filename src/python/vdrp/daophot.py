@@ -326,6 +326,6 @@ def filter_daophot_out(file_in, file_out, xmin, xmax, ymin, ymax):
         for l in ll[3:]:
             tt = l.split()
             x,y = float(tt[1]), float(tt[2])
-            if x > xmin and y < xmax and y > ymin and y < ymax:
+            if x > xmin and x < xmax and y > ymin and y < ymax:
                 fout.write(l)
 
