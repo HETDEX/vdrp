@@ -356,7 +356,7 @@ def mktot(args, wdir, prefixes):
                     ii *= als.data['X']   < args.mktot_xmax
                     ii *= als.data['Y']   > args.mktot_ymin
                     ii *= als.data['Y']   < args.mktot_ymax
-   
+
                     count += sum(ii)
 
                     for d in als.data[ii]:
