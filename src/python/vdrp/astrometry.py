@@ -571,7 +571,7 @@ def compute_offset(args, wdir, prefixes, shout_ifustars = 'shout.ifustars'):
         tt = ll[0].split()
         ra,dec,pa = float(tt[0]), float(tt[1]), float(tt[2])
         with open("radec.dat",'w') as fradec:
-            s = "{} {} {}".format(ra*15.,dec,pa + args.add_radec_angoff)
+            s = "{} {} {}\n".format(ra*15.,dec,pa + args.add_radec_angoff)
             fradec.write(s)
 
 
