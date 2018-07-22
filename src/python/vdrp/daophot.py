@@ -106,6 +106,17 @@ class DAOPHOT_ALS(object):
 
     @staticmethod
     def read(als_file):
+        """Reads daophot als file.
+
+        Notes:
+            Creates file `imrot.fits`.
+
+        Args:
+            als_file (str): Input file name.
+
+        Returns:
+            (DAOPHOT_ALS): Object containing all the infromation in the als file.
+        """
         with open(als_file) as f:
             ll = f.readlines()
         tt = ll[1].split()
@@ -122,9 +133,13 @@ class DAOPHOT_ALS(object):
 
 
 def test_input_files_exist(input_files):
-    """
-    Takes a list of files names and check if they are in place.
+    """Takes a list of files names and check if they are in place.
     Raises DaophotException if not.
+
+    Args:
+        input_files (list): List of file names to check.
+    Raises:
+        DaophotException: If not all given files are present.
     """
     for f in input_files:
         if not os.path.exists(f):
@@ -132,8 +147,12 @@ def test_input_files_exist(input_files):
 
 
 def rm(ff):
-    """
-    Takes a list of files names and deletes them.
+    """ Takes a list of files names and deletes them.
+    Does not raise an Exception if a specific file was not in place.
+
+    Args:
+        ff (list): List of file names to delete.
+
     """
     for f in ff:
         try:
@@ -143,10 +162,16 @@ def rm(ff):
 
 
 def daophot_find(prefix, sigma, logging=None):
-    """
-    Interface to daophot find.
-    Replaces second part of rdcoo.
-    Requires daophot.opt to be in place.
+    """Interface to daophot find.
+
+    Notes:
+        Replaces second part of rdcoo.
+        Requires daophot.opt to be in place.
+
+    Args:
+        prefix (str): File name prefix to call daophot phot for.
+        sigma (float): Daophot phot sigma parameter.
+        logging (module): Pass logging module if. Otherwise output is passed to the screen.
     """
     global DAOPHOT_FIND_CMD
     input_files = ["daophot.opt", prefix + ".fits"]
@@ -164,11 +189,17 @@ def daophot_find(prefix, sigma, logging=None):
     p_status = proc.wait()
     rm([prefix + "jnk.fits"])
 
+
 def daophot_phot(prefix, logging=None):
-    """
-    Interface to daophot phot.
-    Replaces first part of rdsub.
-    Requires photo.opt to be in place.
+    """Interface to daophot phot.
+
+    Notes:
+        Replaces first part of rdsub.
+        Requires photo.opt to be in place.
+
+    Args:
+        prefix (str): File name prefix to call daophot phot for.
+        logging (module): Pass logging module if. Otherwise output is passed to the screen.
     """
     global DAOPHOT_PHOT_CMD
 
@@ -189,10 +220,16 @@ def daophot_phot(prefix, logging=None):
 
 
 def allstar(prefix, psf="use.psf", logging=None):
-    """
-    Interface to allstar.
-    Replaces second part of rdsub.
-    Requires allstar.opt and use.psf, PREFIX.ap to be in place.
+    """Interface to allstar.
+
+    Notes:
+        Replaces second part of rdsub.
+        Requires allstar.opt and use.psf, PREFIX.ap to be in place.
+
+    Args:
+        prefix (str): File name prefix to call daophot phot for.
+        psf (str): File name for PSF model.
+        logging (module): Pass logging module if. Otherwise output is passed to the screen.
     """
     global ALLSTAR_CMD
 
@@ -212,19 +249,23 @@ def allstar(prefix, psf="use.psf", logging=None):
 
 
 def daomaster(logging=None):
-    """
-    Interface to daomaster
-    replaces "rmaster0".
-    Requires 20180611T054545tot.als
-    and all.mch to be in place.
+    """Interface to daomaster.
+
+    Notes:
+        replaces "rmaster0".
+        Requires 20180611T054545tot.als
+        and all.mch to be in place.
+
+    Args:
+        logging (module): Pass logging module if. Otherwise output is passed to the screen.
     """
     global DAOMASTER_CMD
 
-    # TODO: Shoudl check for existence of e.g. "20180611T054545tot.als"
+    # TODO: Shoull check for existence of als input files listed in all.mch, e.g. "20180611T054545tot.als"
     input_files = ["all.mch"]
     test_input_files_exist(input_files)
 
-    #rm([prefix + ".raw"])
+    rm(["all.raw"])
     proc = subprocess.Popen("daomaster", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     s = DAOMASTER_CMD
     so,se = proc.communicate(input=s)
@@ -255,11 +296,21 @@ def mk_daophot_opt(args):
         f.write(s)
 
 def filter_daophot_out(file_in, file_out, xmin, xmax, ymin, ymax):
-    """
+    """ Filter daophot coo ouput files. For close-to-edge detections.
+
     Read the daophot *.coo output file and rejects detections
     that fall outside xmin - xmax and ymin - ymax.
     Translated from
     awk '{s+=1; if (s<=3||($2>4&&$2<45&&$3>4&&$3<45)) print $0}' $1.coo > $1.lst
+
+    Notes:
+    Args:
+        file_in (str): Input file name.
+        file_out (str): Output file name.
+        xmin (float): Detection x coordinate must be larger than this vaule.
+        xmax (float): Detection x coordinate must be smaller than this vaule.
+        ymin (float): Detection y coordinate must be larger than this vaule.
+        ymax (float): Detection y coordinate must be smaller than this vaule.
     """
     with open(file_in, 'r') as fin:
         ll = fin.readlines()

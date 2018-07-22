@@ -83,6 +83,7 @@ def parseArgs():
     defaults["daophot_xmax"] = 45
     defaults["daophot_ymin"] = 4
     defaults["daophot_ymix"] = 45
+    defaults["daophot_opt"] = "vdrp/config/daophot.opt"
     defaults["daophot_phot_psf"]    = "vdrp/config/use.psf"
     defaults["daophot_photo_opt"]   = "vdrp/config/photo.opt"
     defaults["daophot_allstar_opt"] = "vdrp/config/allstar.opt"
@@ -137,6 +138,7 @@ def parseArgs():
     parser.add_argument("--daophot_ymin",  type=float)
     parser.add_argument("--daophot_ymix",  type=float)
     parser.add_argument("--daophot_phot_psf",  type=str)
+    parser.add_argument("--daophot_opt",  type=str)
     parser.add_argument("--daophot_photo_opt",  type=str)
     parser.add_argument("--daophot_allstar_opt",  type=str)
     parser.add_argument("--mktot_ifu_grid",  type=str)
@@ -261,8 +263,8 @@ def daophot_find(args,  wdir, prefixes):
     """
     logging.info("Running initial daophot find...")
     # Create configuration file for daophot.
+    shutil.copy2(args.daophot_opt, os.path.join(wdir, "daophot.opt") )
     with path.Path(wdir):
-        daophot.mk_daophot_opt(args)
         for prefix in prefixes:
             # execute daophot
             daophot.daophot_find(prefix, args.daophot_sigma,logging=logging)
