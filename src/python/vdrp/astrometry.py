@@ -704,7 +704,7 @@ def mkmosaic(args, wdir, prefixes):
         h["CUNIT2"]  = "deg"
         h["EQUINOX"] = 2000
 
-        hdu.writeto("{}fp.fits".format(args.night, args.shotid),overwrite=True)
+        hdu.writeto("{}v{}fp.fits".format(args.night, args.shotid),overwrite=True)
 
 
 def get_cofes_files(wdir):
