@@ -1,0 +1,16 @@
+rm -f $1.coo
+rm -f $1.lst
+rm -f $1*jnk*fits
+~gebhardt/lib/daoprogs/daophot << eof
+att $1
+find
+1 1
+
+n
+$2
+
+
+y
+eof
+awk '{s+=1; if (s<=3||($2>4&&$2<45&&$3>4&&$3<45)) print $0}' $1.coo > $1.lst
+rm -f $1*jnk*fits

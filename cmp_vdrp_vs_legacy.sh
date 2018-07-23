@@ -62,7 +62,7 @@ echo "#######################################"
 echo "# flux_norm"
 echo "#######################################"
 echo "### Checking that norm.dat are similar enough ..."
-cat $d/norm.dat; echo "";cat $d.orig/norm.dat
+cat $d.vdrp/norm.dat; echo "";cat $d.orig/norm.dat
 
 echo ""
 

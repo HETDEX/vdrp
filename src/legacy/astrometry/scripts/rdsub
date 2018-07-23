@@ -1,0 +1,21 @@
+rm -f $1*jnk*
+rm -f $1.ap
+rm -f $1s.fits
+rm -f $1.als
+~gebhardt/lib/daoprogs/daophot << eof
+att $1
+phot
+
+
+$1.coo
+$1.ap
+eof
+~gebhardt/lib/daoprogs/allstar << eof
+
+$1
+use.psf
+$1.ap
+
+
+eof
+

@@ -1,0 +1,13 @@
+awk '{s+=1; if(s>0&&s<4) print $0}' all.mch > 1.mch
+awk '{s+=1; if(s>3&&s<7) print $0}' all.mch > 2.mch
+awk '{s+=1; if(s>6&&s<10) print $0}' all.mch > 3.mch
+awk '{s+=1; if(s>9&&s<13) print $0}' all.mch > 4.mch
+awk '{s+=1; if(s>12&&s<16) print $0}' all.mch > 5.mch
+awk '{s+=1; if(s>15&&s<19) print $0}' all.mch > 6.mch
+awk '{s+=1; if(s>18&&s<22) print $0}' all.mch > 7.mch
+awk '{s+=1; if(s>21&&s<25) print $0}' all.mch > 8.mch
+awk '{s+=1; if(s>24&&s<28) print $0}' all.mch > 9.mch
+awk '{s+=1; if(s>27&&s<31) print $0}' all.mch > 10.mch
+awk '{s+=1; if(s>30&&s<34) print $0}' all.mch > 11.mch
+awk '{s+=1; if(s>33&&s<37) print $0}' all.mch > 12.mch
+awk '{s+=1; if(s>36&&s<40) print $0}' all.mch > 13.mch

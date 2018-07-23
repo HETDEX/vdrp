@@ -1,0 +1,1 @@
+/work/00115/gebhardt/maverick/ds9/ds9 -xpa local imrot.fits -scale limits -15 20 -zoom to fit -print destination file -print filename out.ps -print -exit
