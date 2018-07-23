@@ -1,0 +1,75 @@
+rm $1.ap
+rm $1.psf
+rm $1.als
+rm $1.nei
+rm $1s.fits
+rm $1tmp.fits
+rm $1jnk.fits
+~gebhardt/lib/daoprogs/daophot << eof
+opt
+
+wat=-1
+var=-1
+
+att $1
+phot
+
+
+
+
+psf
+$1.ap
+
+
+exit
+eof
+~gebhardt/lib/daoprogs/allstar << eof
+re=1
+wat=0
+
+$1
+
+$1.nei
+
+END OF FILE
+eof
+rm $1.psf
+rm $1.nei
+~gebhardt/lib/daoprogs/daophot << eof
+opt
+
+wat=-1
+var=-1
+
+att $1
+psf
+$1.als
+
+
+exit
+eof
+rm $1.als
+rm $1tmp.fits
+~gebhardt/lib/daoprogs/allstar << eof
+re=1
+wat=0
+
+$1
+
+$1.ap
+
+END OF FILE
+eof
+~gebhardt/lib/daoprogs/allstar << eof
+re=1
+wat=0
+
+$1
+
+$1.als
+$1.als2
+
+eof
+rm $1.nei
+rm $1.ap
+mv $1.als2 $1.als

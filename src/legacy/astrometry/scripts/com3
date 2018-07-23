@@ -1,0 +1,1 @@
+add_ifu_xy --fplane /work/00115/gebhardt/maverick/sci/panacea/shifts/fplane.txt --ra-name RA --dec-name DEC --astrometry

@@ -1,0 +1,6 @@
+ls Co*fits | sed s/.fits// > j1
+ls Co*fits | sed s/CoFeS// | sed s/CoFe// | cut -b 1-15,18-21 > j2
+paste j1 j2 | awk '{print "rimars0",$0}' > run1
+awk '{print "rdcoo",$3,2}' run1 > run2
+awk '{print "rdsub",$3}' run1 > run4a
+awk '{print "rdao1con",$3}' run1 > run4b

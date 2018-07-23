@@ -1,0 +1,9 @@
+rm $1.cmb
+~gebhardt/lib/daoprogs/daophot << eof
+append
+$1.als
+$1s.coo
+
+exit
+eof
+mv $1.cmb $1.coo

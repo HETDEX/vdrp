@@ -1,0 +1,4 @@
+ls ../Co*fits | awk '{print "rimars0",$1,$1}' | cut -c 1-47,56-70,73-76 | sed s/.fits//g > run1
+awk '{print "rdcoo",$3,2}' run1 > run2
+awk '{print "rdsub",$3}' run1 > run4a
+awk '{print "rdao1con",$3}' run1 > run4b

@@ -3,7 +3,8 @@
 # ./runall1 NIGHT SHOTID RA0 DEC0 TRACK
 
 SHIFTS=/work/00115/gebhardt/maverick/sci/panacea/shifts
-REDUCTIONS=/work/04287/mxhf/maverick/red1/reductions
+#REDUCTIONS=/work/04287/mxhf/maverick/red1/reductions
+REDUCTIONS=/work/03946/hetdex/maverick/red1/reductions
 WCSTOOLS=~gebhardt/wcs/wcstools-3.9.2/bin
 SHUFFLE=/work/00115/gebhardt/maverick/shuf
 
