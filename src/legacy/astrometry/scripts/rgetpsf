@@ -1,0 +1,7 @@
+ls 2*_???.fits | head -1 | sed s/_/" "/ | awk '{print "ls",$1"_???.fits > j0"}' > rtf0
+chmod +x rtf0; rtf0
+~gebhardt/bin/imdao
+cp ../scripts/daophot.psf daophot.opt
+cp ../scripts/rdcoopsf .
+rdcoopsf imdao 10
+rdao1con imdao

@@ -1,0 +1,9 @@
+rm $1.srt
+~gebhardt/lib/daoprogs/daophot << eof
+sort
++4
+$1.als
+
+y
+exit
+eof

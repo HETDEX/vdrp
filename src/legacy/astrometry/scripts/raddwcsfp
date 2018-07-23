@@ -1,0 +1,13 @@
+/home/03946/hetdex/curehome/cure/bin/headfits -a -k CRVAL1 -t float -v $1 imrot.fits 
+/home/03946/hetdex/curehome/cure/bin/headfits -a -k CRVAL2 -t float -v $2 imrot.fits 
+/home/03946/hetdex/curehome/cure/bin/headfits -a -k CTYPE1 -v RA---TAN imrot.fits 
+/home/03946/hetdex/curehome/cure/bin/headfits -a -k CTYPE2 -v DEC--TAN imrot.fits 
+/home/03946/hetdex/curehome/cure/bin/headfits -a -k CD1_1 -t float -v -0.0002777 imrot.fits 
+/home/03946/hetdex/curehome/cure/bin/headfits -a -k CD1_2 -t float -v 0 imrot.fits 
+/home/03946/hetdex/curehome/cure/bin/headfits -a -k CD2_2 -t float -v 0.0002777 imrot.fits 
+/home/03946/hetdex/curehome/cure/bin/headfits -a -k CD2_1 -t float -v 0 imrot.fits 
+/home/03946/hetdex/curehome/cure/bin/headfits -a -k CRPIX1 -t float -v 650.0 imrot.fits 
+/home/03946/hetdex/curehome/cure/bin/headfits -a -k CRPIX2 -t float -v 650.0 imrot.fits 
+/home/03946/hetdex/curehome/cure/bin/headfits -a -k CUNIT1 -v deg imrot.fits 
+/home/03946/hetdex/curehome/cure/bin/headfits -a -k CUNIT2 -v deg imrot.fits 
+/home/03946/hetdex/curehome/cure/bin/headfits -a -k EQUINOX -t float -v 2000 imrot.fits 

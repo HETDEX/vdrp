@@ -1,0 +1,2 @@
+id=$1
+awk '{if($1==id0) print $1,$2,$3}' id0=$id /work/00115/gebhardt/maverick/sci/panacea/shifts/fplane_all.txt

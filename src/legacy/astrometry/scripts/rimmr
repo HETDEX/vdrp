@@ -1,0 +1,10 @@
+rm mlist2 immosaic.fits imrot.fits
+awk '{print $1,$2,360-($3+90+1.1)}' radec2.dat
+sed s/t666/$1/ tlist > mlist2
+~gebhardt/bin/immosaicv
+~gebhardt/bin/imrot << eof
+immosaic.fits
+1
+$2
+eof
+mv imrot.fits $1r.fits

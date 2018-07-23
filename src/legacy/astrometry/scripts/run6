@@ -1,0 +1,3 @@
+mktot 20170205T090412 > j1 ; cat head j1 > 20170205T090412tot.als
+mktot 20170205T091049 > j1 ; cat head j1 > 20170205T091049tot.als
+mktot 20170205T091726 > j1 ; cat head j1 > 20170205T091726tot.als

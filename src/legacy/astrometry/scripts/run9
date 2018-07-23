@@ -1,0 +1,20 @@
+awk '{s+=1; if(s>3) print $0}' all.raw > j1
+awk '{if($4<19&&$6<19&&$8<19) print $1,10**((25-$4)/2.5),10**((25-$6)/2.5),10**((25-$8)/2.5)}' j1 > j2
+awk '{print $0,($2+$3+$4)/3}' j2 > j3
+awk '{print $2/$5,$3/$5,$4/$5}' j3 > j4
+~gebhardt/bin/biwt << eof
+j4
+1
+eof
+mv biwt.out b1.out
+~gebhardt/bin/biwt << eof
+j4
+2
+eof
+mv biwt.out b2.out
+~gebhardt/bin/biwt << eof
+j4
+3
+eof
+mv biwt.out b3.out
+paste b1.out b2.out b3.out | awk '{print $2,$5,$8}' > norm.dat

@@ -1,0 +1,15 @@
+ang=$1
+ls 2*_???.fits | head -1 | sed s/_/" "/ | awk '{print "ls",$1"_???.fits > j0"}' > rtf0
+chmod +x rtf0; rtf0
+awk '{print $1,$1}' j0 | sed s/.fits// | sed s/_/" "/ | awk '{print $3,$2}' > j1
+awk '{print "rfp1",$2}' j1 > rtf1
+chmod +x rtf1
+rtf1 > j2
+paste j1 j2 | awk '{if($2==$3) print $1,$2,$4,$5; else print "Help!"}' > infp
+rm -f immosaic.fits imrot.fits
+~gebhardt/bin/immosaicv
+~gebhardt/bin/imrot << eof
+immosaic.fits
+1
+$ang
+eof

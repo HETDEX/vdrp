@@ -1,0 +1,16 @@
+rm -f $1.coo
+rm -f $1.lst
+rm -f $1*jnk*fits
+~gebhardt/lib/daoprogs/daophot << eof
+att $1
+find
+1 1
+
+n
+$2
+
+
+y
+eof
+cp $1.coo $1.lst
+rm -f $1*jnk*fits

@@ -1,0 +1,2 @@
+ls *_???.coo | awk '{print "mktot",$1}' | cut -c 1-21 | uniq > t1
+awk '{print $0,"> j1 ; cat head j1 >",$2"tot.als"}' t1 > run6

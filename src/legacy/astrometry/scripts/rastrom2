@@ -1,0 +1,59 @@
+angoff=$3
+wc *als | awk '{if($1<4) print "rm -f",$4}' > rtrm; chmod +x rtrm; rtrm
+if [ -e /work/03946/hetdex/maverick/$1/virus/virus0000$2/exp01/virus/*_103LL_sci.fits ]
+ then
+ ~gebhardt/wcs/wcstools-3.9.2/bin/gethead -p  /work/03946/hetdex/maverick/$1/virus/virus0000$2/exp01/*/*LL*sci.fits TRAJCRA TRAJCDEC PARANGLE | head -1 | awk '{print $2*15.,$3,$4+angp}' angp=$angoff > radec.dat
+ else
+ grep $1v$2 /work/00115/gebhardt/maverick/sci/panacea/shifts/radec.all2 | awk '{print $1*15.,$2,$3+angp}' angp=$angoff > radec.dat
+fi
+ls *.als | head -1 | cut -b 1-15 | awk '{print $1"_$1.als"}' > j2
+paste com0a j2 com0b > c1
+paste com1 radec.dat j2 com2 > c2
+cat c1 com0c c2 com0d > runrd
+chmod +x runrd
+rm -f tmp.out
+runrd0
+awk '{print $10,$11,$12}' tmp.out  > j3
+/work/00115/gebhardt/maverick/sci/progs/getoff2 << eof
+11
+eof
+
+paste radec.dat getoff2.out  | awk '{printf "%9f %9f %9f \n",$1+$4,$2+$5,$3}' > radec2.dat
+paste com0a j2 com0b > c1
+paste com1 radec2.dat j2 com2 > c2
+cat c1 com0c c2 com0d > runrd
+chmod +x runrd
+rm -f tmp.out
+runrd0
+awk '{print $10,$11,$12}' tmp.out  > j3
+/work/00115/gebhardt/maverick/sci/progs/getoff2 << eof
+5
+eof
+
+paste radec2.dat getoff2.out  | awk '{printf "%9f %9f %9f \n",$1+$4,$2+$5,$3}' > radec3.dat
+paste com0a j2 com0b > c1
+paste com1 radec3.dat j2 com2 > c2
+cat c1 com0c c2 com0d > runrd
+chmod +x runrd
+rm -f tmp.out
+runrd0
+awk '{print $10,$11,$12}' tmp.out  > j3
+/work/00115/gebhardt/maverick/sci/progs/getoff2 << eof
+3
+eof
+mv radec3.dat radec2.dat
+cp getoff2.out getoff_$angoff.out
+cp getoff.out getoff0_$angoff.out
+cp radec2.dat off_$angoff.radec
+
+awk '{print $3,$4,$7}' getoff.out | sed s/" "/,/g > t1.csv
+cat head1 t1.csv > t1; mv t1 t1.csv
+awk '{print $5,$6,$7}' getoff.out | sed s/" "/,/g > t2.csv
+cat head1 t2.csv > t2; mv t2 t2.csv
+paste com3 radec2.dat com4 > rtmp 
+paste com3 radec2.dat com5 >> rtmp 
+rm -f t3.csv t4.csv
+chmod +x rtmp; rtmp
+grep -v RA t3.csv | sed s/,/" "/g > t3
+grep -v RA t4.csv | sed s/,/" "/g > t4
+paste t3 t4 > xy.dat
