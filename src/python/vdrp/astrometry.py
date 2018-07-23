@@ -681,10 +681,10 @@ def mkmosaic(args, wdir, prefixes):
         with open('radec2.dat','r') as f:
             l = f.readline()
         tt = l.split()
-        alpha = 360. - float(tt[2]) + 90. + args.mkmosaic_angoff
+        alpha = 360. - (float(tt[2]) + 90. + args.mkmosaic_angoff)
         ra,dec = float(tt[0]), float(tt[1])
 
-        logging.info("mkmosaic: Calling imrot (can take a minute) ....")
+        logging.info("mkmosaic: Calling imrot with angle {} (can take a minute) ....".format(alpha))
         daophot.rm(['imrot.fits'])
         cltools.imrot("immosaic.fits", alpha, logging=logging)
         hdu = fits.open("imrot.fits")
