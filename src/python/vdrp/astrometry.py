@@ -214,8 +214,8 @@ def cp_post_stamps(args, wdir):
         Exception
     """
     ## find the IFU postage stamp fits files and copy them over
-    logging.info("Copy CoFeS* files to {}".format(wdir))
     pattern = os.path.join( args.reduction_dir, "{}/virus/virus0000{}/*/*/CoFeS*".format( args.night, args.shotid ) )
+    logging.info("Copy {} files to {}".format(pattern,wdir))
     cofes_files = glob.glob(pattern)
     if len(cofes_files) == 0:
         raise Exception("Found no postage stamp images. Please check your reduction_dir in config file.")
