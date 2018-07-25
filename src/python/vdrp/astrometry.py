@@ -495,6 +495,8 @@ def get_ra_dec_orig(args,wdir):
     """
     Reads first of the many multi* file'd headers to get the RA, DEC, PA guess from the telescope.
 
+    Notes:
+        Creates radec.orig
     Args:
         args (argparse.Namespace): Parsed configuration parameters.
         wdir (str): Work directory.
