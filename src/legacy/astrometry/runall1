@@ -4,7 +4,8 @@
 
 SHIFTS=/work/00115/gebhardt/maverick/sci/panacea/shifts
 #REDUCTIONS=/work/04287/mxhf/maverick/red1/reductions
-REDUCTIONS=/work/03946/hetdex/maverick/red1/reductions
+#REDUCTIONS=/work/03946/hetdex/maverick/red1/reductions
+REDUCTIONS=/Users/mxhf/work/MPE/hetdex/src/vdrp_rewrite/reductions
 WCSTOOLS=~gebhardt/wcs/wcstools-3.9.2/bin
 SHUFFLE=/work/00115/gebhardt/maverick/shuf
 
@@ -12,9 +13,9 @@ mkdir -p $1v$2
 cd $1v$2
 
 # forget about these lines, never gets use
-cp $SHIFTS/rimmask0 .
-cp $SHIFTS/rimmask .
-cp $SHIFTS/rimm .
+#cp $SHIFTS/rimmask0 .
+#cp $SHIFTS/rimmask .
+#cp $SHIFTS/rimm .
 # chmod +x rimmask0; rimmask0
 
 # copy IFU postage stamps to current location
@@ -49,6 +50,8 @@ rm -f CoFeS*fits
 # that rejcets objects close to the edges of the IFU (~5 pix away)
 # 
 run2
+
+exit 0
 
 # produces run6
 awk2.dat

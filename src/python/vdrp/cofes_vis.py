@@ -136,7 +136,7 @@ def cofes_4x4_plots(prefix="", outfile_name = 'CoFeS_plots.png', vmin=-15, vmax 
     prefix = cofes_files[0].split('_')[0]
     filename_list = []
     for i in ifunums:
-        filename_list.append(prefix + '_' + i + '_sci.fits')
+        filename_list.append(prefix + '_' + i + '.fits')
     filename_array = np.array(filename_list)
 #    filename_array = filename_array.reshape(ifunums.shape[0], ifunums.shape[1])
     cofes_plots(ifunums, filename_array, outfile_name, vmin, vmax, logging=logging)

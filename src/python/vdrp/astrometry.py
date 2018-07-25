@@ -20,6 +20,9 @@ import logging
 import subprocess
 from collections import OrderedDict
 from astropy.io import fits
+import tempfile
+
+from distutils import dir_util
 
 import path
 from astropy import table
@@ -64,7 +67,8 @@ def parseArgs():
     args, remaining_argv = conf_parser.parse_known_args()
 
     defaults = {}
-    defaults["option"]  = 1
+    defaults["use_tmp"]  = "False"
+    defaults["remove_tmp"]  = "True"
     defaults["logfile"] = "astrometry.log"
     defaults["reduction_dir"] = "/work/04287/mxhf/maverick/red1/reductions/"
     defaults["cofes_vis_vmin"] = -15.
@@ -123,7 +127,9 @@ def parseArgs():
     parents=[conf_parser]
     )
     parser.set_defaults(**defaults)
-    parser.add_argument("--reduction_dir")
+    parser.add_argument("--use_tmp", type=str)
+    parser.add_argument("--remove_tmp", type=str)
+    parser.add_argument("--reduction_dir", type=str)
     parser.add_argument("--cofes_vis_vmin", type=float)
     parser.add_argument("--cofes_vis_vmax", type=float)
     parser.add_argument("--daophot_sigma",  type=float)
@@ -183,7 +189,10 @@ def parseArgs():
 
     args = parser.parse_args(remaining_argv)
 
-    # shoudl in principle be able to do this with accumulate???
+
+    # shoul in principle be able to do this with accumulate???
+    args.use_tmp = args.use_tmp == "True"
+    args.remove_tmp = args.remove_tmp == "True"
     args.getoff2_radii = [float(t) for t in args.getoff2_radii.split(",")]
     args.add_radec_angoff_trial = [float(offset) for offset in  args.add_radec_angoff_trial.split(",")]
 
@@ -225,15 +234,17 @@ def cp_post_stamps(args, wdir):
     already_warned = False
     for f in cofes_files:
         h,t = os.path.split(f)
-        if os.path.exists(os.path.join(wdir,t)):
+        target_filename = t[5:20] + t[22:26] + ".fits"
+        if os.path.exists(os.path.join(wdir,target_filename)):
             if not already_warned:
-                logging.warning("{} already exists in {}, skipping, won't warn about other files....".format(t,wdir))
+                logging.warning("{} already exists in {}, skipping, won't warn about other files....".format(target_filename,wdir))
                 already_warned = True
             continue
-        shutil.copy2(f, wdir)
+
+        shutil.copy2(f, os.path.join(wdir,target_filename) )
 
 
-def mk_post_stamp_matrix(args,  wdir, cofes_files):
+def mk_post_stamp_matrix(args,  wdir, prefixes):
     """ Create the IFU postage stamp matrix image.
 
     Args:
@@ -243,36 +254,13 @@ def mk_post_stamp_matrix(args,  wdir, cofes_files):
     """
     # create the IFU postage stamp matrix image
     logging.info("Creating the IFU postage stamp matrix images ...")
-    prefixes = []
-    for f in cofes_files:
-        prefixes.append( os.path.split(f)[-1][:20] )
-    prefixes = np.unique(prefixes)
+    exposures = np.unique([p[:15] for p in prefixes])
 
     with path.Path(wdir):
-        for prefix in prefixes:
-            outfile_name = prefix + ".png"
+        for exp in exposures:
+            outfile_name = exp + ".png"
             logging.info("Creating {} ...".format(outfile_name))
-            cofes_4x4_plots(prefix = prefix, outfile_name = outfile_name, vmin = args.cofes_vis_vmin, vmax = args.cofes_vis_vmax, logging=logging)
-
-
-def rename_cofes(args,  wdir, cofes_files):
-    """ Rename CoFeS files to PREFIX_IFU.fits naming scheme.
-
-    Args:
-        args (argparse.Namespace): Parsed configuration parameters.
-        wdir (string): Work directory.
-        cofes_files (list): List of CoFeS file names (collapsed IFU images).
-    """
-    logging.info("Renaming CoFeS* files ...")
-    prefixes = []
-    with path.Path(wdir):
-        for f in cofes_files:
-            # first need to shorten file names such
-            # that daophot won't choke on them.
-            h,t = os.path.split(f)
-            prefix = t[5:20] + t[22:26]
-            prefixes.append(prefix)
-            os.rename(t, prefix + ".fits")
+            cofes_4x4_plots(prefix = exp, outfile_name = outfile_name, vmin = args.cofes_vis_vmin, vmax = args.cofes_vis_vmax, logging=logging)
 
 
 def daophot_find(args,  wdir, prefixes):
@@ -793,19 +781,6 @@ def mkmosaic(args, wdir, prefixes):
         hdu.writeto("{}v{}fp.fits".format(args.night, args.shotid),overwrite=True)
 
 
-def get_cofes_files(wdir):
-   """
-   Create list of all CoFeS* files in the current directory.
-
-   Args:
-       wdir (str): Work directory.
-   """
-   ff = []
-   with path.Path(wdir):
-       ff = glob.glob('CoFeS????????T??????.?_???_sci.fits')
-   return ff
-
-
 def get_prefixes(wdir):
    """
    Create list of all file prefixes based
@@ -846,11 +821,21 @@ def main():
     logging.getLogger('').addHandler(console)
 
 
-    # Create work directory for given night and shot
+    # Create results directory for given night and shot
     cwd = os.getcwd()
-    wdir = os.path.join(cwd, "{}v{}".format(args.night, args.shotid))
-    createDir(wdir)
+    results_dir = os.path.join(cwd, "{}v{}".format(args.night, args.shotid))
+    createDir(results_dir)
 
+    # default is to work in results_dir
+    wdir = results_dir
+    if args.use_tmp:
+        # Create a temporary directory
+        tmp_dir = tempfile.mkdtemp()
+        logging.info("Tempdir is {}".format(tmp_dir))
+        logging.info("Copying over prior data (if any)...")
+        dir_util.copy_tree(results_dir, tmp_dir)
+        # set working directory to tmp_dir
+        wdir = tmp_dir
 
     tasks = args.task.split(",")
 
@@ -861,11 +846,7 @@ def main():
 
         if task in ["mk_post_stamp_matrix","all"]:
           # Creat IFU postage stamp matrix image.
-          mk_post_stamp_matrix(args, wdir, get_cofes_files(wdir))
-
-        if task in ["rename_cofes","all"]:
-          # Rename IFU postage stamps as daophot can't handle long file names.
-          rename_cofes(args,  wdir, get_cofes_files(wdir))
+          mk_post_stamp_matrix(args, wdir, get_prefixes(wdir))
 
         if task in ["daophot_find","all"]:
           # Run initial object detection in postage stamps.
@@ -909,6 +890,55 @@ def main():
             # build mosaic for focal plane
             mkmosaic(args, wdir, get_prefixes(wdir))
 
+    logging.info("Copying over results.")
+
+    def cp_results(tmp_dir, results_dir):
+        dirs = ['add_radec_angoff_trial']
+        file_pattern = []
+        file_pattern += ["CoFeS*_???_sci.fits"]
+        file_pattern += ["*.als"]
+        file_pattern += ["*.ap"]
+        file_pattern += ["*.coo"]
+        file_pattern += ["*.lst"]
+        file_pattern += ["2???????T??????_???.fits"]
+        file_pattern += ["*.png"]
+        file_pattern += ["all.mch"]
+        file_pattern += ["all.raw"]
+        file_pattern += ["allstar.opt"]
+        file_pattern += ["daophot.opt"]
+        file_pattern += ["fplane.txt"]
+        file_pattern += ["getoff2_exp??.out"]
+        file_pattern += ["getoff_exp??.out"]
+        file_pattern += ["norm.dat"]
+        file_pattern += ["photo.opt"]
+        file_pattern += ["radec.orig"]
+        file_pattern += ["radec2_exp??.dat"]
+        file_pattern += ["radec_exp??.dat"]
+        file_pattern += ["shout.acamstars"]
+        file_pattern += ["shout.ifu"]
+        file_pattern += ["shout.ifustars"]
+        file_pattern += ["shout.info"]
+        file_pattern += ["shout.probestars"]
+        file_pattern += ["shout.result"]
+        file_pattern += ["shuffle.cfg"]
+        file_pattern += ["tmp_exp??.csv"]
+        file_pattern += ["use.psf"]
+        file_pattern += ["xy_exp??.dat"]
+
+        for d in dirs:
+            td = os.path.join(tmp_dir,d)
+            if os.path.exists(td):
+                dir_util.copy_tree( td, results_dir)
+        for p in file_pattern:
+            ff = glob.glob("{}/{}".format(tmp_dir,p))
+            for f in ff:
+                shutil.copy2(f, results_dir)
+
+    if args.use_tmp:
+        cp_results(tmp_dir, results_dir)
+        if args.remove_tmp:
+            logging.info("Removing temporary directoy.")
+            shutil.rmtree(tmp_dir)
     logging.info("Done.")
 
 
