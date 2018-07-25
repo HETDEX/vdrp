@@ -764,7 +764,7 @@ def mkmosaic(args, wdir, prefixes):
         cltools.immosaicv(pp, fplane_file = "fplane.txt", logging=logging)
 
         # rotate mosaic to correct PA on sky
-        with open('radec2_exp1.dat','r') as f:
+        with open('radec2_exp01.dat','r') as f:
             l = f.readline()
         tt = l.split()
         alpha = 360. - (float(tt[2]) + 90. + args.mkmosaic_angoff)
@@ -859,58 +859,55 @@ def main():
             # Copy over collapsed IFU cubes, aka IFU postage stamps.
             cp_post_stamps(args, wdir)
 
-        elif task in ["mk_post_stamp_matrix","all"]:
-            # Creat IFU postage stamp matrix image.
-            mk_post_stamp_matrix(args, wdir, get_cofes_files(wdir))
+        if task in ["mk_post_stamp_matrix","all"]:
+          # Creat IFU postage stamp matrix image.
+          mk_post_stamp_matrix(args, wdir, get_cofes_files(wdir))
 
-        elif task in ["rename_cofes","all"]:
-            # Rename IFU postage stamps as daophot can't handle long file names.
-            rename_cofes(args,  wdir, get_cofes_files(wdir))
+        if task in ["rename_cofes","all"]:
+          # Rename IFU postage stamps as daophot can't handle long file names.
+          rename_cofes(args,  wdir, get_cofes_files(wdir))
 
-        elif task in ["daophot_find","all"]:
-            # Run initial object detection in postage stamps.
-            daophot_find(args, wdir, get_prefixes(wdir))
+        if task in ["daophot_find","all"]:
+          # Run initial object detection in postage stamps.
+          daophot_find(args, wdir, get_prefixes(wdir))
 
-        elif task in ["daophot_phot_and_allstar","all"]:
-            # Run photometry 
-            daophot_phot_and_allstar(args, wdir, get_prefixes(wdir))
+        if task in ["daophot_phot_and_allstar","all"]:
+          # Run photometry 
+          daophot_phot_and_allstar(args, wdir, get_prefixes(wdir))
 
-        elif task in ["mktot","all"]:
-            # Combine detections accross all IFUs.
-            mktot(args, wdir, get_prefixes(wdir))
+        if task in ["mktot","all"]:
+          # Combine detections accross all IFUs.
+          mktot(args, wdir, get_prefixes(wdir))
 
-        elif task in ["rmaster","all"]:
-            # Run daophot master to ???
-            rmaster(args, wdir)
+        if task in ["rmaster","all"]:
+          # Run daophot master to ???
+          rmaster(args, wdir)
 
-        elif task in ["flux_norm","all"]:
-            # Compute relative flux normalisation.
-            flux_norm(args, wdir)
+        if task in ["flux_norm","all"]:
+          # Compute relative flux normalisation.
+          flux_norm(args, wdir)
 
-        elif task in ["redo_shuffle","all"]:
-            # Rerun shuffle to get IFU stars
-            redo_shuffle(args, wdir)
+        if task in ["redo_shuffle","all"]:
+          # Rerun shuffle to get IFU stars
+          redo_shuffle(args, wdir)
 
-        elif task in ["get_ra_dec_orig","all"]:
-            # Retrieve original RA DEC from one of the multi files.
-            # store in radec.orig
-            get_ra_dec_orig(args, wdir)
+        if task in ["get_ra_dec_orig","all"]:
+          # Retrieve original RA DEC from one of the multi files.
+          # store in radec.orig
+          get_ra_dec_orig(args, wdir)
 
-        elif task in ["compute_offset","all"]:
-            # Compute offsets by matching 
-            # detected stars to sdss stars from shuffle.
-            # This also calls add_ra_dec to add RA DEC information to detections.
-            compute_offset(args,wdir,get_prefixes(wdir))
+        if task in ["compute_offset","all"]:
+          # Compute offsets by matching 
+          # detected stars to sdss stars from shuffle.
+          # This also calls add_ra_dec to add RA DEC information to detections.
+          compute_offset(args,wdir,get_prefixes(wdir))
 
-        elif task in ["add_ifu_xy","all"]:
-            add_ifu_xy(args, wdir)
+        if task in ["add_ifu_xy","all"]:
+          add_ifu_xy(args, wdir)
 
-        elif task in ["mkmosaic","all"]:
+        if task in ["mkmosaic","all"]:
             # build mosaic for focal plane
             mkmosaic(args, wdir, get_prefixes(wdir))
-
-        else:
-            logging.error("Task {} unknown.".format(task))
 
     logging.info("Done.")
 
