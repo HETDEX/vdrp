@@ -109,6 +109,7 @@ def parseArgs():
     defaults["getoff2_radii"] = 11.,5.,3.
     defaults["mkmosaic_angoff"] = 1.8
     defaults["task"] = "all"
+    defaults["offset_exposure_indices"] = "1,2,3"
 
     if args.conf_file:
         config = ConfigParser.SafeConfigParser()
@@ -166,6 +167,7 @@ def parseArgs():
     parser.add_argument('--getoff2_radii', type=str)
     parser.add_argument("--mkmosaic_angoff",  type=float)
     parser.add_argument("-t", "--task",  type=str)
+    parser.add_argument("--offset_exposure_indices",  type=str)
 
     # positional arguments
     parser.add_argument('night', metavar='night', type=str,
@@ -184,7 +186,8 @@ def parseArgs():
     # shoudl in principle be able to do this with accumulate???
     args.getoff2_radii = [float(t) for t in args.getoff2_radii.split(",")]
     args.add_radec_angoff_trial = [float(offset) for offset in  args.add_radec_angoff_trial.split(",")]
-    #print(args.accumulate(args.getoff2_radii))
+
+    args.offset_exposure_indices = [int(t) for t in args.offset_exposure_indices.split(",")]
 
     return args
 
@@ -575,19 +578,19 @@ def compute_offset(args, wdir, prefixes, shout_ifustars = 'shout.ifustars'):
     """
     shout_ifustars = 'shout.ifustars'
 
-    def write_ra_dec_dats(ra, dec, pa, angoff, ra_offset, dec_offset, nominal=False):
+    def write_ra_dec_dats(ra, dec, pa, exp_index, angoff, ra_offset, dec_offset, nominal=False):
         sangoff = ""
         if not nominal:
             sangoff = '_{:06.3f}Deg'.format(angoff)
 
-        fnout = "radec{}.dat".format(sangoff)
+        fnout = "radec_exp{:02d}{}.dat".format(exp_index,sangoff)
         with open(fnout,'w') as fradec:
             s = "{} {} {}\n".format(ra*15., dec, pa + angoff)
             fradec.write(s)
             logging.info("Wrote {}".format(fnout))
 
         # write results to radec2.dat
-        fnout = "radec2{}.dat".format(sangoff)
+        fnout = "radec2_exp{:02d}{}.dat".format(exp_index, sangoff)
         with open(fnout,'w') as f:
             s = "{} {} {}\n".format( ra*15. + ra_offset, dec + dec_offset,pa + angoff)
             f.write(s)
@@ -626,60 +629,70 @@ def compute_offset(args, wdir, prefixes, shout_ifustars = 'shout.ifustars'):
             # collect the prefixes that belong to the first exposure
             # for now only do first exposure, later can do them all
             exposures = np.sort( np.unique([p[:15] for p in prefixes]) )
-            exp = exposures[0] # select first exposue
-            exp_prefixes = []
-            # collect all als files for this exposure
-            for prefix in prefixes:
-                if not prefix.startswith(exp):
+
+            # loop over all exposures in configuration file
+            for exp_index in args.offset_exposure_indices:
+                if exp_index > len(exposures):
+                    logging.warning("Have no data for exposure {}. Check your configuration (offset_exposure_indices). Skipping ...".format(exp_index))
                     continue
-                exp_prefixes.append(prefix)
+                exp = exposures[exp_index-1] # select first exposure
+                exp_prefixes = []
+                # collect all als files for this exposure
+                for prefix in prefixes:
+                    if not prefix.startswith(exp):
+                        continue
+                    exp_prefixes.append(prefix)
 
 
-            # Convert radec.orig to radec.dat, convert RA to degress and add angular offset
-            # mF: Not sure if we will need radec.dat later, creating it for now.
-            with open("radec.orig") as fradec:
-                ll = fradec.readlines()
-            tt = ll[0].split()
-            ra,dec,pa = float(tt[0]), float(tt[1]), float(tt[2])
+                # Convert radec.orig to radec.dat, convert RA to degress and add angular offset
+                # mF: Not sure if we will need radec.dat later, creating it for now.
+                with open("radec.orig") as fradec:
+                    ll = fradec.readlines()
+                tt = ll[0].split()
+                ra,dec,pa = float(tt[0]), float(tt[1]), float(tt[2])
 
-            # Now compute offsets iteratively with increasingly smaller matching radii.
-            # Matching radii are defined in config file.
-            ra_offset, dec_offset = 0., 0.
-            for i, radius in enumerate(radii):
-                logging.info("Angular offset {} Deg, getoff2 iteration {}, matching radius = {}\"".format(angoff, i+1, radius))
-                radec_outfile='tmp.csv'
-                logging.info("Adding RA & Dec to detections, applying offsets ra_offset,dec_offset,pa_offset = {},{},{}".format( ra_offset, dec_offset, angoff) )
-                # call add_ra_dec, add offsets first.
-                new_ra, new_dec, new_pa = ra * 15. + ra_offset, dec + dec_offset, pa + angoff
-                add_ra_dec(args, wdir, exp_prefixes, ra=new_ra, dec=new_dec, pa=new_pa, radec_outfile=radec_outfile)
-                logging.info("Computing offsets ...")
-                dra_offset, ddec_offset = cltools.getoff2(radec_outfile, shout_ifustars, radius, ra_offset=0., dec_offset=0., logging=logging)
-                ra_offset, dec_offset =  ra_offset+dra_offset, dec_offset+ddec_offset
-                logging.info("End getoff2 iteration {}: Offset adjusted by {:.6f}, {:.6f} to {:.6f}, {:.6f}".format(i+1, dra_offset, ddec_offset, ra_offset, dec_offset))
-                logging.info("")
-                logging.info("")
+                # Now compute offsets iteratively with increasingly smaller matching radii.
+                # Matching radii are defined in config file.
+                ra_offset, dec_offset = 0., 0.
+                for i, radius in enumerate(radii):
+                    logging.info("Angular offset {} Deg, getoff2 iteration {}, matching radius = {}\"".format(angoff, i+1, radius))
+                    radec_outfile='tmp_exp{:02d}.csv'.format(exp_index)
+                    logging.info("Adding RA & Dec to detections, applying offsets ra_offset,dec_offset,pa_offset = {},{},{}".format( ra_offset, dec_offset, angoff) )
 
-            # Copy getoff.out and getoff2.out to args.add_radec_angoff_trial_dir
-            sangoff = '_{:06.3f}Deg'.format(angoff)
-            fnout = os.path.join( args.add_radec_angoff_trial_dir, "getoff{}.out".format(sangoff) )
-            print("fnout", fnout)
-            shutil.copy2("getoff.out", fnout)
-            fnout = os.path.join( args.add_radec_angoff_trial_dir, "getoff2{}.out".format(sangoff) )
-            shutil.copy2("getoff2.out", fnout)
+                    # Call add_ra_dec, add offsets first.
+                    new_ra, new_dec, new_pa = ra * 15. + ra_offset, dec + dec_offset, pa + angoff
+                    add_ra_dec(args, wdir, exp_prefixes, ra=new_ra, dec=new_dec, pa=new_pa, radec_outfile=radec_outfile)
 
-            # Write radec_XXXDeg.dat and radec2_XXXDeg.dat
-            with path.Path(args.add_radec_angoff_trial_dir):
-                write_ra_dec_dats(ra, dec, pa, angoff, ra_offset, dec_offset, nominal=False)
-            # if the current offset angle is the nominal one, then also write
-            # radec.dat and radec2.dat witouh angle information in filename.
-            if angoff == args.add_radec_angoff:
-                write_ra_dec_dats(ra, dec, pa, angoff, ra_offset, dec_offset, nominal=True)
+                    # Now compute offsets.
+                    logging.info("Computing offsets ...")
+                    dra_offset, ddec_offset = cltools.getoff2(radec_outfile, shout_ifustars, radius, ra_offset=0., dec_offset=0., logging=logging)
+                    ra_offset, dec_offset =  ra_offset+dra_offset, dec_offset+ddec_offset
+                    logging.info("End getoff2 iteration {}: Offset adjusted by {:.6f}, {:.6f} to {:.6f}, {:.6f}".format(i+1, dra_offset, ddec_offset, ra_offset, dec_offset))
+                    logging.info("")
+                    logging.info("")
+
+                # Copy getoff.out and getoff2.out to args.add_radec_angoff_trial_dir
+                sangoff = '_{:06.3f}Deg'.format(angoff)
+                fnout = os.path.join( args.add_radec_angoff_trial_dir, "getoff_exp{:02d}{}.out".format(exp_index,sangoff) )
+                shutil.copy2("getoff.out", fnout)
+                fnout = os.path.join( args.add_radec_angoff_trial_dir, "getoff2_exp{:02d}{}.out".format(exp_index,sangoff) )
+                shutil.copy2("getoff2.out", fnout)
+
+                shutil.move("getoff.out", "getoff_exp{:02d}.out".format(exp_index))
+                shutil.move("getoff2.out", "getoff2_exp{:02d}.out".format(exp_index))
+                # Write radec_XXXDeg.dat and radec2_XXXDeg.dat
+                with path.Path(args.add_radec_angoff_trial_dir):
+                    write_ra_dec_dats(ra, dec, pa, exp_index, angoff, ra_offset, dec_offset, nominal=False)
+                # if the current offset angle is the nominal one, then also write
+                # radec.dat and radec2.dat witouh angle information in filename.
+                if angoff == args.add_radec_angoff:
+                    write_ra_dec_dats(ra, dec, pa, exp_index, angoff, ra_offset, dec_offset, nominal=True)
 
 
 
 def add_ifu_xy(args, wdir):
     """ Adds IFU x y information to stars used for matching,
-    and save to xy.dat.
+    and save to xy_expNN.dat.
     Requires: getoff.out, radec2.dat
     Analogous to rastrom3.
 
@@ -687,42 +700,48 @@ def add_ifu_xy(args, wdir):
         args (argparse.Namespace): Parsed configuration parameters.
         wdir (str): Work directory.
     """
-    logging.info("Creating xy.dat...")
+    logging.info("Creating xy_expNN.dat...")
     with path.Path(wdir):
-        # read ra dec postions of reference stars and detections
-        # from getoff.out
-        # Produce new tables that add_ifu_xy understands.
-        fngetoff_out = "getoff.out"
-        t = Table.read("getoff.out", format="ascii.fast_no_header")
-        t1 = Table([t['col3'], t['col4'], t['col7']], names=["RA","DEC","IFUSLOT"])
-        t2 = Table([t['col5'], t['col6'], t['col7']], names=["RA","DEC","IFUSLOT"])
-        t1.write("t1.csv", format="ascii.fast_csv", overwrite=True)
-        t2.write("t2.csv", format="ascii.fast_csv", overwrite=True)
+        # loop over all exposures in configuration file
+        for exp_index in args.offset_exposure_indices:
+            fngetoff_out = "getoff_exp{:02d}.out".format(exp_index)
+            if not os.path.exists(fngetoff_out):
+                logging.warning("Have no {} for exposure {}. Check your configuration (offset_exposure_indices). Skipping ...".format(fngetoff_out, exp_index))
+                continue
 
-        # read ra,dec, pa from radec2.dat
-        with open("radec2.dat") as f:
-            l = f.readline()
-            tt = l.split()
-            ra,dec,pa = float(tt[0]), float(tt[1]), float(tt[2])
+            # read ra dec postions of reference stars and detections
+            # from getoff.out
+            # Produce new tables that add_ifu_xy understands.
+            t = Table.read(fngetoff_out, format="ascii.fast_no_header")
+            t1 = Table([t['col3'], t['col4'], t['col7']], names=["RA","DEC","IFUSLOT"])
+            t2 = Table([t['col5'], t['col6'], t['col7']], names=["RA","DEC","IFUSLOT"])
+            t1.write("t1.csv", format="ascii.fast_csv", overwrite=True)
+            t2.write("t2.csv", format="ascii.fast_csv", overwrite=True)
 
-        daophot.rm(["t3.csv","t4.csv"])
-        cmd = "add_ifu_xy --fplane fplane.txt --ra-name RA --dec-name DEC --astrometry {:.6f} {:.6f} {:.6f} t1.csv t3.csv".format(ra,dec,pa)
-        subprocess.call(cmd, shell=True)
-        cmd = "add_ifu_xy --fplane fplane.txt --ra-name RA --dec-name DEC --astrometry {:.6f} {:.6f} {:.6f} t2.csv t4.csv".format(ra,dec,pa)
-        subprocess.call(cmd, shell=True)
+            # read ra,dec, pa from radec2.dat
+            with open("radec2_exp{:02d}.dat".format(exp_index)) as f:
+                l = f.readline()
+                tt = l.split()
+                ra,dec,pa = float(tt[0]), float(tt[1]), float(tt[2])
 
-        t3 = Table.read("t3.csv", format="ascii.fast_csv")
-        t4 = Table.read("t4.csv", format="ascii.fast_csv")
+            daophot.rm(["t3.csv","t4.csv"])
+            cmd = "add_ifu_xy --fplane fplane.txt --ra-name RA --dec-name DEC --astrometry {:.6f} {:.6f} {:.6f} t1.csv t3.csv".format(ra,dec,pa)
+            subprocess.call(cmd, shell=True)
+            cmd = "add_ifu_xy --fplane fplane.txt --ra-name RA --dec-name DEC --astrometry {:.6f} {:.6f} {:.6f} t2.csv t4.csv".format(ra,dec,pa)
+            subprocess.call(cmd, shell=True)
 
-        for c in t3.columns:
-            t3.columns[c].name = t3.columns[c].name + "1"
-        for c in t4.columns:
-            t4.columns[c].name = t4.columns[c].name + "1"
+            t3 = Table.read("t3.csv", format="ascii.fast_csv")
+            t4 = Table.read("t4.csv", format="ascii.fast_csv")
 
-        t = table.hstack([t3,t4])
-        t.write('xy.dat', format="ascii.fixed_width", delimiter='', overwrite=True)
-        # this would be analogous to Karl's format
-        #t.write('xy.dat', format="ascii.fast_no_header"
+            for c in t3.columns:
+                t3.columns[c].name = t3.columns[c].name + "1"
+            for c in t4.columns:
+                t4.columns[c].name = t4.columns[c].name + "1"
+
+            t = table.hstack([t3,t4])
+            t.write('xy_exp{:02d}.dat'.format(exp_index), format="ascii.fixed_width", delimiter='', overwrite=True)
+            # this would be analogous to Karl's format
+            #t.write('xy.dat', format="ascii.fast_no_header"
 
 
 def mkmosaic(args, wdir, prefixes):
@@ -745,7 +764,7 @@ def mkmosaic(args, wdir, prefixes):
         cltools.immosaicv(pp, fplane_file = "fplane.txt", logging=logging)
 
         # rotate mosaic to correct PA on sky
-        with open('radec2.dat','r') as f:
+        with open('radec2_exp1.dat','r') as f:
             l = f.readline()
         tt = l.split()
         alpha = 360. - (float(tt[2]) + 90. + args.mkmosaic_angoff)
