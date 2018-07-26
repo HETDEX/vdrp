@@ -822,12 +822,12 @@ def cp_results(tmp_dir, results_dir):
     """
     dirs = ['add_radec_angoff_trial']
     file_pattern = []
-    file_pattern += ["CoFeS*_???_sci.fits"]
-    file_pattern += ["*.als"]
-    file_pattern += ["*.ap"]
-    file_pattern += ["*.coo"]
-    file_pattern += ["*.lst"]
-    file_pattern += ["2???????T??????_???.fits"]
+#    file_pattern += ["CoFeS*_???_sci.fits"]
+#    file_pattern += ["*.als"]
+#    file_pattern += ["*.ap"]
+#    file_pattern += ["*.coo"]
+#    file_pattern += ["*.lst"]
+#    file_pattern += ["2???????T??????_???.fits"]
     file_pattern += ["*.png"]
     file_pattern += ["all.mch"]
     file_pattern += ["all.raw"]
@@ -841,15 +841,16 @@ def cp_results(tmp_dir, results_dir):
     file_pattern += ["radec.orig"]
     file_pattern += ["radec2_exp??.dat"]
     file_pattern += ["radec_exp??.dat"]
-    file_pattern += ["shout.acamstars"]
+#    file_pattern += ["shout.acamstars"]
     file_pattern += ["shout.ifu"]
-    file_pattern += ["shout.ifustars"]
-    file_pattern += ["shout.info"]
-    file_pattern += ["shout.probestars"]
-    file_pattern += ["shout.result"]
+#    file_pattern += ["shout.ifustars"]
+#    file_pattern += ["shout.info"]
+#    file_pattern += ["shout.probestars"]
+#    file_pattern += ["shout.result"]
     file_pattern += ["shuffle.cfg"]
-    file_pattern += ["tmp_exp??.csv"]
+#    file_pattern += ["tmp_exp??.csv"]
     file_pattern += ["use.psf"]
+    file_pattern += ["2*fp.fits"]
     file_pattern += ["xy_exp??.dat"]
 
     for d in dirs:
@@ -892,6 +893,12 @@ def main():
     results_dir = os.path.join(cwd, "{}v{}".format(args.night, args.shotid))
     createDir(results_dir)
 
+    tasks = args.task.split(",")
+    if args.use_tmp and not tasks == ['all']:
+        logging.error("Step-by-step execution not possile when running tin a tmp directory.")
+        logging.error("   Please either call without -t or set use_tmp to False.")
+        sys.exit(1)
+
     # default is to work in results_dir
     wdir = results_dir
     if args.use_tmp:
@@ -904,7 +911,6 @@ def main():
         wdir = tmp_dir
 
     try:
-        tasks = args.task.split(",")
         for task in tasks:
             if task in ["cp_post_stamps","all"]:
                 # Copy over collapsed IFU cubes, aka IFU postage stamps.
