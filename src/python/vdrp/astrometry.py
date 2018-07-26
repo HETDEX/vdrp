@@ -377,13 +377,14 @@ def mktot(args, wdir, prefixes):
                 logging.info("{} stars in {}.".format(count, fnout))
         # produce all.mch like run6b
         with open("all.mch", 'w') as fout:
-            s  = " '{:30s}'     0.000     0.000   1.00000   0.00000   0.00000   1.00000     0.000    0.0000\n".format(exposures[0] + "tot.als")
-            s += " '{:30s}'     1.270    -0.730   1.00000   0.00000   0.00000   1.00000     0.000    0.0000\n".format(exposures[1] + "tot.als")
-            s += " '{:30s}'     1.270     0.730   1.00000   0.00000   0.00000   1.00000     0.000    0.0000\n".format(exposures[2] + "tot.als")
+            dither_offsets = [(0.,0.),(1.270,-0.730),(1.270,0.730)]
+            s = ""
+            for i in range(len(exposures)):
+                s  += " '{:30s}'     {:.3f}     {:.3f}   1.00000   0.00000   0.00000   1.00000     0.000    0.0000\n".format(exposures[i] + "tot.als",dither_offsets[i][0], dither_offsets[i][1])
             fout.write(s)
 
 
-def rmaster(args,wdir):
+def rmaster(args, wdir):
     """ Executes daomaster. This registers the sets of detections
     for the thre different exposrues with respec to each other.
 
@@ -395,12 +396,13 @@ def rmaster(args,wdir):
         wdir (str): Work directory.
     """
     logging.info("Running daomaster.")
+
     with path.Path(wdir):
         daophot.rm(["all.raw"])
         daophot.daomaster(logging=logging)
 
 
-def getNorm(all_raw, mag_max ):
+def getNorm(all_raw, mag_max):
     """ Comutes the actual normalisation for flux_norm.
 
     Note:
@@ -621,7 +623,7 @@ def compute_offset(args, wdir, prefixes, shout_ifustars = 'shout.ifustars'):
             # loop over all exposures in configuration file
             for exp_index in args.offset_exposure_indices:
                 if exp_index > len(exposures):
-                    logging.warning("Have no data for exposure {}. Check your configuration (offset_exposure_indices). Skipping ...".format(exp_index))
+                    logging.warning("Have no data for exposure {}. Skipping ...".format(exp_index))
                     continue
                 exp = exposures[exp_index-1] # select first exposure
                 exp_prefixes = []
@@ -796,6 +798,70 @@ def get_prefixes(wdir):
    return [f[:19] for f in ff]
 
 
+def get_exposures(prefixes):
+    """ Computes unique list of exposures from prefixes.
+
+    Args:
+        args (argparse.Namespace): Parsed configuration parameters.
+        prefixes (list): List file name prefixes for the collapsed IFU images
+
+    Returns:
+        (list): Unique list of exposure strings.
+    """
+    return np.unique([p[:15] for p in prefixes])
+
+
+def cp_results(tmp_dir, results_dir):
+    """ Coppies all relevant result files
+    from tmp_dir results_dir.
+
+    Args:
+        tmp_dir (str): Temporary work directory.
+        results_dir (str): Final directory for results.
+
+    """
+    dirs = ['add_radec_angoff_trial']
+    file_pattern = []
+    file_pattern += ["CoFeS*_???_sci.fits"]
+    file_pattern += ["*.als"]
+    file_pattern += ["*.ap"]
+    file_pattern += ["*.coo"]
+    file_pattern += ["*.lst"]
+    file_pattern += ["2???????T??????_???.fits"]
+    file_pattern += ["*.png"]
+    file_pattern += ["all.mch"]
+    file_pattern += ["all.raw"]
+    file_pattern += ["allstar.opt"]
+    file_pattern += ["daophot.opt"]
+    file_pattern += ["fplane.txt"]
+    file_pattern += ["getoff2_exp??.out"]
+    file_pattern += ["getoff_exp??.out"]
+    file_pattern += ["norm.dat"]
+    file_pattern += ["photo.opt"]
+    file_pattern += ["radec.orig"]
+    file_pattern += ["radec2_exp??.dat"]
+    file_pattern += ["radec_exp??.dat"]
+    file_pattern += ["shout.acamstars"]
+    file_pattern += ["shout.ifu"]
+    file_pattern += ["shout.ifustars"]
+    file_pattern += ["shout.info"]
+    file_pattern += ["shout.probestars"]
+    file_pattern += ["shout.result"]
+    file_pattern += ["shuffle.cfg"]
+    file_pattern += ["tmp_exp??.csv"]
+    file_pattern += ["use.psf"]
+    file_pattern += ["xy_exp??.dat"]
+
+    for d in dirs:
+        td = os.path.join(tmp_dir,d)
+        if os.path.exists(td):
+            dir_util.copy_tree( td, results_dir)
+    for p in file_pattern:
+        ff = glob.glob("{}/{}".format(tmp_dir,p))
+        for f in ff:
+            shutil.copy2(f, results_dir)
+
+
 def main():
     """
     Main function.
@@ -837,109 +903,76 @@ def main():
         # set working directory to tmp_dir
         wdir = tmp_dir
 
-    tasks = args.task.split(",")
+    try:
+        tasks = args.task.split(",")
+        for task in tasks:
+            if task in ["cp_post_stamps","all"]:
+                # Copy over collapsed IFU cubes, aka IFU postage stamps.
+                cp_post_stamps(args, wdir)
 
-    for task in tasks:
-        if task in ["cp_post_stamps","all"]:
-            # Copy over collapsed IFU cubes, aka IFU postage stamps.
-            cp_post_stamps(args, wdir)
+            prefixes  = get_prefixes(wdir)
+            exposures = get_exposures(prefixes)
 
-        if task in ["mk_post_stamp_matrix","all"]:
-          # Creat IFU postage stamp matrix image.
-          mk_post_stamp_matrix(args, wdir, get_prefixes(wdir))
+            if task in ["mk_post_stamp_matrix","all"]:
+              # Creat IFU postage stamp matrix image.
+              mk_post_stamp_matrix(args, wdir, prefixes)
 
-        if task in ["daophot_find","all"]:
-          # Run initial object detection in postage stamps.
-          daophot_find(args, wdir, get_prefixes(wdir))
+            if task in ["daophot_find","all"]:
+              # Run initial object detection in postage stamps.
+              daophot_find(args, wdir, prefixes)
 
-        if task in ["daophot_phot_and_allstar","all"]:
-          # Run photometry 
-          daophot_phot_and_allstar(args, wdir, get_prefixes(wdir))
+            if task in ["daophot_phot_and_allstar","all"]:
+              # Run photometry 
+              daophot_phot_and_allstar(args, wdir, prefixes)
 
-        if task in ["mktot","all"]:
-          # Combine detections accross all IFUs.
-          mktot(args, wdir, get_prefixes(wdir))
+            if task in ["mktot","all"]:
+              # Combine detections accross all IFUs.
+              mktot(args, wdir, prefixes)
 
-        if task in ["rmaster","all"]:
-          # Run daophot master to ???
-          rmaster(args, wdir)
+            if task in ["rmaster","all"]:
+              # Run daophot master to ???
+              if len(exposures) > 1:
+                rmaster(args, wdir)
+              else:
+                logging.info("Only one exposure, skipping rmaster.")
 
-        if task in ["flux_norm","all"]:
-          # Compute relative flux normalisation.
-          flux_norm(args, wdir)
+            if task in ["flux_norm","all"]:
+              # Compute relative flux normalisation.
+              if len(exposures) > 1:
+                flux_norm(args, wdir)
+              else:
+                logging.info("Only one exposure, skipping flux_norm.")
 
-        if task in ["redo_shuffle","all"]:
-          # Rerun shuffle to get IFU stars
-          redo_shuffle(args, wdir)
+            if task in ["redo_shuffle","all"]:
+              # Rerun shuffle to get IFU stars
+              redo_shuffle(args, wdir)
 
-        if task in ["get_ra_dec_orig","all"]:
-          # Retrieve original RA DEC from one of the multi files.
-          # store in radec.orig
-          get_ra_dec_orig(args, wdir)
+            if task in ["get_ra_dec_orig","all"]:
+              # Retrieve original RA DEC from one of the multi files.
+              # store in radec.orig
+              get_ra_dec_orig(args, wdir)
 
-        if task in ["compute_offset","all"]:
-          # Compute offsets by matching 
-          # detected stars to sdss stars from shuffle.
-          # This also calls add_ra_dec to add RA DEC information to detections.
-          compute_offset(args,wdir,get_prefixes(wdir))
+            if task in ["compute_offset","all"]:
+              # Compute offsets by matching 
+              # detected stars to sdss stars from shuffle.
+              # This also calls add_ra_dec to add RA DEC information to detections.
+              compute_offset(args,wdir,prefixes)
 
-        if task in ["add_ifu_xy","all"]:
-          add_ifu_xy(args, wdir)
+            if task in ["add_ifu_xy","all"]:
+              add_ifu_xy(args, wdir)
 
-        if task in ["mkmosaic","all"]:
-            # build mosaic for focal plane
-            mkmosaic(args, wdir, get_prefixes(wdir))
+            if task in ["mkmosaic","all"]:
+                # build mosaic for focal plane
+                mkmosaic(args, wdir, prefixes)
 
-    logging.info("Copying over results.")
-
-    def cp_results(tmp_dir, results_dir):
-        dirs = ['add_radec_angoff_trial']
-        file_pattern = []
-        file_pattern += ["CoFeS*_???_sci.fits"]
-        file_pattern += ["*.als"]
-        file_pattern += ["*.ap"]
-        file_pattern += ["*.coo"]
-        file_pattern += ["*.lst"]
-        file_pattern += ["2???????T??????_???.fits"]
-        file_pattern += ["*.png"]
-        file_pattern += ["all.mch"]
-        file_pattern += ["all.raw"]
-        file_pattern += ["allstar.opt"]
-        file_pattern += ["daophot.opt"]
-        file_pattern += ["fplane.txt"]
-        file_pattern += ["getoff2_exp??.out"]
-        file_pattern += ["getoff_exp??.out"]
-        file_pattern += ["norm.dat"]
-        file_pattern += ["photo.opt"]
-        file_pattern += ["radec.orig"]
-        file_pattern += ["radec2_exp??.dat"]
-        file_pattern += ["radec_exp??.dat"]
-        file_pattern += ["shout.acamstars"]
-        file_pattern += ["shout.ifu"]
-        file_pattern += ["shout.ifustars"]
-        file_pattern += ["shout.info"]
-        file_pattern += ["shout.probestars"]
-        file_pattern += ["shout.result"]
-        file_pattern += ["shuffle.cfg"]
-        file_pattern += ["tmp_exp??.csv"]
-        file_pattern += ["use.psf"]
-        file_pattern += ["xy_exp??.dat"]
-
-        for d in dirs:
-            td = os.path.join(tmp_dir,d)
-            if os.path.exists(td):
-                dir_util.copy_tree( td, results_dir)
-        for p in file_pattern:
-            ff = glob.glob("{}/{}".format(tmp_dir,p))
-            for f in ff:
-                shutil.copy2(f, results_dir)
-
-    if args.use_tmp:
-        cp_results(tmp_dir, results_dir)
-        if args.remove_tmp:
-            logging.info("Removing temporary directoy.")
-            shutil.rmtree(tmp_dir)
-    logging.info("Done.")
+    finally:
+        if args.use_tmp:
+            logging.info("Copying over results.")
+            cp_results(tmp_dir, results_dir)
+            if args.remove_tmp:
+                logging.info("Removing temporary directoy.")
+                shutil.rmtree(tmp_dir)
+        logging.info("Done.")
 
 
 if __name__ == "__main__":
