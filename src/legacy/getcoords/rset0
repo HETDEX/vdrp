@@ -1,0 +1,48 @@
+# set up the initial directories
+name1=$1
+name2=$2
+name=$1v$2
+mkdir -p $1v$2
+cd $1v$2
+mkdir -p res
+mkdir -p exp01
+mkdir -p exp02
+mkdir -p exp03
+mkdir -p exp01/virus
+mkdir -p exp02/virus
+mkdir -p exp03/virus
+
+# link to the reduced data; should be ok to be a hard link
+ln -s /work/03946/hetdex/maverick/red1/reductions/$1/virus/virus0000$2/exp01/virus/multi* exp01/virus/.
+ln -s /work/03946/hetdex/maverick/red1/reductions/$1/virus/virus0000$2/exp02/virus/multi* exp02/virus/.
+ln -s /work/03946/hetdex/maverick/red1/reductions/$1/virus/virus0000$2/exp03/virus/multi* exp03/virus/.
+
+# copy over scripts; this needs to change where we keep the scripts
+cp -r /work/00115/gebhardt/maverick/detect/scripts/* .
+cp /work/00115/gebhardt/maverick/sci/panacea/test/$1v$2/all.mch coords/.
+cp /work/00115/gebhardt/maverick/sci/panacea/test/$1v$2/radec2.dat coords/.
+mv rifub coords/.
+mv rmkifub coords/.
+mv rgetcoords coords/.
+mv rgetcoords1 coords/.
+mv rgetcoords2 coords/.
+mv a? coords/.
+mv rgood0 coords/.
+mv all.fix.mch coords/.
+
+# a stupid way to get the original fits file name; this needs something different for long term
+~gebhardt/wcs/wcstools-3.9.2/bin/gethead -p /work/03946/hetdex/maverick/red1/reductions/$1/virus/virus0000$2/exp01/virus/multi*LL*fits CONTINUE | head -1 | awk '{print $2}' | sed s/"\/"// | sed s/_/" "/ | awk '{print $1}' > j1
+~gebhardt/wcs/wcstools-3.9.2/bin/gethead -p /work/03946/hetdex/maverick/red1/reductions/$1/virus/virus0000$2/exp02/virus/multi*LL*fits CONTINUE | head -1 | awk '{print $2}' | sed s/"\/"// | sed s/_/" "/ | awk '{print $1}' >> j1
+~gebhardt/wcs/wcstools-3.9.2/bin/gethead -p /work/03946/hetdex/maverick/red1/reductions/$1/virus/virus0000$2/exp03/virus/multi*LL*fits CONTINUE | head -1 | awk '{print $2}' | sed s/"\/"// | sed s/_/" "/ | awk '{print $1}' >> j1
+
+# runs the making of dithall.use dependent on whether there is 1,2, or 3 exposures
+wc j1 | awk '{print "/work/00115/gebhardt/maverick/detect/rset0_"$1,n1,n2}' n1=$name1 n2=$name2 > rtset
+chmod +x rtset; rtset
+
+cp /work/00115/gebhardt/maverick/detect/script3/* .
+# this next step is obsolete; we should remove it with no consequences
+rmvsky $1 $2
+
+# sets up detection, and runs it; comment out sbatch call to run later
+awk '{print $1,$2,namet}' namet=$name ralltmp > rallt
+#sbatch rallt.slurm

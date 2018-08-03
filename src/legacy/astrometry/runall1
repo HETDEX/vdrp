@@ -4,8 +4,8 @@
 
 SHIFTS=/work/00115/gebhardt/maverick/sci/panacea/shifts
 #REDUCTIONS=/work/04287/mxhf/maverick/red1/reductions
-#REDUCTIONS=/work/03946/hetdex/maverick/red1/reductions
-REDUCTIONS=/Users/mxhf/work/MPE/hetdex/src/vdrp_rewrite/reductions
+REDUCTIONS=/work/03946/hetdex/maverick/red1/reductions
+#REDUCTIONS=/Users/mxhf/work/MPE/hetdex/src/vdrp_rewrite/reductions
 WCSTOOLS=~gebhardt/wcs/wcstools-3.9.2/bin
 SHUFFLE=/work/00115/gebhardt/maverick/shuf
 
@@ -51,7 +51,6 @@ rm -f CoFeS*fits
 # 
 run2
 
-exit 0
 
 # produces run6
 awk2.dat

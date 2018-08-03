@@ -1,0 +1,3 @@
+sed s/.csv/"_1.csv --dx xsub1 --dy ysub1"/ rifub > rifu1b
+sed s/.csv/"_2.csv --dy xsub2 --dx ysub2"/ rifub > rifu2b
+sed s/.csv/"_3.csv --dy xsub3 --dx ysub3"/ rifub > rifu3b

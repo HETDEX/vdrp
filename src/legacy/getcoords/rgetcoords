@@ -1,0 +1,39 @@
+# first grab the final astrometric solution of RA,DEC,PA, and put them in add_ra_dec call
+rm -f i*_?.csv
+awk '{print "sed s/subastrom/""\""$0"\"/ rgood0"}' radec2.dat > rj; chmod +x rj
+rj > rgood; chmod +x rgood
+awk '{print "sed s/subastrom/""\""$0"\"/ rifub"}' radec2.dat > rj; chmod +x rj
+rj > j1
+mv j1 rifub
+
+# generate script for each dither that will then call add_ra_dec
+awk '{print $3,$4}' all.mch  > j1
+rm -f rjmk
+awk '{s+=1; if(s==1) print "sed s/xsub"s"/"$1"/ rmkifub | sed s/ysub"s"/"$2"/"}' j1 > j1t
+awk '{s+=1; if(s==2) print "sed s/xsub"s"/"$1"/ rmkifub | sed s/ysub"s"/"$2"/"}' j1 > j2t
+awk '{s+=1; if(s==3) print "sed s/xsub"s"/"$1"/ rmkifub | sed s/ysub"s"/"$2"/"}' j1 > j3t
+chmod +x j?t
+j1t | grep rifu1b >> rjmk
+j2t | grep rifu2b >> rjmk
+j3t | grep rifu3b >> rjmk
+chmod +x rjmk; rjmk
+chmod +x rifu*b
+
+# call add_ra_dec
+rifu1b
+rifu2b
+rifu3b
+
+# write individual output to its own dither file that contains the observation information
+cat *.ixy > j2
+cat *_1.csv | grep -v NR > j1
+paste j1 j2 | sed s/,/" "/g | awk '{print $18,$19,"ifu"$20,$3,$4,$21,$22,$25}' > dith1.all
+cat *_2.csv | grep -v NR > j1
+paste j1 j2 | sed s/,/" "/g | awk '{print $18,$19,"ifu"$20,$3,$4,$21,$22,$25}' > dith2.all
+cat *_3.csv | grep -v NR > j1
+paste j1 j2 | sed s/,/" "/g | awk '{print $18,$19,"ifu"$20,$3,$4,$21,$22,$25}' > dith3.all
+awk '{print $2}' ../elist > j1
+awk '{print $2,$1}' ../elist > j1
+
+# a1 and a2 are stupid text entries that will combine dith?.all into one file (why do it this way?)
+paste a1 j1 a2 > rj; chmod +x rj; rj

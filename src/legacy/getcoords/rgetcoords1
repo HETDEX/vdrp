@@ -1,0 +1,20 @@
+rm -f i*_?.csv
+awk '{print "sed s/subastrom/""\""$0"\"/ rgood0"}' radec2.dat > rj; chmod +x rj
+rj > rgood; chmod +x rgood
+awk '{print "sed s/subastrom/""\""$0"\"/ rifub"}' radec2.dat > rj; chmod +x rj
+rj > j1
+mv j1 rifub
+echo "0 0"  > j1
+rm -f rjmk
+awk '{s+=1; if(s==1) print "sed s/xsub"s"/"$1"/ rmkifub | sed s/ysub"s"/"$2"/"}' j1 > j1t
+chmod +x j?t
+j1t | grep rifu1b >> rjmk
+chmod +x rjmk; rjmk
+chmod +x rifu*b
+rifu1b
+cat *.ixy > j2
+cat *_1.csv | grep -v NR > j1
+paste j1 j2 | sed s/,/" "/g | awk '{print $18,$19,"ifu"$20,$3,$4,$21,$22,$25}' > dith1.all
+awk '{print $2}' ../elist > j1
+awk '{print $2,$1}' ../elist > j1
+paste a1 j1 a2 > rj; chmod +x rj; rj
