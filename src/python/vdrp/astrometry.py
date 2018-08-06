@@ -128,6 +128,7 @@ def parseArgs():
     parents=[conf_parser]
     )
     parser.set_defaults(**defaults)
+    parser.add_argument("--logfile", type=str)
     parser.add_argument("--use_tmp", type=str)
     parser.add_argument("--remove_tmp", type=str)
     parser.add_argument("--reduction_dir", type=str)
