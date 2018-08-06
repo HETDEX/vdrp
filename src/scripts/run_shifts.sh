@@ -6,7 +6,7 @@ NIGHT=$1
 TARGET=$2
 RA=$3
 DEC=$4
-TRACK=1
+TRACK=$5
 CFG=vdrp.config
 
 # Either run
