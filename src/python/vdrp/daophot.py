@@ -7,6 +7,7 @@ Module provides interface to daophot.
 import os
 import subprocess
 import sys
+from vdrp.utils import rm
 
 DAOPHOT_FIND_CMD = \
 """att {}
@@ -150,21 +151,6 @@ def test_input_files_exist(input_files):
     for f in input_files:
         if not os.path.exists(f):
             raise DaophotException("Input file {} not in place.".format(f))
-
-
-def rm(ff):
-    """ Takes a list of files names and deletes them.
-    Does not raise an Exception if a specific file was not in place.
-
-    Args:
-        ff (list): List of file names to delete.
-
-    """
-    for f in ff:
-        try:
-            os.remove(f)
-        except:
-            pass
 
 
 def daophot_find(prefix, sigma, logging=None):

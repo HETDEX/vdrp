@@ -6,3 +6,5 @@ src/python/vdrp/__pycache__
 src/python/tests/__pycache__
 .ipynb_checkpoints
 .DS_Store
+*.swm
+*.swn

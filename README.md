@@ -37,3 +37,61 @@ Execute like
   runall1 20180611 017 13.8447 51.3479 1
 
 Open runall1.sh for various options for executing the astrometry.py routine.
+
+
+Proposed directory structure
+.
+├── daoprogs
+│   ├── moreprogs
+│   └── moreprogs2
+│       └── dao2
+│
+├── sciprogs
+│
+├── vdrp
+│   ├── bin
+│   ├── config
+│   ├── lib
+│   └── src
+│       ├── legacy
+│       │   ├── astrometry
+│       │   │   └── scripts
+│       │   └── getcoords
+│       └── python
+│           ├── jynp
+│           ├── tests
+│           │   └── testdata
+│           ├── validation
+│           └── vdrp
+│
+│
+├── vdrp.config or 20180611v017.vdrpconfig
+├── setup.sh
+│
+├── reductions
+│   └── 20180611
+│       └── virus
+│           └── virus0000017
+│               ├── exp01
+│               │   └── virus
+│               ├── exp02
+│               │   └── virus
+│               └── exp03
+│                   └── virus
+├── shifts
+│   ├── run_shifts.sh
+│   └── 20180611v017
+│
+├── fibcoords
+│   ├── run_fibcoords.sh
+│   └── 20180611v017
+│       ├── coords
+│       ├── exp01
+│       │   └── virus
+│       ├── exp02
+│       │   └── virus
+│       └── exp03
+│           └── virus
+├── detect
+│   ├── run_detect.sh
+

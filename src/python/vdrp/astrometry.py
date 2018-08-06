@@ -36,6 +36,7 @@ from pyhetdex.het import fplane
 from vdrp.cofes_vis import cofes_4x4_plots
 from vdrp import daophot
 from vdrp import cltools
+from vdrp.utils import createDir
 
 def parseArgs():
     """ Parses configuration file and command line arguments.
@@ -200,19 +201,6 @@ def parseArgs():
 
     return args
 
-
-def createDir(directory):
-    """ Creates a directory.
-    Does not raise an excpetion if the directory already exists.
-
-    Args:
-        directory (string): Name for directory to create.
-    """
-    try:
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-    except OSError:
-        logging.error('Creating directory. ' +  directory)
 
 
 def cp_post_stamps(args, wdir):
