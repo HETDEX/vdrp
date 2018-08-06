@@ -70,8 +70,9 @@ echo "#######################################"
 echo "# get_ra_dec_orig"
 echo "#######################################"
 echo "### Checking that radec.orig are identical ..."
-f=radec.orig
-diff $d.vdrp/$f $d.orig/$f
+f1=radec_exp01.dat
+f2=radec.dat
+diff $d.vdrp/$f1 $d.orig/$f2
 
 echo ""
 
@@ -80,22 +81,26 @@ echo "#######################################"
 echo "# compute_offset"
 echo "#######################################"
 echo "### Checking that radec.dat is close enough ..."
-f=radec.dat
+f1=radec_exp01.dat
+f2=radec.dat
 diff $d.vdrp/$f $d.orig/$f
 
 echo ""
 
 echo "### Checking getoff2.out close enough ..."
-f=getoff2.out
-diff $d.vdrp/$f $d.orig/$f
+f1=getoff2_exp01.out
+f2=getoff2.out
+diff $d.vdrp/$f1 $d.orig/$f2
 
 
 echo ""
 
 echo "### Checking that getoff.out is close enough, should be all zero ..."
-f=getoff.out
+f1=getoff_exp01.out
+f2=getoff.out
 for g in `ls $d.vdrp/*tot.als`; do 
-	f=`basename $f`; 
-	cat ./$d.orig/$f | awk '{s+=1; if (s>3) { print $0} }' | sort -k2 -n > t1; cat ./$d.vdrp/$f | awk '{s+=1; if (s>3) { print $0} }' | sort -k2 -n > t2; paste t1 t2 | awk '{ d+= ($3-$5)^2. + ($4-$6)^2.}END{print d}';
+	f1=`basename $f1`; 
+	f2=`basename $f2`; 
+	cat ./$d.orig/$f2 | awk '{s+=1; if (s>3) { print $0} }' | sort -k2 -n > t1; cat ./$d.vdrp/$f1 | awk '{s+=1; if (s>3) { print $0} }' | sort -k2 -n > t2; paste t1 t2 | awk '{ d+= ($3-$5)^2. + ($4-$6)^2.}END{print d}';
 done
 
