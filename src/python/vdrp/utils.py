@@ -20,19 +20,34 @@ def createDir(directory):
 
 
 
-def read_radec(radec_dat):
+def read_radec(filename):
     """ Reads radec.dat file and returns ra,dec,pa.
 
     Args:
-        radec_dat (str): Filename, typically radec.dat or radec2.dat.
+        filename (str): Filename, typically radec.dat or radec2.dat.
 
     Returns:
         float,float,float: 3 element list with RA, DEC and PA
     """
-    with open(radec_dat,"r") as f:
+    with open(filename,"r") as f:
         ll = f.readlines()
     ra, dec, pa = ll[0].split()
     return float(ra), float(dec), float(pa)
+
+
+def write_radec(ra,dec,pa,filename):
+    """ Creates radec.dat-type  file and returns ra,dec,pa.
+
+    Args:
+        ra (float): Right ascension
+        dec (float): declination
+        pa (float): position angle
+        filename (str): Filename, typically radec.dat or radec2.dat.
+
+    """
+    with open(filename,"w") as f:
+        s = "{:.6f} {:.6f} {).6f}\n".format(ra, dec, pa)
+        f.write(s)
 
 
 def read_all_mch(all_mch):
