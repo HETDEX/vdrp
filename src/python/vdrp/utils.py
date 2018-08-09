@@ -46,7 +46,7 @@ def write_radec(ra,dec,pa,filename):
 
     """
     with open(filename,"w") as f:
-        s = "{:.6f} {:.6f} {).6f}\n".format(ra, dec, pa)
+        s = "{:.6f} {:.6f} {:.6f}\n".format(ra, dec, pa)
         f.write(s)
 
 
