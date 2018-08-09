@@ -20,6 +20,7 @@ import subprocess
 from astropy.io import fits
 import tempfile
 import numpy as np
+from collections import OrderedDict
 
 from distutils import dir_util
 
@@ -34,6 +35,9 @@ from astropy.table import vstack
 from pyhetdex.het import fplane
 from pyhetdex.coordinates.tangent_projection import TangentPlane
 import pyhetdex.tools.read_catalogues as rc
+from pyhetdex import coordinates
+from pyhetdex.coordinates import astrometry as phastrom
+
 
 from vdrp.cofes_vis import cofes_4x4_plots
 from vdrp import daophot
@@ -539,7 +543,50 @@ def add_ra_decOld(args, wdir, exp_prefixes, ra, dec, pa, radec_outfile='tmp.csv'
             cmd += " {}".format(f)
         subprocess.call(cmd, shell=True)
 
-def add_ra_dec(args, wdir, exp_prefixes, ra, dec, pa, radec_outfile='tmp.csv'):
+
+
+def get_als_files(fp, exp_prefixes):
+    """
+    Derives for a list of exposure prefixes a list
+    of *.als files, but rejects any that refer to an IFU slot
+    which is not contained in the fplane.
+
+    Args:
+        exp_prefixes (list): List of epxosure prefixes.
+
+    Returns:
+        (list): List of *.als files.
+    """
+    # collect als files for all IFUs that are contained in the fplane file. 
+    als_files = []
+    for prefix in exp_prefixes:
+        ifuslot = prefix[-3:]
+        if not ifuslot in fp.ifuslots:
+            logging.warning("IFU slot {} not contained in fplane.txt.".format(ifuslot))
+            continue
+        fn = prefix + ".als"
+        als_files.append(fn)
+    return als_files
+
+
+def load_als_data(als_files):
+    """ Load set of als files.
+    Args:
+        als_files (list): List of file names.
+
+    Returns:
+        (OrderedDict):  Dictionary with als data for each IFU slot.
+    """
+    # work out the IFU slot from the file name
+    als_data = OrderedDict()
+    for fn in als_files:
+        ihmp = fn[-7:-4]
+        data = rc.read_daophot(fn)
+        als_data[ihmp] = data
+    return als_data
+
+
+def add_ra_dec(args, wdir, als_data, ra, dec, pa, fp, radec_outfile='tmp.csv'):
     """
     Call add_ra_dec to compute for detections in IFU space the corresponding RA/DEC
     coordinates.
@@ -552,30 +599,16 @@ def add_ra_dec(args, wdir, exp_prefixes, ra, dec, pa, radec_outfile='tmp.csv'):
     Args:
         args (argparse.Namespace): Parsed configuration parameters.
         wdir (str): Work directory.
-        exp_prefixes (list): List file name prefixes for the collapsed IFU images for one exposure (typically the first).
+        als_data (dict): Dictionary with als data for each IFU slot.
         ra (float): Focal plane center RA.
         dec (float): Focal plane center Dec.
         pa (float): Positions angle.
+        fp (FPlane): Focal plane object.
         radec_outfile (str): Filename that will contain output from add_ra_dec (gets overwritten!).
 
     """
     with path.Path(wdir):
-        # collect als files for all IFUs that are contained in the fplane file. 
-        als_files = []
         fp = fplane.FPlane("fplane.txt")
-        for prefix in exp_prefixes:
-            ifuslot = prefix[-3:]
-            if not ifuslot in fp.ifuslots:
-                logging.warning("IFU slot {} not contained in fplane.txt.".format(ifuslot))
-                continue
-            fn = prefix + ".als"
-            als_files.append(fn)
-
-        daophot.rm([radec_outfile])
-        # work out the IFU slot from the file name
-        ihmp_list = []
-        for fn in als_files:
-            ihmp_list.append(fn[-7:-4])
 
         # Carry out required changes to astrometry
         rot = 360.0 - (pa + 90.)
@@ -584,8 +617,8 @@ def add_ra_dec(args, wdir, exp_prefixes, ra, dec, pa, radec_outfile='tmp.csv'):
 
         # Loop over the files, adding ra, dec
         tables = []
-        for fn, ihmp in zip(als_files, ihmp_list):
-            x, y, table = rc.read_daophot(fn)
+        for ihmp in als_data:
+            x, y, table = als_data[ihmp]
 
             # skip empty tables
             if len(x) < 1:
@@ -607,13 +640,14 @@ def add_ra_dec(args, wdir, exp_prefixes, ra, dec, pa, radec_outfile='tmp.csv'):
 
             tables.append(table)
 
-
         # output the combined table
         table_out = vstack(tables)
         logging.info("Writing output to {:s}".format(radec_outfile))
         table_out.write(radec_outfile, comment='#',overwrite=True)
 
-def compute_offset(args, wdir, prefixes, shout_ifustars = 'shout.ifustars'):
+
+def compute_offset(args, wdir, prefixes, shout_ifustars = 'shout.ifustars',
+        NEW_ADD_RA_DEC=True):
     """
     Requires, fplane.txt, radec.orig.
     Creates primarely EXPOSURE_tmp.csv but also radec2.dat.
@@ -677,6 +711,7 @@ def compute_offset(args, wdir, prefixes, shout_ifustars = 'shout.ifustars'):
         # will contain results of angular offset trials
         utils.createDir(args.add_radec_angoff_trial_dir)
 
+
         for angoff in angoffsets:
             # collect the prefixes that belong to the first exposure
             # for now only do first exposure, later can do them all
@@ -707,10 +742,20 @@ def compute_offset(args, wdir, prefixes, shout_ifustars = 'shout.ifustars'):
                     logging.info("Angular offset {:.3} Deg, getoff2 iteration {}, matching radius = {}\"".format(angoff, i+1, radius))
                     radec_outfile='tmp_exp{:02d}.csv'.format(exp_index)
                     logging.info("Adding RA & Dec to detections, applying offsets ra_offset,dec_offset,pa_offset = {},{},{}".format( ra_offset, dec_offset, angoff) )
-
                     # Call add_ra_dec, add offsets first.
                     new_ra, new_dec, new_pa = ra * 15. + ra_offset, dec + dec_offset, pa + angoff
-                    add_ra_dec(args, wdir, exp_prefixes, ra=new_ra, dec=new_dec, pa=new_pa, radec_outfile=radec_outfile)
+                    if NEW_ADD_RA_DEC:
+                        # New direct call to pyhetdex
+                        # preload the als data.
+                        fp = fplane.FPlane("fplane.txt")
+                        als_files = get_als_files(fp, exp_prefixes)
+                        als_data = load_als_data(als_files)
+                        add_ra_dec(args, wdir, als_data, ra=new_ra, dec=new_dec,\
+                            pa=new_pa, fp=fp, radec_outfile=radec_outfile)
+                        add_ra_dec(args, wdir, als_data, ra=new_ra, dec=new_dec, pa=new_pa, fp=fp, radec_outfile=radec_outfile)
+                    else:
+                        # Old command line call
+                        add_ra_decOld(args, wdir, exp_prefixes, ra=new_ra, dec=new_dec, pa=new_pa, radec_outfile=radec_outfile)
 
                     # Now compute offsets.
                     logging.info("Computing offsets ...")
@@ -790,9 +835,6 @@ def add_ifu_xyOld(args, wdir):
             #t.write('xy.dat', format="ascii.fast_no_header"
 
 
-from pyhetdex import coordinates
-from pyhetdex.coordinates import astrometry as phastrom
-
 def add_ifu_xy(args, wdir):
     """ Adds IFU x y information to stars used for matching,
     and save to xy_expNN.dat.
@@ -814,10 +856,11 @@ def add_ifu_xy(args, wdir):
         table_final = table.hstack([table_in, table_out])
         return table_final
 
-    logging.info("Creating xy_expNN.dat...")
     with path.Path(wdir):
         # loop over all exposures in configuration file
         for exp_index in args.offset_exposure_indices:
+            logging.info("Creating xy_exp{:02d}.dat".format(exp_index) )
+
             fngetoff_out = "getoff_exp{:02d}.out".format(exp_index)
             if not os.path.exists(fngetoff_out):
                 logging.warning("Have no {} for exposure {}. Check your configuration (offset_exposure_indices). Skipping ...".format(fngetoff_out, exp_index))
