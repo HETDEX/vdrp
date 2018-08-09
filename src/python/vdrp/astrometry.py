@@ -8,7 +8,6 @@ Contains python translation of Karl Gebhardt
 """
 from __future__ import print_function
 
-import numpy as np
 from numpy import loadtxt
 import argparse
 import os
@@ -18,9 +17,9 @@ import sys
 import ConfigParser
 import logging
 import subprocess
-from collections import OrderedDict
 from astropy.io import fits
 import tempfile
+import numpy as np
 
 from distutils import dir_util
 
@@ -30,13 +29,17 @@ from astropy.table import Table
 
 from astropy.stats import biweight_location as biwgt_loc
 from astropy.io import fits
+from astropy.table import vstack
 
 from pyhetdex.het import fplane
+from pyhetdex.coordinates.tangent_projection import TangentPlane
+import pyhetdex.tools.read_catalogues as rc
 
 from vdrp.cofes_vis import cofes_4x4_plots
 from vdrp import daophot
 from vdrp import cltools
-from vdrp.utils import createDir
+from vdrp import utils
+
 
 def parseArgs():
     """ Parses configuration file and command line arguments.
@@ -162,7 +165,6 @@ def parseArgs():
     parser.add_argument("--mktot_xmax",  type=float)
     parser.add_argument("--mktot_ymin",  type=float)
     parser.add_argument("--mktot_ymax",  type=float)
-    parser.add_argument("--logfile",  type=str)
     parser.add_argument("--fluxnorm_mag_max",  type=float)
     parser.add_argument("--fplane_txt",  type=str)
     parser.add_argument("--shuffle_cfg",  type=str)
@@ -201,7 +203,6 @@ def parseArgs():
     args.offset_exposure_indices = [int(t) for t in args.offset_exposure_indices.split(",")]
 
     return args
-
 
 
 def cp_post_stamps(args, wdir):
@@ -439,6 +440,7 @@ def flux_norm(args, wdir, infile='all.raw', outfile='norm.dat'):
             s = "{:10.8f} {:10.8f} {:10.8f}".format(n1,n2,n3)
             f.write(s)
 
+
 def redo_shuffle(args, wdir):
     """
     Reruns shuffle to obtain catalog of IFU stars.
@@ -473,6 +475,7 @@ def redo_shuffle(args, wdir):
         logging.info("redo_shuffle: Calling shuffle with {}.".format(cmd))
         subprocess.call(cmd, shell=True)
 
+
 def get_ra_dec_orig(args,wdir):
     """
     Reads first of the many multi* file'd headers to get the RA, DEC, PA guess from the telescope.
@@ -493,11 +496,10 @@ def get_ra_dec_orig(args,wdir):
     pa0  = h["PARANGLE"]
     logging.info("get_ra_dec_orig: Original RA,DEC,PA = {},{},{}".format(ra0, dec0, pa0))
     with path.Path(wdir):
-        with open("radec.orig",'w') as f:
-            s = "{} {} {}\n".format(ra0, dec0, pa0)
-            f.write(s)
+        utils.write_radec(ra0, dec0, pa0, "radec.orig")
 
-def add_ra_dec(args, wdir, exp_prefixes, ra, dec, pa, radec_outfile='tmp.csv'):
+
+def add_ra_decOld(args, wdir, exp_prefixes, ra, dec, pa, radec_outfile='tmp.csv'):
     """
     Call add_ra_dec to compute for detections in IFU space the corresponding RA/DEC
     coordinates.
@@ -537,6 +539,79 @@ def add_ra_dec(args, wdir, exp_prefixes, ra, dec, pa, radec_outfile='tmp.csv'):
             cmd += " {}".format(f)
         subprocess.call(cmd, shell=True)
 
+def add_ra_dec(args, wdir, exp_prefixes, ra, dec, pa, radec_outfile='tmp.csv'):
+    """
+    Call add_ra_dec to compute for detections in IFU space the corresponding RA/DEC
+    coordinates.
+
+    New version, direct python call to pyheted.coordinates.tangent_projection.
+
+    Requires, fplane.txt, radec.orig.
+    Creates primarely EXPOSURE_tmp.csv but also radec.dat.
+
+    Args:
+        args (argparse.Namespace): Parsed configuration parameters.
+        wdir (str): Work directory.
+        exp_prefixes (list): List file name prefixes for the collapsed IFU images for one exposure (typically the first).
+        ra (float): Focal plane center RA.
+        dec (float): Focal plane center Dec.
+        pa (float): Positions angle.
+        radec_outfile (str): Filename that will contain output from add_ra_dec (gets overwritten!).
+
+    """
+    with path.Path(wdir):
+        # collect als files for all IFUs that are contained in the fplane file. 
+        als_files = []
+        fp = fplane.FPlane("fplane.txt")
+        for prefix in exp_prefixes:
+            ifuslot = prefix[-3:]
+            if not ifuslot in fp.ifuslots:
+                logging.warning("IFU slot {} not contained in fplane.txt.".format(ifuslot))
+                continue
+            fn = prefix + ".als"
+            als_files.append(fn)
+
+        daophot.rm([radec_outfile])
+        # work out the IFU slot from the file name
+        ihmp_list = []
+        for fn in als_files:
+            ihmp_list.append(fn[-7:-4])
+
+        # Carry out required changes to astrometry
+        rot = 360.0 - (pa + 90.)
+        # Set up astrometry from user supplied options
+        tp = TangentPlane(ra, dec, rot)
+
+        # Loop over the files, adding ra, dec
+        tables = []
+        for fn, ihmp in zip(als_files, ihmp_list):
+            x, y, table = rc.read_daophot(fn)
+
+            # skip empty tables
+            if len(x) < 1:
+                continue
+
+            ifu = fp.by_ifuslot(ihmp)
+
+            # remember to flip x,y
+            xfp = x + ifu.y
+            yfp = y + ifu.x
+
+            ra, dec = tp.xy2raDec(xfp, yfp)
+
+            table['ra'] = ra
+            table['dec'] = dec
+            table['ifuslot'] = ihmp
+            table['xfplane'] = xfp
+            table['yfplane'] = yfp
+
+            tables.append(table)
+
+
+        # output the combined table
+        table_out = vstack(tables)
+        logging.info("Writing output to {:s}".format(radec_outfile))
+        table_out.write(radec_outfile, comment='#',overwrite=True)
 
 def compute_offset(args, wdir, prefixes, shout_ifustars = 'shout.ifustars'):
     """
@@ -562,18 +637,16 @@ def compute_offset(args, wdir, prefixes, shout_ifustars = 'shout.ifustars'):
         if not nominal:
             sangoff = '_{:06.3f}Deg'.format(angoff)
 
+        # write results to radec_exp??.dat
         fnout = "radec_exp{:02d}{}.dat".format(exp_index,sangoff)
-        with open(fnout,'w') as fradec:
-            s = "{} {} {}\n".format(ra*15., dec, pa + angoff)
-            fradec.write(s)
-            logging.info("Wrote {}".format(fnout))
+        utils.write_radec(ra*15., dec, pa + angoff, fnout)
+        logging.info("Wrote {}".format(fnout))
 
-        # write results to radec2.dat
+        # write results to radec2_exp??.dat
         fnout = "radec2_exp{:02d}{}.dat".format(exp_index, sangoff)
-        with open(fnout,'w') as f:
-            s = "{} {} {}\n".format( ra*15. + ra_offset, dec + dec_offset,pa + angoff)
-            f.write(s)
-            logging.info("Wrote {}".format(fnout))
+        utils.write_radec(ra*15. + ra_offset, dec + dec_offset,pa + angoff,
+                fnout)
+        logging.info("Wrote {}".format(fnout))
 
 
     with path.Path(wdir):
@@ -602,7 +675,7 @@ def compute_offset(args, wdir, prefixes, shout_ifustars = 'shout.ifustars'):
         logging.info("  Also computing offsets for the following set of trial angles: {}".format(s) )
 
         # will contain results of angular offset trials
-        createDir(args.add_radec_angoff_trial_dir)
+        utils.createDir(args.add_radec_angoff_trial_dir)
 
         for angoff in angoffsets:
             # collect the prefixes that belong to the first exposure
@@ -625,16 +698,13 @@ def compute_offset(args, wdir, prefixes, shout_ifustars = 'shout.ifustars'):
 
                 # Convert radec.orig to radec.dat, convert RA to degress and add angular offset
                 # mF: Not sure if we will need radec.dat later, creating it for now.
-                with open("radec.orig") as fradec:
-                    ll = fradec.readlines()
-                tt = ll[0].split()
-                ra,dec,pa = float(tt[0]), float(tt[1]), float(tt[2])
+                ra,dec,pa = utils.read_radec("radec.orig")
 
                 # Now compute offsets iteratively with increasingly smaller matching radii.
                 # Matching radii are defined in config file.
                 ra_offset, dec_offset = 0., 0.
                 for i, radius in enumerate(radii):
-                    logging.info("Angular offset {} Deg, getoff2 iteration {}, matching radius = {}\"".format(angoff, i+1, radius))
+                    logging.info("Angular offset {:.3} Deg, getoff2 iteration {}, matching radius = {}\"".format(angoff, i+1, radius))
                     radec_outfile='tmp_exp{:02d}.csv'.format(exp_index)
                     logging.info("Adding RA & Dec to detections, applying offsets ra_offset,dec_offset,pa_offset = {},{},{}".format( ra_offset, dec_offset, angoff) )
 
@@ -669,7 +739,7 @@ def compute_offset(args, wdir, prefixes, shout_ifustars = 'shout.ifustars'):
 
 
 
-def add_ifu_xy(args, wdir):
+def add_ifu_xyOld(args, wdir):
     """ Adds IFU x y information to stars used for matching,
     and save to xy_expNN.dat.
     Requires: getoff.out, radec2.dat
@@ -698,10 +768,7 @@ def add_ifu_xy(args, wdir):
             t2.write("t2.csv", format="ascii.fast_csv", overwrite=True)
 
             # read ra,dec, pa from radec2.dat
-            with open("radec2_exp{:02d}.dat".format(exp_index)) as f:
-                l = f.readline()
-                tt = l.split()
-                ra,dec,pa = float(tt[0]), float(tt[1]), float(tt[2])
+            ra,dec,pa = utils.read_radec("radec2_exp{:02d}.dat".format(exp_index))
 
             daophot.rm(["t3.csv","t4.csv"])
             cmd = "add_ifu_xy --fplane fplane.txt --ra-name RA --dec-name DEC --astrometry {:.6f} {:.6f} {:.6f} t1.csv t3.csv".format(ra,dec,pa)
@@ -715,12 +782,75 @@ def add_ifu_xy(args, wdir):
             for c in t3.columns:
                 t3.columns[c].name = t3.columns[c].name + "1"
             for c in t4.columns:
-                t4.columns[c].name = t4.columns[c].name + "1"
+                t4.columns[c].name = t4.columns[c].name + "2"
 
             t = table.hstack([t3,t4])
             t.write('xy_exp{:02d}.dat'.format(exp_index), format="ascii.fixed_width", delimiter='', overwrite=True)
             # this would be analogous to Karl's format
             #t.write('xy.dat', format="ascii.fast_no_header"
+
+
+from pyhetdex import coordinates
+from pyhetdex.coordinates import astrometry as phastrom
+
+def add_ifu_xy(args, wdir):
+    """ Adds IFU x y information to stars used for matching,
+    and save to xy_expNN.dat.
+    Requires: getoff.out, radec2.dat
+    Analogous to rastrom3.
+
+    Args:
+        args (argparse.Namespace): Parsed configuration parameters.
+        wdir (str): Work directory.
+    """
+    def ra_dec_to_xy(table_in, ra, dec, fp, tp):
+        """ Little helper function that convinently wraps the call to
+        pyhetdex.coordinates.astrometry.ra_dec_to_xy
+        """
+        ra = table_in["RA"]
+        dec = table_in["DEC"]
+        # find positions
+        table_out = phastrom.ra_dec_to_xy(ra, dec, fp, tp)
+        table_final = table.hstack([table_in, table_out])
+        return table_final
+
+    logging.info("Creating xy_expNN.dat...")
+    with path.Path(wdir):
+        # loop over all exposures in configuration file
+        for exp_index in args.offset_exposure_indices:
+            fngetoff_out = "getoff_exp{:02d}.out".format(exp_index)
+            if not os.path.exists(fngetoff_out):
+                logging.warning("Have no {} for exposure {}. Check your configuration (offset_exposure_indices). Skipping ...".format(fngetoff_out, exp_index))
+                continue
+
+            t = Table.read(fngetoff_out, format="ascii.fast_no_header")
+            t_detect_coor  = Table([t['col3'], t['col4'], t['col7']], names=["RA","DEC","IFUSLOT"])
+            t_catalog_coor = Table([t['col5'], t['col6'], t['col7']], names=["RA","DEC","IFUSLOT"])
+
+            # read ra,dec, pa from radec2.dat
+            ra,dec,pa = utils.read_radec("radec2_exp{:02d}.dat".format(exp_index))
+
+            # set up astrometry
+            fp = fplane.FPlane("fplane.txt")
+            # Carry out required changes to astrometry
+            rot = 360.0 - (pa + 90.)
+            # Set up astrometry from user supplied options
+            tp = TangentPlane(ra, dec, rot)
+
+            t_detect_coor_xy = ra_dec_to_xy(t_detect_coor, ra, dec, fp, tp)
+            t_catalog_coor_xy = ra_dec_to_xy(t_catalog_coor, ra, dec, fp, tp)
+
+            for c in t_detect_coor_xy.columns:
+                #t_detect_coor_xy.columns[c].name = t_detect_coor_xy.columns[c].name + "1"
+                t_detect_coor_xy.columns[c].name = \
+                    t_detect_coor_xy.columns[c].name + "_det"
+            for c in t_catalog_coor_xy.columns:
+                #t_catalog_coor_xy.columns[c].name = t_catalog_coor_xy.columns[c].name + "2"
+                t_catalog_coor_xy.columns[c].name = \
+                    t_catalog_coor_xy.columns[c].name + "_cat"
+
+            t = table.hstack([t_detect_coor_xy,t_catalog_coor_xy])
+            t.write('xy_exp{:02d}.dat'.format(exp_index), format="ascii.fixed_width", delimiter='', overwrite=True)
 
 
 def mkmosaic(args, wdir, prefixes):
@@ -743,11 +873,8 @@ def mkmosaic(args, wdir, prefixes):
         cltools.immosaicv(pp, fplane_file = "fplane.txt", logging=logging)
 
         # rotate mosaic to correct PA on sky
-        with open('radec2_exp01.dat','r') as f:
-            l = f.readline()
-        tt = l.split()
-        alpha = 360. - (float(tt[2]) + 90. + args.mkmosaic_angoff)
-        ra,dec = float(tt[0]), float(tt[1])
+        ra,dec,pa = utils.read_radec('radec2_exp01.dat')
+        alpha = 360. - (pa + 90. + args.mkmosaic_angoff)
 
         logging.info("mkmosaic: Calling imrot with angle {} (can take a minute) ....".format(alpha))
         daophot.rm(['imrot.fits'])
@@ -832,7 +959,7 @@ def cp_results(tmp_dir, results_dir):
     file_pattern += ["radec_exp??.dat"]
 #    file_pattern += ["shout.acamstars"]
     file_pattern += ["shout.ifu"]
-#    file_pattern += ["shout.ifustars"]
+    file_pattern += ["shout.ifustars"]
 #    file_pattern += ["shout.info"]
 #    file_pattern += ["shout.probestars"]
 #    file_pattern += ["shout.result"]
@@ -880,7 +1007,7 @@ def main():
     # Create results directory for given night and shot
     cwd = os.getcwd()
     results_dir = os.path.join(cwd, "{}v{}".format(args.night, args.shotid))
-    createDir(results_dir)
+    utils.createDir(results_dir)
 
     tasks = args.task.split(",")
     if args.use_tmp and not tasks == ['all']:
@@ -954,7 +1081,7 @@ def main():
               compute_offset(args,wdir,prefixes)
 
             if task in ["add_ifu_xy","all"]:
-              add_ifu_xy(args, wdir)
+                add_ifu_xy(args, wdir)
 
             if task in ["mkmosaic","all"]:
                 # build mosaic for focal plane
