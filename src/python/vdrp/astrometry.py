@@ -7,6 +7,7 @@ Contains python translation of Karl Gebhardt
 .. moduleauthor:: Maximilian Fabricius <mxhf@mpe.mpg.de>
 """
 from __future__ import print_function
+from matplotlib import pyplot as plt
 
 from numpy import loadtxt
 import argparse
@@ -18,6 +19,7 @@ import ConfigParser
 import logging
 import subprocess
 from astropy.io import fits
+from astropy.io import ascii
 import tempfile
 import numpy as np
 from collections import OrderedDict
@@ -32,6 +34,7 @@ from astropy.stats import biweight_location as biwgt_loc
 from astropy.io import fits
 from astropy.table import vstack
 
+
 from pyhetdex.het import fplane
 from pyhetdex.coordinates.tangent_projection import TangentPlane
 import pyhetdex.tools.read_catalogues as rc
@@ -43,7 +46,8 @@ from vdrp.cofes_vis import cofes_4x4_plots
 from vdrp import daophot
 from vdrp import cltools
 from vdrp import utils
-
+from vdrp.daophot import DAOPHOT_ALS
+from vdrp import utils
 
 def parseArgs():
     """ Parses configuration file and command line arguments.
@@ -942,6 +946,204 @@ def mkmosaic(args, wdir, prefixes):
         hdu.writeto("{}v{}fp.fits".format(args.night, args.shotid),overwrite=True)
 
 
+def project_xy(wdir, radec_file, fplane_file, ra, dec):
+    """Translate *all* catalog stars to x/y to display then and to
+    see which ones got matched.
+    Call pyhetdex tangent_plane's functionality to project
+    ra,dec to x,y.
+
+    Args:
+        wdir (str): Work directory.
+        radec_file (str): File that contains shot ra dec position.
+        fplane_file (str): Focal plane file filename.
+        ra (list): List of ra positions (in float, degree).
+        dec (list): List of dec positions (in float, degree).
+    """
+    # read ra,dec, pa from radec2.dat
+    ra0,dec0,pa0 = utils.read_radec( os.path.join(wdir, radec_file))
+    # Carry out required changes to astrometry
+    rot = 360.0 - (pa0 + 90.)
+    # Set up astrometry from user supplied options
+    tp = phastrom.TangentPlane(ra0, dec0, rot)
+    # set up astrometry
+    fp = fplane.FPlane( os.path.join(wdir, fplane_file) )
+    # find positions
+    ifu_xy = phastrom.ra_dec_to_xy(ra, dec, fp, tp)
+    return ifu_xy
+
+
+def mk_match_matrix(wdir, ax, exp, image_files, fplane_file, shout_ifu_file, xy_file, radec_file):
+    """ Creates the actual match plot for a specific exposures.
+    This is a subroutine to mk_match_plots.
+
+    Args:
+        wdir (str): Work directory.
+        prefixes (list): List file name prefixes for the collapsed IFU images.
+        ax (pyplot.axes): Axes object to plot into.
+        exp (str): Exposure string (e.g. exp01)
+        image_files (list): List of file names.
+        fplane_file (str): Focal plane file filename.
+        shout_ifu_file (str): Shuffle IFU star catalog output filename.
+        xy_file (str): Filename for list of matched stars, aka xy_exp??.dat.
+        radec_file (str): File that contains shot ra dec position.
+    """
+    cmap = plt.cm.bone
+
+    N = 1.
+    tin = Table.read(os.path.join(wdir, shout_ifu_file), format='ascii')
+    tout = Table( [tin['col2'], tin['col3'], tin['col4']], names=['id','ra','dec'])
+
+    # load images
+    images = OrderedDict()
+    headers = OrderedDict()
+    with path.Path(wdir):
+        for f in image_files:
+            images[f] = fits.getdata(f + '.fits')
+            headers[f] = fits.getheader(f + '.fits')
+
+    # Here we translate *all* catalog stars to x/y to display then and to 
+    ifu_xy = project_xy(wdir, radec_file, fplane_file, tout['ra'], tout['dec'])
+    # Read xy information, i.e. catalog derived x/y positions vs. actual detecion x/y
+    t = ascii.read( os.path.join(wdir,xy_file) )
+    matched = Table( [t['IFUSLOT_cat'], t['xifu_cat'], t['yifu_cat']], names=['ifuslot', 'xifu', 'yifu'])
+
+    RMAX = 510.
+
+    # Matrix
+    ax_all = plt.axes([0.,0.,1/N,1/N])
+    # next lines only to get a legend
+    ax_all.plot([],[],'x',label="catalog",c='#2ECC71',markersize=10)
+    ax_all.plot([],[],'r+',label="detected",markersize=10)
+    ax_all.plot([],[],'o',label="matched",markersize=10, markerfacecolor='none', markeredgecolor='b')
+    l = ax_all.legend()
+
+    ax_all.xaxis.set_visible(False)
+    ax_all.yaxis.set_visible(False)
+
+    scaling = 1.8
+    s = 51. * scaling
+
+    fp = fplane.FPlane( os.path.join(wdir, fplane_file) )
+    for f in images:
+        ifuslot = f[-3:]
+
+        if not ifuslot in fp.ifuslots:
+            continue
+        ifu = fp.by_ifuslot(ifuslot)
+        x,y,xw,xy = (-(ifu.x) + RMAX - s/2)/N, (ifu.y - s/2 + RMAX)/N, s/N, s/N
+
+        ax = plt.axes([x/RMAX/2.,y/RMAX/2.,xw/RMAX/2.,xy/RMAX/2.])
+
+        ax.xaxis.set_visible(False)
+        ax.yaxis.set_visible(False)
+        try:
+            h = headers[f]
+            xsize   = h['NAXIS1']
+            ysize   = h['NAXIS2']
+            xcenter = h['CRVAL1']
+            ycenter = h['CRVAL2']
+            extent = [0.+xcenter,xsize+xcenter,0.+ycenter,ysize+ycenter]
+
+            ax.imshow( np.rot90(images[f], k=3), extent=extent, origin='bottom', vmin=-5., vmax=10., cmap=cmap)
+
+            ii = ifu_xy['ifuslot'] == int(ifuslot)
+            jj = matched['ifuslot'] == int(ifuslot)
+
+            # don't get confused about rotations
+            ax.plot(- ifu_xy['yifu'][ii], ifu_xy['xifu'][ii], 'x',c='#2ECC71',markersize=10)
+            ax.plot(- matched['yifu'][jj], matched['xifu'][jj], 'o',markersize=10, markerfacecolor='none', markeredgecolor='b')
+
+            ax.set_xlim([extent[0],extent[1]])
+            ax.set_ylim([extent[2],extent[3]])
+            dp = DAOPHOT_ALS.read( os.path.join(wdir, f + '.als') )
+            ax.plot(- dp.data['Y']+51./2., dp.data['X']-51./2., 'r+',markersize=10)
+            ax.text(.975,.025,ifuslot,transform=ax.transAxes,color='white',ha='right',va='bottom')
+        except:
+            pass
+
+
+def get_exposures_files(basedir):
+    """
+    Create list of all file prefixes based
+    on the existing collapsed IFU files in the current directory.
+
+    From files:
+
+    20180611T054545_015.fits
+    ...
+    20180611T054545_106.fits
+    20180611T055249_015.fits
+    ...
+    20180611T055249_106.fits
+    20180611T060006_015.fits
+    ...
+    20180611T060006_106.fits
+
+    Creates:
+
+    {
+     'exp01' : ['20180611T054545_015',...,'20180611T054545_106']
+     'exp02' : ['20180611T055249_015',...,'20180611T055249_106']
+     'exp03' : ['20180611T060006_015',...,'20180611T060006_106']
+    }
+
+
+    Args:
+       basedir (str): Directory to search.
+
+    Returns:
+       (OrderedDict): Ordered dictionary with pairs of exposure string "exp??" and time and list of
+    """
+    ff = []
+    with path.Path(basedir):
+        ff = glob.glob('2???????T??????_???.fits')
+    _exp_datetimes = [f[:19] for f in ff]
+
+    exp_datetimes = np.sort( np.unique([p[:15] for p in _exp_datetimes]) )
+
+    exposures_files = OrderedDict()
+    for i,edt in enumerate(exp_datetimes):
+        files_for_exposure = []
+        for f in ff:
+            if f.startswith(edt):
+                files_for_exposure.append(f.replace('.fits',''))
+        exposures_files["exp{:02d}".format(i+1)] = files_for_exposure
+    return exposures_files
+
+
+def mk_match_plots(args, wdir, prefixes):
+    """Creates match plots.
+
+    Args:
+        args (argparse.Namespace): Parsed configuration parameters.
+        wdir (str): Work directory.
+        prefixes (list): List file name prefixes for the collapsed IFU images.
+    """
+    logging.info("mk_match_plots: Creating match plots.")
+
+    shout_ifu_file = "shout.ifustars"
+    exposures = ["exp01", "exp02", "exp03"]
+    xy_files = {exp: "xy_{}.dat".format(exp) for exp in exposures}
+    tmp_csv_files = {exp: "tmp_{}.csv".format(exp) for exp in exposures}
+    radec_files = {exp: "radec2_{}.dat".format(exp) for exp in exposures}
+    fplane_file = "fplane.txt"
+
+    with path.Path(wdir):
+        exposures_files = get_exposures_files(".")
+        for exp in exposures:
+            f = plt.figure(figsize=[15,15])
+            ax = plt.subplot(111)
+            if not exp in exposures_files:
+                logging.warning("Found no image files for exposure {}.".format(exp))
+                continue
+            image_files = exposures_files[exp]
+            xy_file = xy_files[exp]
+            radec_file = radec_files[exp]
+            if os.path.exists(xy_file) and os.path.exists(radec_file):
+                mk_match_matrix(wdir, ax, exp, image_files, fplane_file, shout_ifu_file, xy_file, radec_file)
+                f.savefig( "detect_{}.pdf".format(exp) )
+
+
 def get_prefixes(wdir):
    """
    Create list of all file prefixes based
@@ -1011,6 +1213,7 @@ def cp_results(tmp_dir, results_dir):
     file_pattern += ["use.psf"]
     file_pattern += ["2*fp.fits"]
     file_pattern += ["xy_exp??.dat"]
+    file_pattern += ["detect_*.pdf"]
 
     for d in dirs:
         td = os.path.join(tmp_dir,d)
@@ -1129,6 +1332,10 @@ def main():
             if task in ["mkmosaic","all"]:
                 # build mosaic for focal plane
                 mkmosaic(args, wdir, prefixes)
+
+            if task in ["mk_match_plots","all"]:
+                # build mosaic for focal plane
+                mk_match_plots(args, wdir, prefixes)
 
     finally:
         if args.use_tmp:
