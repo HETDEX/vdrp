@@ -24,6 +24,9 @@ import tempfile
 import numpy as np
 from collections import OrderedDict
 
+#import scipy
+from scipy.interpolate import UnivariateSpline
+
 from distutils import dir_util
 
 import path
@@ -48,6 +51,9 @@ from vdrp import cltools
 from vdrp import utils
 from vdrp.daophot import DAOPHOT_ALS
 from vdrp import utils
+from vdrp.utils import read_radec, write_radec
+
+
 
 def parseArgs():
     """ Parses configuration file and command line arguments.
@@ -126,6 +132,7 @@ def parseArgs():
     defaults["mkmosaic_angoff"] = 1.8
     defaults["task"] = "all"
     defaults["offset_exposure_indices"] = "1,2,3"
+    defaults["optimal_ang_off_smoothing"] = 0.05
 
     if args.conf_file:
         config = ConfigParser.SafeConfigParser()
@@ -186,6 +193,7 @@ def parseArgs():
     parser.add_argument("--mkmosaic_angoff",  type=float)
     parser.add_argument("-t", "--task",  type=str)
     parser.add_argument("--offset_exposure_indices",  type=str)
+    parser.add_argument("--optimal_ang_off_smoothing", type=float)
 
     # positional arguments
     parser.add_argument('night', metavar='night', type=str,
@@ -650,7 +658,106 @@ def add_ra_dec(args, wdir, als_data, ra, dec, pa, fp, radec_outfile='tmp.csv'):
         table_out.write(radec_outfile, comment='#',overwrite=True)
 
 
-def compute_offset(args, wdir, prefixes, shout_ifustars = 'shout.ifustars',
+def compute_optimal_ang_off(wdir, smoothing=0.05, PLOT=True):
+    """
+    Computes the optimal angular offset angle by findin the minimal
+    RMS of a set of different trial angles.
+
+    Takes (if exist) all three different exposures into account and computes
+    weighted average ange (weighted by number of stars that went into the fit).
+
+    The RMS(ang_off) are interpolate with a smoothing spline. The smoothing value
+    is a parameter to this function.
+
+    Args:
+        wdir (string): Directory that holds the angular offset trials (e.g. 20180611v017/add_radec_angoff_trial)
+    Returns:
+        (float): Optimal offset angle.
+    """
+    colors = ['red','green','blue']
+    exposures = ['exp01','exp02', 'exp03']
+
+    # load getoff2 data for all exposures
+    results = Table(names=['exposure','ang_off','nstar','RMS'], dtype=['S5',float, int, float])
+    for exp in exposures:
+        list = glob.glob("{}/getoff2_{}*Deg.out".format(wdir,exp))
+        if len(list) == 0:
+            logging.warning("Found no files for exposure {}".format(exp))
+            continue
+
+        for filename in list:
+            # count how many stars contribute
+            with open(filename.replace('getoff2','getoff')) as f:
+                ll = f.readlines()
+            nstar = len(ll)
+            # now load the getoff2 to read the RMS
+            ang = float( filename.replace('Deg.out','').split("_")[-1] )
+            with open(filename) as f:
+                ll = f.readlines()
+            try:
+                tt = ll[0].split()
+                rms_dra = float( tt[2] )
+                rms_ddec = float( tt[3] )
+                results.add_row( [ exp, ang, nstar, np.sqrt(rms_dra**2. + rms_ddec**2.)]  )
+            except:
+                logging.error("Parsing {}".format(filename))
+
+    if len(results) == 0:
+        logging.error("Found no data for angular offset trials.")
+        return np.nan
+
+    if PLOT:
+        fig = plt.figure(figsize = [7,7])
+        ax = plt.subplot(111)
+
+    # angular subgrid for interpolation
+    aa = np.arange( results['ang_off'].min(), results['ang_off'].max() , 0.01)
+    aamin = Table(names=["exposure", "ang_off_min", "nstar_min", "RMS_min"], dtype=['S5',float, int, float])
+    # iterate over all 1-3 exposures.
+    for i,exp in enumerate(exposures):
+        ii = results['exposure'] == exp
+        x = results['ang_off'][ii]
+        y = results['RMS'][ii]
+        n = results['nstar'][ii]
+        jj = np.argsort(x)
+        x = x[jj]
+        y = y[jj]
+        n = n[jj]
+
+        # old cubic interpolation
+        #f = interpolate.interp1d(x, y, kind='cubic', bounds_error=False)
+        f = UnivariateSpline(x, y, s=smoothing)
+        # this is a bit silly, but since the number of stars may change as a function of
+        # angle we also need to interpolate those.
+        fn = UnivariateSpline(x, n, s=smoothing)
+        # find best offset angle
+        imin = np.nanargmin(f(aa))
+        amin = aa[imin]
+        rms_min = f(aa[imin])
+        nstar_min = fn(aa[imin])
+        aamin.add_row([exp, amin, nstar_min, rms_min] )
+
+        if PLOT:
+            plt.plot(x,y ,'o', c=colors[i], label=exp)
+            plt.plot(aa,f(aa) ,'-', c=colors[i])
+            plt.axvline(amin,color=colors[i])
+            plt.text(amin,1.5,"{:.3f}Deg # stars = {:.1f}".format(amin, nstar_min, ), color=colors[i], rotation=90., ha='right')
+
+    # average optimal offset angle accross all exposures
+    ang_off_avg = np.sum( aamin['ang_off_min']*aamin['nstar_min'])/np.sum(aamin['nstar_min'])
+
+    if PLOT:
+        plt.axvline(ang_off_avg,color="k")
+        plt.legend()
+        plt.xlabel("Offset angle")
+        plt.ylabel("RMS")
+        plt.text(.1,.9, "avg. optimal\noffset angle\nis {:.5} Deg".format( ang_off_avg), transform=ax.transAxes)
+        fig.tight_layout()
+        plt.savefig(os.path.join(wdir, "ang_off.pdf"),overwrite=True)
+
+    return ang_off_avg
+
+def compute_offset(args, wdir, prefixes, final_ang_offset=None, shout_ifustars = 'shout.ifustars',
         NEW_ADD_RA_DEC=True):
     """
     Requires, fplane.txt, radec.orig.
@@ -666,6 +773,8 @@ def compute_offset(args, wdir, prefixes, shout_ifustars = 'shout.ifustars',
     Args:
         args (argparse.Namespace): Parsed configuration parameters.
         wdir (str): Work directory.
+        prefixes (list): List file name prefixes for the collapsed IFU images.
+        final_ang_offset (float): Final angular offset to use. This overwrite the values in args.
         shout_ifustars (str): Shuffle output catalog of IFU stars.
     """
     shout_ifustars = 'shout.ifustars'
@@ -699,18 +808,22 @@ def compute_offset(args, wdir, prefixes, shout_ifustars = 'shout.ifustars',
         # functions.
         angoffsets         = args.add_radec_angoff_trial
         nominal_angoffset  = args.add_radec_angoff
+        if final_ang_offset != None:
+            logging.info("compute_offset: Using final angular offset value of {} Deg.".format(final_ang_offset))
+            angoffsets = []
+            nominal_angoffset = final_ang_offset
         angoffsets = filter( lambda x : x != nominal_angoffset, angoffsets) + [nominal_angoffset]
 
         # Give comprehensive information about the iterations.
         s = ""
         for r in radii:
             s+= "{}\" ".format(r)
-        logging.info("Computing offsets with using following sequence of matching radii: {}".format(s))
-        logging.info("  Using nominal angular offset value of {} Deg. ".format(args.add_radec_angoff))
+        logging.info("compute_offset: Computing offsets with using following sequence of matching radii: {}".format(s))
+        logging.info("compute_offset:  Using nominal angular offset value of {} Deg. ".format(args.add_radec_angoff))
         s = ""
         for a in args.add_radec_angoff_trial:
             s+= "{} Deg ".format(a)
-        logging.info("  Also computing offsets for the following set of trial angles: {}".format(s) )
+        logging.info("compute_offset:  Also computing offsets for the following set of trial angles: {}".format(s) )
 
         # will contain results of angular offset trials
         utils.createDir(args.add_radec_angoff_trial_dir)
@@ -724,7 +837,7 @@ def compute_offset(args, wdir, prefixes, shout_ifustars = 'shout.ifustars',
             # loop over all exposures in configuration file
             for exp_index in args.offset_exposure_indices:
                 if exp_index > len(exposures):
-                    logging.warning("Have no data for exposure {}. Skipping ...".format(exp_index))
+                    logging.warning("compute_offset: Have no data for exposure {}. Skipping ...".format(exp_index))
                     continue
                 exp = exposures[exp_index-1] # select first exposure
                 exp_prefixes = []
@@ -743,9 +856,9 @@ def compute_offset(args, wdir, prefixes, shout_ifustars = 'shout.ifustars',
                 # Matching radii are defined in config file.
                 ra_offset, dec_offset = 0., 0.
                 for i, radius in enumerate(radii):
-                    logging.info("Angular offset {:.3} Deg, getoff2 iteration {}, matching radius = {}\"".format(angoff, i+1, radius))
+                    logging.info("compute_offset: Angular offset {:.3} Deg, getoff2 iteration {}, matching radius = {}\"".format(angoff, i+1, radius))
                     radec_outfile='tmp_exp{:02d}.csv'.format(exp_index)
-                    logging.info("Adding RA & Dec to detections, applying offsets ra_offset,dec_offset,pa_offset = {},{},{}".format( ra_offset, dec_offset, angoff) )
+                    logging.info("compute_offset: Adding RA & Dec to detections, applying offsets ra_offset,dec_offset,pa_offset = {},{},{}".format( ra_offset, dec_offset, angoff) )
                     # Call add_ra_dec, add offsets first.
                     new_ra, new_dec, new_pa = ra * 15. + ra_offset, dec + dec_offset, pa + angoff
                     if NEW_ADD_RA_DEC:
@@ -762,12 +875,12 @@ def compute_offset(args, wdir, prefixes, shout_ifustars = 'shout.ifustars',
                         add_ra_decOld(args, wdir, exp_prefixes, ra=new_ra, dec=new_dec, pa=new_pa, radec_outfile=radec_outfile)
 
                     # Now compute offsets.
-                    logging.info("Computing offsets ...")
+                    logging.info("compute_offset: Computing offsets ...")
                     dra_offset, ddec_offset = cltools.getoff2(radec_outfile, shout_ifustars, radius, ra_offset=0., dec_offset=0., logging=logging)
                     ra_offset, dec_offset =  ra_offset+dra_offset, dec_offset+ddec_offset
-                    logging.info("End getoff2 iteration {}: Offset adjusted by {:.6f}, {:.6f} to {:.6f}, {:.6f}".format(i+1, dra_offset, ddec_offset, ra_offset, dec_offset))
-                    logging.info("")
-                    logging.info("")
+                    logging.info("compute_offset: End getoff2 iteration {}: Offset adjusted by {:.6f}, {:.6f} to {:.6f}, {:.6f}".format(i+1, dra_offset, ddec_offset, ra_offset, dec_offset))
+                    logging.info("compute_offset: ")
+                    logging.info("compute_offset: ")
 
                 # Copy getoff.out and getoff2.out to args.add_radec_angoff_trial_dir
                 sangoff = '_{:06.3f}Deg'.format(angoff)
@@ -785,7 +898,6 @@ def compute_offset(args, wdir, prefixes, shout_ifustars = 'shout.ifustars',
                 # radec.dat and radec2.dat witouh angle information in filename.
                 if angoff == args.add_radec_angoff:
                     write_ra_dec_dats(ra, dec, pa, exp_index, angoff, ra_offset, dec_offset, nominal=True)
-
 
 
 def add_ifu_xyOld(args, wdir):
@@ -837,6 +949,73 @@ def add_ifu_xyOld(args, wdir):
             t.write('xy_exp{:02d}.dat'.format(exp_index), format="ascii.fixed_width", delimiter='', overwrite=True)
             # this would be analogous to Karl's format
             #t.write('xy.dat', format="ascii.fast_no_header"
+
+
+def combine_radec(wdir, PLOT=True):
+    """
+    Computes - based on the RA Dec information of the individual exposures
+    (from radec2_exp0?.dat) the final RA/Dec for the shot.
+
+    Notes:
+        Creates radec2_final.dat.
+        Optionally create a plot indicating the individual exposure positions.
+
+    Args:
+        wdir (str): Work directory.
+    """
+    logging.info("combine_radec: Combining RA, Dec positions of all exposures to final shot RA, Dec.")
+    dither_offsets = [(0.,0.),(1.270,-0.730),(1.270,0.730)]
+    ff = np.sort( glob.glob(wdir + "/radec2_exp??.dat") )
+    ra0,dec0,pa0 = read_radec(ff[0])
+    translated = []
+    if PLOT:
+        fig = plt.figure(figsize=[7,7])
+        ax = plt.subplot(111)
+    for i,(f, offset) in enumerate(zip(ff, dither_offsets)):
+        ra,dec,pa = read_radec(f)
+        logging.info("combine_radec: Exposure {:d} RA,Dec = {:.6f},{:.6f}".format(i+1,ra,dec))
+        rot = 360.0 - (pa + 90.)
+        tp = TangentPlane(ra, dec, rot)
+
+        xfp = 0.
+        yfp = 0.
+        _ra, _dec = tp.xy2raDec(xfp, yfp)
+
+        if PLOT:
+            plt.plot(_ra,_dec,'s',color='grey')
+            plt.text(_ra+5e-6,_dec+5e-6,i+1)
+
+        xfp = -offset[0]
+        yfp = -offset[1]
+        _ra, _dec = tp.xy2raDec(xfp, yfp)
+
+        if PLOT:
+            plt.plot(_ra,_dec,'o',color='grey')
+            plt.text(_ra+5e-6,_dec+5e-6,i+1)
+
+        translated.append([_ra, _dec])
+
+    translated = np.array(translated)
+    final_ra, final_dec = np.mean(translated[:,0]), np.mean(translated[:,1])
+    dfinal_ra = np.std(translated[:,0])/np.cos(np.deg2rad(dec0))
+    ddfinal_dec = np.std(translated[:,1])
+
+    s1  = "RA = {:.6f} Deg +/- {:.3f}\"".format(final_ra, dfinal_ra*3600.)
+    logging.info("combine_radec: Final shot  " + s1)
+    s2  = "Dec = {:.6f} Deg +/- {:.3f}\" ".format(final_dec, ddfinal_dec*3600.)
+    logging.info("combine_radec: Final shot  " + s2)
+    if PLOT:
+        plt.plot([],[],'s',color='grey',label="exposure center")
+        plt.plot([],[],'o',color='grey',label="inferred shot center")
+        l = plt.legend()
+        plt.plot( [final_ra], [final_dec],'ko',markersize=10)
+        plt.text(final_ra, final_dec,s1 + "\n" + s2,ha='right')
+        plt.xlabel("RA [Deg]")
+        plt.ylabel("Dec [Deg]")
+
+    write_radec(final_ra,final_dec,pa0, os.path.join(wdir, "radec2_all.dat") )
+    fig.tight_layout()
+    plt.savefig(os.path.join(wdir, "radec2_all.pdf"))
 
 
 def add_ifu_xy(args, wdir):
@@ -1214,6 +1393,8 @@ def cp_results(tmp_dir, results_dir):
     file_pattern += ["2*fp.fits"]
     file_pattern += ["xy_exp??.dat"]
     file_pattern += ["detect_*.pdf"]
+    file_pattern += ["radec2_final.dat"]
+    file_pattern += ["radec2_final.pdf"]
 
     for d in dirs:
         td = os.path.join(tmp_dir,d)
@@ -1282,20 +1463,20 @@ def main():
             exposures = get_exposures(prefixes)
 
             if task in ["mk_post_stamp_matrix","all"]:
-              # Creat IFU postage stamp matrix image.
-              mk_post_stamp_matrix(args, wdir, prefixes)
+               # Creat IFU postage stamp matrix image.
+               mk_post_stamp_matrix(args, wdir, prefixes)
 
             if task in ["daophot_find","all"]:
-              # Run initial object detection in postage stamps.
-              daophot_find(args, wdir, prefixes)
+               # Run initial object detection in postage stamps.
+               daophot_find(args, wdir, prefixes)
 
             if task in ["daophot_phot_and_allstar","all"]:
-              # Run photometry 
-              daophot_phot_and_allstar(args, wdir, prefixes)
+               # Run photometry 
+               daophot_phot_and_allstar(args, wdir, prefixes)
 
             if task in ["mktot","all"]:
-              # Combine detections accross all IFUs.
-              mktot(args, wdir, prefixes)
+               # Combine detections accross all IFUs.
+               mktot(args, wdir, prefixes)
 
             if task in ["rmaster","all"]:
               # Run daophot master to ???
@@ -1305,37 +1486,47 @@ def main():
                 logging.info("Only one exposure, skipping rmaster.")
 
             if task in ["flux_norm","all"]:
-              # Compute relative flux normalisation.
-              if len(exposures) > 1:
-                flux_norm(args, wdir)
-              else:
-                logging.info("Only one exposure, skipping flux_norm.")
+               # Compute relative flux normalisation.
+               if len(exposures) > 1:
+                 flux_norm(args, wdir)
+               else:
+                 logging.info("Only one exposure, skipping flux_norm.")
 
             if task in ["redo_shuffle","all"]:
-              # Rerun shuffle to get IFU stars
-              redo_shuffle(args, wdir)
+               # Rerun shuffle to get IFU stars
+               redo_shuffle(args, wdir)
 
             if task in ["get_ra_dec_orig","all"]:
-              # Retrieve original RA DEC from one of the multi files.
-              # store in radec.orig
-              get_ra_dec_orig(args, wdir)
+               # Retrieve original RA DEC from one of the multi files.
+               # store in radec.orig
+               get_ra_dec_orig(args, wdir)
 
             if task in ["compute_offset","all"]:
-              # Compute offsets by matching 
-              # detected stars to sdss stars from shuffle.
-              # This also calls add_ra_dec to add RA DEC information to detections.
-              compute_offset(args,wdir,prefixes)
+               # Compute offsets by matching 
+               # detected stars to sdss stars from shuffle.
+               # This also calls add_ra_dec to add RA DEC information to detections.
+               compute_offset(args,wdir,prefixes)
 
+            if task in ["compute_with_optimal_ang_off","all"]:
+               # Compute offsets by matching 
+               trial_dir =os.path.join(wdir, "add_radec_angoff_trial")
+               optimal_ang_off= compute_optimal_ang_off(trial_dir,\
+                       smoothing=args.optimal_ang_off_smoothing, PLOT=True)
+               compute_offset(args, wdir,prefixes, final_ang_offset=optimal_ang_off)
+
+            if task in ["combine_radec","all"]:
+                # Combine individual exposure radec information.
+                combine_radec(wdir)
             if task in ["add_ifu_xy","all"]:
-                add_ifu_xy(args, wdir)
+               add_ifu_xy(args, wdir)
 
             if task in ["mkmosaic","all"]:
-                # build mosaic for focal plane
-                mkmosaic(args, wdir, prefixes)
+               # build mosaic for focal plane
+               mkmosaic(args, wdir, prefixes)
 
             if task in ["mk_match_plots","all"]:
-                # build mosaic for focal plane
-                mk_match_plots(args, wdir, prefixes)
+               # build mosaic for focal plane
+               mk_match_plots(args, wdir, prefixes)
 
     finally:
         if args.use_tmp:
