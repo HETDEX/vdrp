@@ -197,18 +197,20 @@ def parseArgs():
     return args
 
 
-def cp_post_stamps(args, wdir):
-    """ Copy CoFeS (collapsed IFU images). 
+def cp_post_stamps(wdir, reduction_dir, night, shotid):
+    """ Copy CoFeS (collapsed IFU images).
 
     Args:
-        args (argparse.Namespace): Parsed configuration parameters.
         wdir (str): Work directory.
+        reduction_dir (str): Directory that holds panacea reductions.
+        night (str): Night (e.g. 20180611)
+        shotid (str): ID of shot (e.g. 017)
 
     Raises:
         Exception
     """
     ## find the IFU postage stamp fits files and copy them over
-    pattern = os.path.join( args.reduction_dir, "{}/virus/virus0000{}/*/*/CoFeS*".format( args.night, args.shotid ) )
+    pattern = os.path.join( reduction_dir, "{}/virus/virus0000{}/*/*/CoFeS*".format( night, shotid ) )
     logging.info("Copy {} files to {}".format(pattern,wdir))
     cofes_files = glob.glob(pattern)
     if len(cofes_files) == 0:
@@ -226,13 +228,14 @@ def cp_post_stamps(args, wdir):
         shutil.copy2(f, os.path.join(wdir,target_filename) )
 
 
-def mk_post_stamp_matrix(args,  wdir, prefixes):
+def mk_post_stamp_matrix(wdir, prefixes, cofes_vis_vmin, cofes_vis_vmax):
     """ Create the IFU postage stamp matrix image.
 
     Args:
-        args (argparse.Namespace): Parsed configuration parameters.
         wdir (str): Work directory.
-        cofes_files (list): List of CoFeS file names (collapsed IFU images).
+        prefixes (list): List file name prefixes for the collapsed IFU images.
+        cofes_vis_vmin (float): Minimum value (= black) for matrix overview plot.
+        cofes_vis_vmax (float): Maximum value (= black) for matrix overview plot.
     """
     # create the IFU postage stamp matrix image
     logging.info("Creating the IFU postage stamp matrix images ...")
@@ -242,44 +245,53 @@ def mk_post_stamp_matrix(args,  wdir, prefixes):
         for exp in exposures:
             outfile_name = exp + ".png"
             logging.info("Creating {} ...".format(outfile_name))
-            cofes_4x4_plots(prefix = exp, outfile_name = outfile_name, vmin = args.cofes_vis_vmin, vmax = args.cofes_vis_vmax, logging=logging)
+            cofes_4x4_plots(prefix = exp, outfile_name = outfile_name, vmin = cofes_vis_vmin, vmax = cofes_vis_vmax, logging=logging)
 
 
-def daophot_find(args,  wdir, prefixes):
+
+def daophot_find(wdir, prefixes, daophot_opt, daophot_sigma, daophot_xmin, daophot_xmax, daophot_ymin, daophot_ymix):
     """ Run initial daophot find.
 
     Args:
-        args (argparse.Namespace): Parsed configuration parameters.
         wdir (str): Work directory.
         prefixes (list): List file name prefixes for the collapsed IFU images.
+        daophot_opt (str): Daphot sigma value.
+        daophot_sigma (float): Filename for daophot configuration.
+        daophot_xmin (float): X limit for daophot detections.
+        daophot_xmax (float): X limit for daophot detections.
+        daophot_ymin (float): Y limit for daophot detections.
+        daophot_ymix (float): Y limit for daophot detections.
     """
     logging.info("Running initial daophot find...")
     # Create configuration file for daophot.
-    shutil.copy2(args.daophot_opt, os.path.join(wdir, "daophot.opt") )
+    shutil.copy2(daophot_opt, os.path.join(wdir, "daophot.opt") )
     with path.Path(wdir):
         for prefix in prefixes:
             # execute daophot
-            daophot.daophot_find(prefix, args.daophot_sigma,logging=logging)
+            daophot.daophot_find(prefix, daophot_sigma,logging=logging)
             # filter ouput
-            daophot.filter_daophot_out(prefix + ".coo", prefix + ".lst", args.daophot_xmin,args.daophot_xmax,args.daophot_ymin,args.daophot_ymix)
+            daophot.filter_daophot_out(prefix + ".coo", prefix + ".lst", daophot_xmin, daophot_xmax, daophot_ymin, daophot_ymix)
 
 
-def daophot_phot_and_allstar(args, wdir, prefixes):
+def daophot_phot_and_allstar(wdir, prefixes, daophot_photo_opt, daophot_allstar_opt, daophot_phot_psf):
     """ Runs daophot photo and allstar on all IFU postage stamps.
     Produces *.ap and *.als files.
     Analogous to run4a.
 
     Args:
-        args (argparse.Namespace): Parsed configuration parameters.
         wdir (str): Work directory.
         prefixes (list): List file name prefixes for the collapsed IFU images.
+        daophot_opt (str): Filename for daophot configuration.
+        daophot_photo_opt (str): Filename for daophot photo task configuration.
+        daophot_allstar_opt (str): Filename for daophot allstar task configuration.
+
     """
     # run initial daophot phot & allstar
     logging.info("Running daophot phot & allstar ...")
     # Copy configuration files for daophot and allstar.
-    shutil.copy2(args.daophot_photo_opt, os.path.join(wdir, "photo.opt") )
-    shutil.copy2(args.daophot_allstar_opt, os.path.join(wdir, "allstar.opt") )
-    shutil.copy2(args.daophot_phot_psf, os.path.join(wdir, "use.psf"))
+    shutil.copy2(daophot_photo_opt, os.path.join(wdir, "photo.opt") )
+    shutil.copy2(daophot_allstar_opt, os.path.join(wdir, "allstar.opt") )
+    shutil.copy2(daophot_phot_psf, os.path.join(wdir, "use.psf"))
     with path.Path(wdir):
         for prefix in prefixes:
             # first need to shorten file names such
@@ -1432,23 +1444,23 @@ def main():
     try:
         for task in tasks:
             if task in ["cp_post_stamps","all"]:
-                # Copy over collapsed IFU cubes, aka IFU postage stamps.
-                cp_post_stamps(args, wdir)
+               # Copy over collapsed IFU cubes, aka IFU postage stamps.
+               cp_post_stamps(wdir, args.reduction_dir, args.night, args.shotid)
 
             prefixes  = get_prefixes(wdir)
             exposures = get_exposures(prefixes)
 
             if task in ["mk_post_stamp_matrix","all"]:
-               # Creat IFU postage stamp matrix image.
-               mk_post_stamp_matrix(args, wdir, prefixes)
+               # Create IFU postage stamp matrix image.
+               mk_post_stamp_matrix(wdir, prefixes, args.cofes_vis_vmin, args.cofes_vis_vmax)
 
             if task in ["daophot_find","all"]:
                # Run initial object detection in postage stamps.
-               daophot_find(args, wdir, prefixes)
+               daophot_find(wdir, prefixes, args.daophot_opt, args.daophot_sigma, args.daophot_xmin, args.daophot_xmax, args.daophot_ymin, args.daophot_ymix)
 
             if task in ["daophot_phot_and_allstar","all"]:
                # Run photometry 
-               daophot_phot_and_allstar(args, wdir, prefixes)
+               daophot_phot_and_allstar(args, wdir, prefixes, args.daophot_photo_opt, args.daophot_allstar_opt, args.daophot_phot_psf):
 
             if task in ["mktot","all"]:
                # Combine detections accross all IFUs.
