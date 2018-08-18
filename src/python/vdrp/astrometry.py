@@ -1067,50 +1067,52 @@ def add_ifu_xy(args, wdir):
             t.write('xy_exp{:02d}.dat'.format(exp_index), format="ascii.fixed_width", delimiter='', overwrite=True)
 
 
-def mkmosaic(args, wdir, prefixes):
+def mkmosaic(wdir, prefixes, night, shotid, mkmosaic_angoff):
     """Creates mosaic fits image.
 
     Args:
-        args (argparse.Namespace): Parsed configuration parameters.
         wdir (str): Work directory.
         prefixes (list): List file name prefixes for the collapsed IFU images.
+        night (str): Night (e.g. 20180611)
+        shotid (str): ID of shot (e.g. 017)
+        mkmosaic_angoff (float): Angular offset to add for creation of mosaic image.
     """
     with path.Path(wdir):
         logging.info("mkmosaic: Creating mosaic image.")
         # build mosaic from IFU images
-        exposures = np.unique([p[:15] for p in prefixes])
-        exp1 = exposures[0]
-        # collect all als files for the first exposure
-        pp = filter(lambda x : x.startswith(exp1), prefixes)
-        logging.info("mkmosaic: Calling immosaicv ....")
-        daophot.rm(['immosaic.fits'])
-        cltools.immosaicv(pp, fplane_file = "fplane.txt", logging=logging)
+        #exposures = np.unique([p[:15] for p in prefixes])
+        #exp1 = exposures[0]
+        exposures_files = get_exposures_files(".")
+        for exp in exposures_files:
+            logging.info("mkmosaic: Calling immosaicv ....")
+            daophot.rm(['immosaic.fits'])
+            cltools.immosaicv( exposures_files[exp], fplane_file = "fplane.txt", logging=logging)
 
-        # rotate mosaic to correct PA on sky
-        ra,dec,pa = utils.read_radec('radec2_exp01.dat')
-        alpha = 360. - (pa + 90. + args.mkmosaic_angoff)
+            # rotate mosaic to correct PA on sky
+            ra,dec,pa = utils.read_radec('radec2_{}.dat'.format(exp))
+            alpha = 360. - (pa + 90. + mkmosaic_angoff)
 
-        logging.info("mkmosaic: Calling imrot with angle {} (can take a minute) ....".format(alpha))
-        daophot.rm(['imrot.fits'])
-        cltools.imrot("immosaic.fits", alpha, logging=logging)
-        hdu = fits.open("imrot.fits")
+            logging.info("mkmosaic: Calling imrot with angle {} (can take a minute) ....".format(alpha))
+            daophot.rm(['imrot.fits'])
+            cltools.imrot("immosaic.fits", alpha, logging=logging)
+            hdu = fits.open("imrot.fits")
 
-        h = hdu[0].header
-        h["CRVAL1"]  = ra
-        h["CRVAL2"]  = dec
-        h["CTYPE1"]  = "RA---TAN"
-        h["CTYPE2"]  = "DEC--TAN"
-        h["CD1_1"]   = -0.0002777
-        h["CD1_2"]   = 0.
-        h["CD2_2"]   = 0.0002777
-        h["CD2_1"]   = 0
-        h["CRPIX1"]  = 650.0
-        h["CRPIX2"]  = 650.0
-        h["CUNIT1"]  = "deg"
-        h["CUNIT2"]  = "deg"
-        h["EQUINOX"] = 2000
+            h = hdu[0].header
+            h["CRVAL1"]  = ra
+            h["CRVAL2"]  = dec
+            h["CTYPE1"]  = "RA---TAN"
+            h["CTYPE2"]  = "DEC--TAN"
+            h["CD1_1"]   = -0.0002777
+            h["CD1_2"]   = 0.
+            h["CD2_2"]   = 0.0002777
+            h["CD2_1"]   = 0
+            h["CRPIX1"]  = 650.0
+            h["CRPIX2"]  = 650.0
+            h["CUNIT1"]  = "deg"
+            h["CUNIT2"]  = "deg"
+            h["EQUINOX"] = 2000
 
-        hdu.writeto("{}v{}fp.fits".format(args.night, args.shotid),overwrite=True)
+            hdu.writeto("{}v{}fp_{}.fits".format(night, shotid, exp),overwrite=True)
 
 
 def project_xy(wdir, radec_file, fplane_file, ra, dec):
@@ -1510,7 +1512,7 @@ def main():
 
             if task in ["mkmosaic","all"]:
                # build mosaic for focal plane
-               mkmosaic(args, wdir, prefixes)
+               mkmosaic(wdir, prefixes, args.night, args.shotid, args.mkmosaic_angoff)
 
             if task in ["mk_match_plots","all"]:
                # build mosaic for focal plane
