@@ -9,6 +9,12 @@ DEC=$4
 TRACK=$5
 CFG=../${NIGHT}v${SHOT}.config
 
+# Fall back to vdrp.config if no night/shot specific 
+# configuration file exists.
+if [ ! -f $CFG ]; then
+    CFG=../vdrp.config
+fi
+
 echo Configuration file $CFG
 # Either run
 ../vdrp/src/python/vdrp/astrometry.py -c $CFG $NIGHT $SHOT $RA $DEC $TRACK
