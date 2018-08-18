@@ -1006,9 +1006,9 @@ def combine_radec(wdir, PLOT=True):
         plt.xlabel("RA [Deg]")
         plt.ylabel("Dec [Deg]")
 
-    write_radec(final_ra,final_dec,pa0, os.path.join(wdir, "radec2_all.dat") )
+    write_radec(final_ra,final_dec,pa0, os.path.join(wdir, "radec2_final.dat") )
     fig.tight_layout()
-    plt.savefig(os.path.join(wdir, "radec2_all.pdf"))
+    plt.savefig(os.path.join(wdir, "radec2_final.pdf"))
 
 
 def add_ifu_xy(args, wdir):
