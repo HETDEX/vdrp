@@ -10,6 +10,7 @@ class TestBase(unittest.TestCase):
     predifined list of input data.
     """
     ff = []
+    dd = []
 
     @classmethod
     def setUpClass(cls):
@@ -21,8 +22,12 @@ class TestBase(unittest.TestCase):
         p = vdrp.__path__
         ptestdata = os.path.join(p[0], '../tests/testdata')
         ptestdata = os.path.realpath(ptestdata)
+
         for f in cls.ff:
             shutil.copy2(os.path.join(ptestdata,f), cls.test_dir)
+
+        for d in cls.dd:
+            shutil.copytree(os.path.join(ptestdata,d), os.path.join(cls.test_dir, d))
 
     @classmethod
     def tearDownClass(cls):

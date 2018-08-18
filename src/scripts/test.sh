@@ -1,5 +1,5 @@
 #!/bin/bash
 
-. setup.sh
+. ../setup.sh
 
-python -m unittest tests.test_cltools tests.test_daophot
+python -m unittest tests.test_cltools tests.test_daophot  tests.test_astrometry

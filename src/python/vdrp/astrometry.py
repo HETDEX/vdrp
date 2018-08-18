@@ -1462,7 +1462,7 @@ def main():
 
             if task in ["daophot_phot_and_allstar","all"]:
                # Run photometry 
-               daophot_phot_and_allstar(args, wdir, prefixes, args.daophot_photo_opt, args.daophot_allstar_opt, args.daophot_phot_psf):
+               daophot_phot_and_allstar(wdir, prefixes, args.daophot_photo_opt, args.daophot_allstar_opt, args.daophot_phot_psf)
 
             if task in ["mktot","all"]:
                # Combine detections accross all IFUs.
