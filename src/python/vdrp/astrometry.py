@@ -7,6 +7,8 @@ Contains python translation of Karl Gebhardt
 .. moduleauthor:: Maximilian Fabricius <mxhf@mpe.mpg.de>
 """
 from __future__ import print_function
+import matplotlib
+matplotlib.use("agg")
 from matplotlib import pyplot as plt
 
 from numpy import loadtxt
