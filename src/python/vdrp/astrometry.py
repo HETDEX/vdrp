@@ -92,18 +92,6 @@ def parseArgs():
     defaults["cofes_vis_vmin"] = -15.
     defaults["cofes_vis_vmax"] = 25.
     defaults["daophot_sigma"]  = 2
-    defaults["daophot_opt_VAR"] = 2
-    defaults["daophot_opt_READ"] = 1.06
-    defaults["daophot_opt_LOW"] = 10
-    defaults["daophot_opt_FWHM"] = 2.0
-    defaults["daophot_opt_WATCH"] = -1
-    defaults["daophot_opt_PSF"] = 7.
-    defaults["daophot_opt_GAIN"] = 1.274
-    defaults["daophot_opt_HIGH"] = 84000.
-    defaults["daophot_opt_THRESHOLD"] = 15.
-    defaults["daophot_opt_FIT"] = 4.0
-    defaults["daophot_opt_EX"] = 5
-    defaults["daophot_opt_AN"] = 1
     defaults["daophot_xmin"] = 4
     defaults["daophot_xmax"] = 45
     defaults["daophot_ymin"] = 4
@@ -146,54 +134,42 @@ def parseArgs():
     parents=[conf_parser]
     )
     parser.set_defaults(**defaults)
-    parser.add_argument("--logfile", type=str)
-    parser.add_argument("--use_tmp", type=str)
-    parser.add_argument("--remove_tmp", type=str)
-    parser.add_argument("--reduction_dir", type=str)
-    parser.add_argument("--cofes_vis_vmin", type=float)
-    parser.add_argument("--cofes_vis_vmax", type=float)
-    parser.add_argument("--daophot_sigma",  type=float)
-    parser.add_argument("--daophot_opt_VAR",  type=float)
-    parser.add_argument("--daophot_opt_READ",  type=float)
-    parser.add_argument("--daophot_opt_LOW",  type=float)
-    parser.add_argument("--daophot_opt_FWHM",  type=float)
-    parser.add_argument("--daophot_opt_WATCH",  type=float)
-    parser.add_argument("--daophot_opt_PSF",  type=float)
-    parser.add_argument("--daophot_opt_GAIN",  type=float)
-    parser.add_argument("--daophot_opt_HIGH",  type=float)
-    parser.add_argument("--daophot_opt_THRESHOLD",  type=float)
-    parser.add_argument("--daophot_opt_FIT",  type=float)
-    parser.add_argument("--daophot_opt_EX",  type=float)
-    parser.add_argument("--daophot_opt_AN",  type=float)
-    parser.add_argument("--daophot_xmin",  type=float)
-    parser.add_argument("--daophot_xmax",  type=float)
-    parser.add_argument("--daophot_ymin",  type=float)
-    parser.add_argument("--daophot_ymix",  type=float)
-    parser.add_argument("--daophot_phot_psf",  type=str)
-    parser.add_argument("--daophot_opt",  type=str)
-    parser.add_argument("--daophot_photo_opt",  type=str)
-    parser.add_argument("--daophot_allstar_opt",  type=str)
-    parser.add_argument("--mktot_ifu_grid",  type=str)
-    parser.add_argument("--mktot_magmin",  type=float)
-    parser.add_argument("--mktot_magmax",  type=float)
-    parser.add_argument("--mktot_xmin",  type=float)
-    parser.add_argument("--mktot_xmax",  type=float)
-    parser.add_argument("--mktot_ymin",  type=float)
-    parser.add_argument("--mktot_ymax",  type=float)
-    parser.add_argument("--fluxnorm_mag_max",  type=float)
-    parser.add_argument("--fplane_txt",  type=str)
-    parser.add_argument("--shuffle_cfg",  type=str)
-    parser.add_argument("--acam_magadd",  type=float)
-    parser.add_argument("--wfs1_magadd",  type=float)
-    parser.add_argument("--wfs2_magadd",  type=float)
-    parser.add_argument("--add_radec_angoff",  type=float)
-    parser.add_argument("--add_radec_angoff_trial",  type=str)
-    parser.add_argument("--add_radec_angoff_trial_dir",  type=str)
-    parser.add_argument('--getoff2_radii', type=str)
-    parser.add_argument("--mkmosaic_angoff",  type=float)
-    parser.add_argument("-t", "--task",  type=str)
+    parser.add_argument("--logfile", type=str, help="Filename for log file.")
+    parser.add_argument("--use_tmp", type=str, help="Use a temporary directory. Result files will be copied to NIGHTvSHOT.")
+    parser.add_argument("--remove_tmp", type=str, help="Remove temporary directory after completion.")
+    parser.add_argument("--reduction_dir", type=str, help="Directory that holds panacea reductions. Subdriectories with name like NIGHTvSHOT must exist.")
+    parser.add_argument("--cofes_vis_vmin", type=float, help="Minimum value (= white) for matrix overview plot.")
+    parser.add_argument("--cofes_vis_vmax", type=float, help="Maximum value (= black) for matrix overview plot.")
+    parser.add_argument("--daophot_sigma",  type=float, help="Daphot sigma value.")
+    parser.add_argument("--daophot_xmin",  type=float, help="X limit for daophot detections.")
+    parser.add_argument("--daophot_xmax",  type=float, help="X limit for daophot detections.")
+    parser.add_argument("--daophot_ymin",  type=float, help="Y limit for daophot detections.")
+    parser.add_argument("--daophot_ymix",  type=float, help="Y limit for daophot detections.")
+    parser.add_argument("--daophot_phot_psf",  type=str, help="Filename for daophot PSF model.")
+    parser.add_argument("--daophot_opt",  type=str, help="Filename for daophot configuration.")
+    parser.add_argument("--daophot_photo_opt",  type=str, help="Filename for daophot photo task configuration.")
+    parser.add_argument("--daophot_allstar_opt",  type=str, help="Filename for daophot allstar task configuration.")
+    parser.add_argument("--mktot_ifu_grid",  type=str, help="Name of file that holds gird of IFUs offset fit (mktot).")
+    parser.add_argument("--mktot_magmin",  type=float, help="Magnitude limit for offset fit (mktot).")
+    parser.add_argument("--mktot_magmax",  type=float, help="Magnitude limit for offset fit (mktot).")
+    parser.add_argument("--mktot_xmin",  type=float, help="X limit for offset fit (mktot).")
+    parser.add_argument("--mktot_xmax",  type=float, help="X limit for offset fit (mktot).")
+    parser.add_argument("--mktot_ymin",  type=float, help="Y limit for offset fit (mktot).")
+    parser.add_argument("--mktot_ymax",  type=float, help="Y limit for offset fit (mktot).")
+    parser.add_argument("--fluxnorm_mag_max",  type=float, help="Magnitude limit for flux normalisation (mktot).")
+    parser.add_argument("--fplane_txt",  type=str, help="Filename for fplane file.")
+    parser.add_argument("--shuffle_cfg",  type=str, help="Filename for shuffle configuration.")
+    parser.add_argument("--acam_magadd",  type=float, help="do_shuffle acam magadd.")
+    parser.add_argument("--wfs1_magadd",  type=float, help="do_shuffle wfs1 magadd.")
+    parser.add_argument("--wfs2_magadd",  type=float, help="do_shuffle wfs2 magadd.")
+    parser.add_argument("--add_radec_angoff",  type=float, help="Angular offset to add during conversion of x/y coordinate to RA/Dec.")
+    parser.add_argument("--add_radec_angoff_trial",  type=str, help="Trial values for angular offsets.")
+    parser.add_argument("--add_radec_angoff_trial_dir",  type=str, help="Directory to save results of angular offset trials.")
+    parser.add_argument('--getoff2_radii', type=str, help="Comma separated list of matching radii for astrometric offset measurement.")
+    parser.add_argument("--mkmosaic_angoff",  type=float, help="Angular offset to add for creation of mosaic image.")
+    parser.add_argument("-t", "--task",  type=str, help="Task to execute.")
     parser.add_argument("--offset_exposure_indices",  type=str)
-    parser.add_argument("--optimal_ang_off_smoothing", type=float)
+    parser.add_argument("--optimal_ang_off_smoothing", type=float, help="Smothing value for smoothing spline use for measurement of optimal angular offset value.")
 
     # positional arguments
     parser.add_argument('night', metavar='night', type=str,
