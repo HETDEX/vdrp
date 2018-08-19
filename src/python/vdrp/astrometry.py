@@ -156,7 +156,7 @@ def parseArgs():
     parser.add_argument("--mktot_xmax",  type=float, help="X limit for offset fit (mktot).")
     parser.add_argument("--mktot_ymin",  type=float, help="Y limit for offset fit (mktot).")
     parser.add_argument("--mktot_ymax",  type=float, help="Y limit for offset fit (mktot).")
-    parser.add_argument("--fluxnorm_mag_max",  type=float, help="Magnitude limit for flux normalisation (mktot).")
+    parser.add_argument("--fluxnorm_mag_max",  type=float, help="Magnitude limit for flux normalisation.")
     parser.add_argument("--fplane_txt",  type=str, help="Filename for fplane file.")
     parser.add_argument("--shuffle_cfg",  type=str, help="Filename for shuffle configuration.")
     parser.add_argument("--acam_magadd",  type=float, help="do_shuffle acam magadd.")
@@ -378,7 +378,7 @@ def mktot(args, wdir, prefixes):
             fout.write(s)
 
 
-def rmaster(args, wdir):
+def rmaster(wdir):
     """ Executes daomaster. This registers the sets of detections
     for the thre different exposrues with respec to each other.
 
@@ -386,7 +386,6 @@ def rmaster(args, wdir):
         Analogous to run8b.
 
     Args:
-        args (argparse.Namespace): Parsed configuration parameters.
         wdir (str): Work directory.
     """
     logging.info("Running daomaster.")
@@ -421,7 +420,7 @@ def getNorm(all_raw, mag_max):
     return biwgt_loc(f1/favg),biwgt_loc(f2/favg),biwgt_loc(f3/favg)
 
 
-def flux_norm(args, wdir, infile='all.raw', outfile='norm.dat'):
+def flux_norm(wdir, mag_max, infile='all.raw', outfile='norm.dat'):
     """ Reads all.raw and compute relative flux normalisation
     for the three exposures.
 
@@ -429,13 +428,12 @@ def flux_norm(args, wdir, infile='all.raw', outfile='norm.dat'):
         Analogous to run9.
 
     Args:
-        args (argparse.Namespace): Parsed configuration parameters.
         wdir (str): Work directory.
+        mag_max (float): Magnitude limit for flux normalisation.
         infile (str): Output file of daomaster.
         outfile (str): Filename for result file.
     """
     logging.info("Computing flux normalisation between exposures 1,2 and 3.")
-    mag_max = args.fluxnorm_mag_max
     with path.Path(wdir):
         all_raw = loadtxt(infile, skiprows=3)
         n1,n2,n3 = getNorm(all_raw, mag_max )
@@ -1001,9 +999,9 @@ def combine_radec(wdir, PLOT=True):
         plt.xlabel("RA [Deg]")
         plt.ylabel("Dec [Deg]")
 
-    write_radec(final_ra,final_dec,pa0, os.path.join(wdir, "radec2_all.dat") )
+    write_radec(final_ra,final_dec,pa0, os.path.join(wdir, "radec2_final.dat") )
     fig.tight_layout()
-    plt.savefig(os.path.join(wdir, "radec2_all.pdf"))
+    plt.savefig(os.path.join(wdir, "radec2_final.pdf"))
 
 
 def add_ifu_xy(args, wdir):
@@ -1471,14 +1469,14 @@ def main():
             if task in ["rmaster","all"]:
               # Run daophot master to ???
               if len(exposures) > 1:
-                rmaster(args, wdir)
+                rmaster(wdir)
               else:
                 logging.info("Only one exposure, skipping rmaster.")
 
             if task in ["flux_norm","all"]:
                # Compute relative flux normalisation.
                if len(exposures) > 1:
-                 flux_norm(args, wdir)
+                 flux_norm(wdir, args.fluxnorm_mag_max)
                else:
                  logging.info("Only one exposure, skipping flux_norm.")
 
