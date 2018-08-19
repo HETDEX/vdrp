@@ -7,6 +7,8 @@ Contains python translation of Karl Gebhardt
 .. moduleauthor:: Maximilian Fabricius <mxhf@mpe.mpg.de>
 """
 from __future__ import print_function
+import matplotlib
+matplotlib.use("agg")
 from matplotlib import pyplot as plt
 
 from numpy import loadtxt
@@ -122,7 +124,9 @@ def parseArgs():
     defaults["offset_exposure_indices"] = "1,2,3"
     defaults["optimal_ang_off_smoothing"] = 0.05
 
+    config_source = "Default"
     if args.conf_file:
+        config_source = args.conf_file
         config = ConfigParser.SafeConfigParser()
         config.read([args.conf_file])
         defaults.update(dict(config.items("Astrometry")))
@@ -185,7 +189,7 @@ def parseArgs():
 
     args = parser.parse_args(remaining_argv)
 
-
+    args.config_source = config_source
     # shoul in principle be able to do this with accumulate???
     args.use_tmp = args.use_tmp == "True"
     args.remove_tmp = args.remove_tmp == "True"
@@ -663,6 +667,7 @@ def compute_optimal_ang_off(wdir, smoothing=0.05, PLOT=True):
     colors = ['red','green','blue']
     exposures = ['exp01','exp02', 'exp03']
 
+    logging.info("compute_optimal_ang_off: Computing optimal angular offset...")
     # load getoff2 data for all exposures
     results = Table(names=['exposure','ang_off','nstar','RMS'], dtype=['S5',float, int, float])
     for exp in exposures:
@@ -727,14 +732,14 @@ def compute_optimal_ang_off(wdir, smoothing=0.05, PLOT=True):
             plt.plot(x,y ,'o', c=colors[i], label=exp)
             plt.plot(aa,f(aa) ,'-', c=colors[i])
             plt.axvline(amin,color=colors[i])
-            plt.text(amin,1.5,"{:.3f}Deg # stars = {:.1f}".format(amin, nstar_min, ), color=colors[i], rotation=90., ha='right')
+            plt.text(amin,1.5,"{:.3f} Deg # stars = {}".format(amin, nstar_min), color=colors[i], rotation=90., ha='right')
 
     # average optimal offset angle accross all exposures
     ang_off_avg = np.sum( aamin['ang_off_min']*aamin['nstar_min'])/np.sum(aamin['nstar_min'])
 
     if PLOT:
         plt.axvline(ang_off_avg,color="k")
-        plt.legend()
+        plt.legend(loc="lower right")
         plt.xlabel("Offset angle")
         plt.ylabel("RMS")
         plt.text(.1,.9, "avg. optimal\noffset angle\nis {:.5} Deg".format( ang_off_avg), transform=ax.transAxes)
@@ -1387,7 +1392,7 @@ def cp_results(tmp_dir, results_dir):
     for d in dirs:
         td = os.path.join(tmp_dir,d)
         if os.path.exists(td):
-            dir_util.copy_tree( td, results_dir)
+            dir_util.copy_tree( td, os.path.join(results_dir,d) )
     for p in file_pattern:
         ff = glob.glob("{}/{}".format(tmp_dir,p))
         for f in ff:
@@ -1440,6 +1445,8 @@ def main():
         dir_util.copy_tree(results_dir, tmp_dir)
         # set working directory to tmp_dir
         wdir = tmp_dir
+
+    logging.info("Configuration {}.".format(args.config_source))
 
     try:
         for task in tasks:
