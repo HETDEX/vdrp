@@ -47,7 +47,7 @@ class Test_Cp_Post_Stamps(TestBase):
 class Test_Main(TestBase):
     dd = ["reductions", "config", "test_fiducial"]
     ff = []
-    delete_test_dir = False
+    delete_test_dir = True
 
     def test_main(self):
         with path.Path(self.test_dir):
@@ -115,15 +115,38 @@ class Test_Main(TestBase):
             print("Checking all.raw ...")
             self.cmp_test_files("20180611v017", "all.raw")
 
-            ff = ["radec2_exp01.dat", "radec2_exp01.dat", "radec2_exp01.dat", "radec2_final.dat"]
-            for f in ff:
-                print("Checking {}".format(f))
-                ra,dec,pa = read_radec("20180611v017/{}".format(f))
-                ra_fid,dec_fid,pa_fid = read_radec("test_fiducial/20180611v017/{}".format(f))
-                self.assertAlmostEqual(ra, ra_fid)
-                self.assertAlmostEqual(dec, dec_fid)
-                self.assertAlmostEqual(pa, pa_fid)
-            #for f in files:
-            #    self.assertTrue( os.path.exists(f) )
+            print("Checking shout.ifustars ...")
+            self.cmp_test_files("20180611v017", "shout.ifustars")
+
+            print("Checking tmp_*.csv ...")
+            self.cmp_test_files("20180611v017", "tmp_*.csv")
+
+            print("Checking norm.dat ...")
+            self.cmp_test_files("20180611v017", "norm.dat")
+
+            print("Checking getoff_*.out ...")
+            self.cmp_test_files("20180611v017", "getoff_*.out")
+
+            print("Checking getoff2_*.out ...")
+            self.cmp_test_files("20180611v017", "getoff2_*.out")
+
+            print("Checking radec2_*.dat ...")
+            self.cmp_test_files("20180611v017", "radec2_*.dat")
+
+            print("Checking radec2_final.dat ...")
+            self.cmp_test_files("20180611v017", "radec2_final.dat")
+
+#            ff = ["radec2_exp01.dat", "radec2_exp01.dat", "radec2_exp01.dat", "radec2_final.dat"]
+#            for f in ff:
+#                print("Checking {}".format(f))
+#                ra,dec,pa = read_radec("20180611v017/{}".format(f))
+#                ra_fid,dec_fid,pa_fid = read_radec("test_fiducial/20180611v017/{}".format(f))
+#                self.assertAlmostEqual(ra, ra_fid)
+#                self.assertAlmostEqual(dec, dec_fid)
+#                self.assertAlmostEqual(pa, pa_fid)
+
+            print("Checking xy*.dat ...")
+            self.cmp_test_files("20180611v017", "xy*.dat")
+
 
 
