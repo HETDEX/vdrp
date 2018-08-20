@@ -6,7 +6,7 @@ import shutil
 import unittest
 import path
 import glob
-
+from argparse import Namespace
 
 from testbase import TestBase
 
@@ -43,14 +43,14 @@ class Test_Cp_Post_Stamps(TestBase):
 class Test_Main(TestBase):
     dd = ["reductions", "config"]
     ff = []
+    delete_test_dir = False
 
     def test_main(self):
         with path.Path(self.test_dir):
-            from argparse import Namespace
             args = Namespace
             args.acam_magadd=5.0
             args.add_radec_angoff=1.45
-            args.add_radec_angoff_trial=[1.45, 1.475, 1.5]
+            args.add_radec_angoff_trial=[1.425, 1.45, 1.475, 1.5, 1.525]
             args.add_radec_angoff_trial_dir='add_radec_angoff_trial'
             args.addin_dir='config'
             args.cofes_vis_vmax=25.0
@@ -68,7 +68,7 @@ class Test_Main(TestBase):
             args.daophot_ymix=45
             args.dec=51.3479
             args.fluxnorm_mag_max=19.0
-            args.fplane_txt='fplane.txt'
+            args.fplane_txt='config/fplane.txt'
             args.getoff2_radii=[11.0, 5.0, 3.0]
             args.logfile='20180611v017.log'
             args.mkmosaic_angoff=1.8

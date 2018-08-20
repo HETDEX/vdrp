@@ -450,7 +450,7 @@ def flux_norm(wdir, mag_max, infile='all.raw', outfile='norm.dat'):
             f.write(s)
 
 
-def redo_shuffle(wdir, ra, dec, track, acam_magadd, wfs1_magadd, wfs2_magadd):
+def redo_shuffle(wdir, ra, dec, track, acam_magadd, wfs1_magadd, wfs2_magadd, shuffle_cfg, fplane_txt):
     """
     Reruns shuffle to obtain catalog of IFU stars.
 
@@ -1406,7 +1406,7 @@ def main(args):
 
             if task in ["redo_shuffle","all"]:
                # Rerun shuffle to get IFU stars
-               redo_shuffle(wdir, args.ra, args.dec, args.track, args.acam_magadd, args.wfs1_magadd, args.wfs2_magadd)
+               redo_shuffle(wdir, args.ra, args.dec, args.track, args.acam_magadd, args.wfs1_magadd, args.wfs2_magadd, args.shuffle_cfg, args.fplane_txt)
 
             if task in ["get_ra_dec_orig","all"]:
                # Retrieve original RA DEC from one of the multi files.

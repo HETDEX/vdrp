@@ -11,6 +11,7 @@ class TestBase(unittest.TestCase):
     """
     ff = []
     dd = []
+    delete_test_dir = True
 
     @classmethod
     def setUpClass(cls):
@@ -31,10 +32,12 @@ class TestBase(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        print("Tearing class down.")
-        # Remove the directory after the test
-        shutil.rmtree(cls.test_dir)
-        #print("WARNING: NOT REMOVING TEMPORARY DIRECTORY")
+        if cls.delete_test_dir:
+            print("Tearing class down.")
+            # Remove the directory after the test
+            shutil.rmtree(cls.test_dir)
+        else:
+            print("WARNING: NOT REMOVING TEMPORARY DIRECTORY {}".fromat(cls.test_dir))
 
 
 
