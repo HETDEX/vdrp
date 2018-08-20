@@ -6,6 +6,7 @@ Contains python translation of Karl Gebhardt
 
 .. moduleauthor:: Maximilian Fabricius <mxhf@mpe.mpg.de>
 """
+
 from __future__ import print_function
 import matplotlib
 matplotlib.use("agg")
@@ -25,6 +26,7 @@ from astropy.io import ascii
 import tempfile
 import numpy as np
 from collections import OrderedDict
+import pickle
 
 #import scipy
 from scipy.interpolate import UnivariateSpline
@@ -56,8 +58,7 @@ from vdrp import utils
 from vdrp.utils import read_radec, write_radec
 
 
-
-def parseArgs():
+def parseArgs(args):
     """ Parses configuration file and command line arguments.
     Command line arguments overwrite configuration file settiongs which
     in turn overwrite default values.
@@ -66,11 +67,6 @@ def parseArgs():
         args (argparse.Namespace): Return the populated namespace.
     """
 
-    # Do argv default this way, as doing it in the functional
-    # declaration sets it at compile time.
-    argv=None
-    if argv is None:
-        argv = sys.argv
 
     # Parse any conf_file specification
     # We make this parser with add_help=False so that
@@ -172,7 +168,7 @@ def parseArgs():
     parser.add_argument('--getoff2_radii', type=str, help="Comma separated list of matching radii for astrometric offset measurement.")
     parser.add_argument("--mkmosaic_angoff",  type=float, help="Angular offset to add for creation of mosaic image.")
     parser.add_argument("-t", "--task",  type=str, help="Task to execute.")
-    parser.add_argument("--offset_exposure_indices",  type=str)
+    parser.add_argument("--offset_exposure_indices",  type=str, help="Exposure indices.")
     parser.add_argument("--optimal_ang_off_smoothing", type=float, help="Smothing value for smoothing spline use for measurement of optimal angular offset value.")
 
     # positional arguments
@@ -304,7 +300,7 @@ def daophot_phot_and_allstar(wdir, prefixes, daophot_photo_opt, daophot_allstar_
             daophot.allstar(prefix,logging=logging)
 
 
-def mktot(args, wdir, prefixes):
+def mktot(wdir, prefixes, mktot_ifu_grid, mktot_magmin, mktot_magmax, mktot_xmin, mktot_xmax, mktot_ymin, mktot_ymax):
     """ Reads all *.als files. Put detections on a grid
     corresponding to the IFU position in the focal plane as defined in
     config/ifu_grid.txt (should later become fplane.txt.
@@ -314,12 +310,19 @@ def mktot(args, wdir, prefixes):
         Analogous to run6 and run6b.
 
     Args:
-        args (argparse.Namespace): Parsed configuration parameters.
         wdir (string): Work directory.
         prefixes (list): List file name prefixes for the collapsed IFU images.
+        mktot_ifu_grid (str): Name of file that holds gird of IFUs offset fit (mktot).
+        mktot_magmin (float): Magnitude limit for offset fit.
+        mktot_magmax (float): Magnitude limit for offset fit.
+        mktot_xmin (float): X limit for offset fit.
+        mktot_xmax (float): X limit for offset fit.
+        mktot_ymin (float): Y limit for offset fit.
+        mktot_ymax (float): Y limit for offset fit.
+
     """
     # read IFU grid definition file (needs to be replaced by fplane.txt)
-    ifugird = Table.read(args.mktot_ifu_grid, format='ascii')
+    ifugird = Table.read(mktot_ifu_grid, format='ascii')
 
     with path.Path(wdir):
         exposures = np.unique([p[:15] for p in prefixes])
@@ -343,7 +346,7 @@ def mktot(args, wdir, prefixes):
                     # find xoffset and yoffset for current IFU slot
                     jj = ifugird['IFUSLOT'] == ifuslot
                     if sum(jj) < 1:
-                        logging.warning("mktot: IFU slot {} not found in {}.".format(ifuslot, args.mktot_ifu_grid))
+                        logging.warning("mktot: IFU slot {} not found in {}.".format(ifuslot, mktot_ifu_grid))
                         continue
                     ifugird['X'][jj][0]
                     ifugird['Y'][jj][0]
@@ -358,12 +361,12 @@ def mktot(args, wdir, prefixes):
                         continue
 
                     # filter according to magnitude and x and y range
-                    ii  = als.data['MAG'] > args.mktot_magmin
-                    ii *= als.data['MAG'] < args.mktot_magmax
-                    ii *= als.data['X']   > args.mktot_xmin
-                    ii *= als.data['X']   < args.mktot_xmax
-                    ii *= als.data['Y']   > args.mktot_ymin
-                    ii *= als.data['Y']   < args.mktot_ymax
+                    ii  = als.data['MAG'] > mktot_magmin
+                    ii *= als.data['MAG'] < mktot_magmax
+                    ii *= als.data['X']   > mktot_xmin
+                    ii *= als.data['X']   < mktot_xmax
+                    ii *= als.data['Y']   > mktot_ymin
+                    ii *= als.data['Y']   < mktot_ymax
 
                     count += sum(ii)
 
@@ -447,7 +450,7 @@ def flux_norm(wdir, mag_max, infile='all.raw', outfile='norm.dat'):
             f.write(s)
 
 
-def redo_shuffle(args, wdir):
+def redo_shuffle(wdir, ra, dec, track, acam_magadd, wfs1_magadd, wfs2_magadd):
     """
     Reruns shuffle to obtain catalog of IFU stars.
 
@@ -455,47 +458,54 @@ def redo_shuffle(args, wdir):
     `shout.ifustars` which is used as catalog for the offset computation.
 
     Args:
-        args (argparse.Namespace): Parsed configuration parameters.
         wdir (str): Work directory.
+        ra (float): Right ascension in degrees.
+        dec (float): Declination in degrees.
+        track (int): East or west track (0, 1)
+        acam_magadd (float): do_shuffle acam magadd.
+        wfs1_magadd (float): do_shuffle wfs1 magadd.
+        wfs2_magadd (float): do_shuffle wfs2 magadd.
     """
-    shutil.copy2(args.shuffle_cfg, wdir)
-    shutil.copy2(args.fplane_txt, wdir)
+    shutil.copy2(shuffle_cfg, wdir)
+    shutil.copy2(fplane_txt, wdir)
     with path.Path(wdir):
         try:
             os.remove(shout.ifustars)
         except:
             pass
 
-        RA0      = args.ra
-        DEC0     = args.dec
+        RA0      = ra
+        DEC0     = dec
         radius   = 0.
-        track    = args.track
+        track    = track
         ifuslot  = 0
         x_offset = 0.
         y_offset = 0
 
         daophot.rm(['shout.acamstars','shout.ifustars','shout.info','shout.probestars','shout.result'])
         logging.info("Rerunning shuffle for RA = {}, Dec = {} and track = {} ...".format(RA0, DEC0, track))
-        cmd  = "do_shuffle -v --acam_magadd {:.2f} --wfs1_magadd {:.2f} --wfs2_magadd {:.2f}".format(args.acam_magadd, args.wfs1_magadd, args.wfs2_magadd)
+        cmd  = "do_shuffle -v --acam_magadd {:.2f} --wfs1_magadd {:.2f} --wfs2_magadd {:.2f}".format(acam_magadd, wfs1_magadd, wfs2_magadd)
         cmd += " {:.6f} {:.6f} {:.1f} {:d} {:d} {:.1f} {:.1f}".format(RA0, DEC0, radius, track, ifuslot, x_offset, y_offset )
         logging.info("redo_shuffle: Calling shuffle with {}.".format(cmd))
         subprocess.call(cmd, shell=True)
 
 
-def get_ra_dec_orig(args,wdir):
+def get_ra_dec_orig(wdir, reduction_dir, night, shotid):
     """
     Reads first of the many multi* file'd headers to get the RA, DEC, PA guess from the telescope.
 
     Notes:
         Creates radec.orig
     Args:
-        args (argparse.Namespace): Parsed configuration parameters.
         wdir (str): Work directory.
+        reduction_dir (str): Directory that holds panacea reductions.
+        night (str): Night (e.g. 20180611)
+        shotid (str): ID of shot (e.g. 017)
     """
-    pattern = os.path.join( args.reduction_dir, "{}/virus/virus0000{}/*/*/multi_???_*LL*fits".format( args.night, args.shotid ) )
+    pattern = os.path.join( reduction_dir, "{}/virus/virus0000{}/*/*/multi_???_*LL*fits".format( night, shotid ) )
     multi_files = glob.glob(pattern)
     if len(multi_files) == 0:
-        raise Exception("Found no multi file in {}. Please check reduction_dir in configuration file.".format(args.reduction_dir))
+        raise Exception("Found no multi file in {}. Please check reduction_dir in configuration file.".format(reduction_dir))
     h = fits.getheader(multi_files[0])
     ra0  = h["TRAJCRA"]
     dec0 = h["TRAJCDEC"]
@@ -505,48 +515,6 @@ def get_ra_dec_orig(args,wdir):
         utils.write_radec(ra0, dec0, pa0, "radec.orig")
 
 
-def add_ra_decOld(args, wdir, exp_prefixes, ra, dec, pa, radec_outfile='tmp.csv'):
-    """
-    Call add_ra_dec to compute for detections in IFU space the corresponding RA/DEC
-    coordinates.
-
-
-    Requires, fplane.txt, radec.orig.
-    Creates primarely EXPOSURE_tmp.csv but also radec.dat.
-
-    Args:
-        args (argparse.Namespace): Parsed configuration parameters.
-        wdir (str): Work directory.
-        exp_prefixes (list): List file name prefixes for the collapsed IFU images for one exposure (typically the first).
-        ra (float): Focal plane center RA.
-        dec (float): Focal plane center Dec.
-        pa (float): Positions angle.
-        radec_outfile (str): Filename that will contain output from add_ra_dec (gets overwritten!).
-
-    """
-    with path.Path(wdir):
-        fp = fplane.FPlane("fplane.txt")
-
-        # collect als files for all IFUs that are contained in the fplane file. 
-        als_files = []
-        for prefix in exp_prefixes:
-            ifuslot = prefix[-3:]
-            if not ifuslot in fp.ifuslots:
-                logging.warning("IFU slot {} not contained in fplane.txt.".format(ifuslot))
-                continue
-            fn = prefix + ".als"
-            als_files.append(fn)
-
-        daophot.rm([radec_outfile])
-        cmd = 'add_ra_dec --fplane fplane.txt --fout {} --ftype daophot_allstar --astrometry {} {} {} --ihmp-regex "(\d\d\d)(\.)" '.format(radec_outfile, ra, dec, pa)
-        logging.info("Calling {} ".format(cmd))
-        for f in als_files:
-            logging.info("        {}".format(f))
-            cmd += " {}".format(f)
-        subprocess.call(cmd, shell=True)
-
-
-
 def get_als_files(fp, exp_prefixes):
     """
     Derives for a list of exposure prefixes a list
@@ -554,6 +522,7 @@ def get_als_files(fp, exp_prefixes):
     which is not contained in the fplane.
 
     Args:
+        fp (pyhetdex.het.fplane.FPlane): Fplane object.
         exp_prefixes (list): List of epxosure prefixes.
 
     Returns:
@@ -588,7 +557,7 @@ def load_als_data(als_files):
     return als_data
 
 
-def add_ra_dec(args, wdir, als_data, ra, dec, pa, fp, radec_outfile='tmp.csv'):
+def add_ra_dec(wdir, als_data, ra, dec, pa, fp, radec_outfile='tmp.csv'):
     """
     Call add_ra_dec to compute for detections in IFU space the corresponding RA/DEC
     coordinates.
@@ -599,7 +568,6 @@ def add_ra_dec(args, wdir, als_data, ra, dec, pa, fp, radec_outfile='tmp.csv'):
     Creates primarely EXPOSURE_tmp.csv but also radec.dat.
 
     Args:
-        args (argparse.Namespace): Parsed configuration parameters.
         wdir (str): Work directory.
         als_data (dict): Dictionary with als data for each IFU slot.
         ra (float): Focal plane center RA.
@@ -748,8 +716,9 @@ def compute_optimal_ang_off(wdir, smoothing=0.05, PLOT=True):
 
     return ang_off_avg
 
-def compute_offset(args, wdir, prefixes, final_ang_offset=None, shout_ifustars = 'shout.ifustars',
-        NEW_ADD_RA_DEC=True):
+def compute_offset(wdir, prefixes, getoff2_radii, add_radec_angoff_trial,\
+        add_radec_angoff, add_radec_angoff_trial_dir,  offset_exposure_indices, \
+        final_ang_offset=None, shout_ifustars = 'shout.ifustars'):
     """
     Requires, fplane.txt, radec.orig.
     Creates primarely EXPOSURE_tmp.csv but also radec2.dat.
@@ -762,10 +731,14 @@ def compute_offset(args, wdir, prefixes, final_ang_offset=None, shout_ifustars =
         radec_TRIAL_OFFSET_ANGLE.dat, radec_TRIAL_OFFSET_ANGLE2.dat.
 
     Args:
-        args (argparse.Namespace): Parsed configuration parameters.
         wdir (str): Work directory.
         prefixes (list): List file name prefixes for the collapsed IFU images.
-        final_ang_offset (float): Final angular offset to use. This overwrite the values in args.
+        getoff2_radii (list): List of matching radii for astrometric offset measurement.
+        add_radec_angoff_trial (list:) Trial values for angular offsets.
+        add_radec_angoff (float): Angular offset to add during conversion of x/y coordinate to RA/Dec.
+        add_radec_angoff_trial_dir (str): Directory to save results of angular offset trials.
+        offset_exposure_indices (list): Exposure indices.
+        final_ang_offset (float): Final angular offset to use. This overwrite the values in 
         shout_ifustars (str): Shuffle output catalog of IFU stars.
     """
     shout_ifustars = 'shout.ifustars'
@@ -788,7 +761,7 @@ def compute_offset(args, wdir, prefixes, final_ang_offset=None, shout_ifustars =
 
 
     with path.Path(wdir):
-        radii = args.getoff2_radii
+        radii = getoff2_radii
 
         # Here we iterate over all angular offset angles
         # as configured in the config file, parameter add_radec_angoff_trial.
@@ -797,8 +770,8 @@ def compute_offset(args, wdir, prefixes, final_ang_offset=None, shout_ifustars =
         # is the last one that we compute. This is important
         # such that all the correct output files are in place for the downstream 
         # functions.
-        angoffsets         = args.add_radec_angoff_trial
-        nominal_angoffset  = args.add_radec_angoff
+        angoffsets         = add_radec_angoff_trial
+        nominal_angoffset  = add_radec_angoff
         if final_ang_offset != None:
             logging.info("compute_offset: Using final angular offset value of {} Deg.".format(final_ang_offset))
             angoffsets = []
@@ -810,15 +783,14 @@ def compute_offset(args, wdir, prefixes, final_ang_offset=None, shout_ifustars =
         for r in radii:
             s+= "{}\" ".format(r)
         logging.info("compute_offset: Computing offsets with using following sequence of matching radii: {}".format(s))
-        logging.info("compute_offset:  Using nominal angular offset value of {} Deg. ".format(args.add_radec_angoff))
+        logging.info("compute_offset:  Using nominal angular offset value of {} Deg. ".format(add_radec_angoff))
         s = ""
-        for a in args.add_radec_angoff_trial:
+        for a in add_radec_angoff_trial:
             s+= "{} Deg ".format(a)
         logging.info("compute_offset:  Also computing offsets for the following set of trial angles: {}".format(s) )
 
         # will contain results of angular offset trials
-        utils.createDir(args.add_radec_angoff_trial_dir)
-
+        utils.createDir(add_radec_angoff_trial_dir)
 
         for angoff in angoffsets:
             # collect the prefixes that belong to the first exposure
@@ -826,7 +798,7 @@ def compute_offset(args, wdir, prefixes, final_ang_offset=None, shout_ifustars =
             exposures = np.sort( np.unique([p[:15] for p in prefixes]) )
 
             # loop over all exposures in configuration file
-            for exp_index in args.offset_exposure_indices:
+            for exp_index in offset_exposure_indices:
                 if exp_index > len(exposures):
                     logging.warning("compute_offset: Have no data for exposure {}. Skipping ...".format(exp_index))
                     continue
@@ -852,18 +824,12 @@ def compute_offset(args, wdir, prefixes, final_ang_offset=None, shout_ifustars =
                     logging.info("compute_offset: Adding RA & Dec to detections, applying offsets ra_offset,dec_offset,pa_offset = {},{},{}".format( ra_offset, dec_offset, angoff) )
                     # Call add_ra_dec, add offsets first.
                     new_ra, new_dec, new_pa = ra * 15. + ra_offset, dec + dec_offset, pa + angoff
-                    if NEW_ADD_RA_DEC:
-                        # New direct call to pyhetdex
-                        # preload the als data.
-                        fp = fplane.FPlane("fplane.txt")
-                        als_files = get_als_files(fp, exp_prefixes)
-                        als_data = load_als_data(als_files)
-                        add_ra_dec(args, wdir, als_data, ra=new_ra, dec=new_dec,\
-                            pa=new_pa, fp=fp, radec_outfile=radec_outfile)
-                        add_ra_dec(args, wdir, als_data, ra=new_ra, dec=new_dec, pa=new_pa, fp=fp, radec_outfile=radec_outfile)
-                    else:
-                        # Old command line call
-                        add_ra_decOld(args, wdir, exp_prefixes, ra=new_ra, dec=new_dec, pa=new_pa, radec_outfile=radec_outfile)
+                    # New direct call to pyhetdex
+                    # preload the als data.
+                    fp = fplane.FPlane("fplane.txt")
+                    als_files = get_als_files(fp, exp_prefixes)
+                    als_data = load_als_data(als_files)
+                    add_ra_dec(wdir, als_data, ra=new_ra, dec=new_dec, pa=new_pa, fp=fp, radec_outfile=radec_outfile)
 
                     # Now compute offsets.
                     logging.info("compute_offset: Computing offsets ...")
@@ -873,73 +839,24 @@ def compute_offset(args, wdir, prefixes, final_ang_offset=None, shout_ifustars =
                     logging.info("compute_offset: ")
                     logging.info("compute_offset: ")
 
-                # Copy getoff.out and getoff2.out to args.add_radec_angoff_trial_dir
+                # Copy getoff.out and getoff2.out to add_radec_angoff_trial_dir
                 sangoff = '_{:06.3f}Deg'.format(angoff)
-                fnout = os.path.join( args.add_radec_angoff_trial_dir, "getoff_exp{:02d}{}.out".format(exp_index,sangoff) )
+                fnout = os.path.join( add_radec_angoff_trial_dir, "getoff_exp{:02d}{}.out".format(exp_index,sangoff) )
                 shutil.copy2("getoff.out", fnout)
-                fnout = os.path.join( args.add_radec_angoff_trial_dir, "getoff2_exp{:02d}{}.out".format(exp_index,sangoff) )
+                fnout = os.path.join( add_radec_angoff_trial_dir, "getoff2_exp{:02d}{}.out".format(exp_index,sangoff) )
                 shutil.copy2("getoff2.out", fnout)
 
                 shutil.move("getoff.out", "getoff_exp{:02d}.out".format(exp_index))
                 shutil.move("getoff2.out", "getoff2_exp{:02d}.out".format(exp_index))
                 # Write radec_XXXDeg.dat and radec2_XXXDeg.dat
-                with path.Path(args.add_radec_angoff_trial_dir):
+                with path.Path(add_radec_angoff_trial_dir):
                     write_ra_dec_dats(ra, dec, pa, exp_index, angoff, ra_offset, dec_offset, nominal=False)
                 # if the current offset angle is the nominal one, then also write
                 # radec.dat and radec2.dat witouh angle information in filename.
-                if angoff == args.add_radec_angoff:
+                if angoff == add_radec_angoff:
                     write_ra_dec_dats(ra, dec, pa, exp_index, angoff, ra_offset, dec_offset, nominal=True)
 
 
-def add_ifu_xyOld(args, wdir):
-    """ Adds IFU x y information to stars used for matching,
-    and save to xy_expNN.dat.
-    Requires: getoff.out, radec2.dat
-    Analogous to rastrom3.
-
-    Args:
-        args (argparse.Namespace): Parsed configuration parameters.
-        wdir (str): Work directory.
-    """
-    logging.info("Creating xy_expNN.dat...")
-    with path.Path(wdir):
-        # loop over all exposures in configuration file
-        for exp_index in args.offset_exposure_indices:
-            fngetoff_out = "getoff_exp{:02d}.out".format(exp_index)
-            if not os.path.exists(fngetoff_out):
-                logging.warning("Have no {} for exposure {}. Check your configuration (offset_exposure_indices). Skipping ...".format(fngetoff_out, exp_index))
-                continue
-
-            # read ra dec postions of reference stars and detections
-            # from getoff.out
-            # Produce new tables that add_ifu_xy understands.
-            t = Table.read(fngetoff_out, format="ascii.fast_no_header")
-            t1 = Table([t['col3'], t['col4'], t['col7']], names=["RA","DEC","IFUSLOT"])
-            t2 = Table([t['col5'], t['col6'], t['col7']], names=["RA","DEC","IFUSLOT"])
-            t1.write("t1.csv", format="ascii.fast_csv", overwrite=True)
-            t2.write("t2.csv", format="ascii.fast_csv", overwrite=True)
-
-            # read ra,dec, pa from radec2.dat
-            ra,dec,pa = utils.read_radec("radec2_exp{:02d}.dat".format(exp_index))
-
-            daophot.rm(["t3.csv","t4.csv"])
-            cmd = "add_ifu_xy --fplane fplane.txt --ra-name RA --dec-name DEC --astrometry {:.6f} {:.6f} {:.6f} t1.csv t3.csv".format(ra,dec,pa)
-            subprocess.call(cmd, shell=True)
-            cmd = "add_ifu_xy --fplane fplane.txt --ra-name RA --dec-name DEC --astrometry {:.6f} {:.6f} {:.6f} t2.csv t4.csv".format(ra,dec,pa)
-            subprocess.call(cmd, shell=True)
-
-            t3 = Table.read("t3.csv", format="ascii.fast_csv")
-            t4 = Table.read("t4.csv", format="ascii.fast_csv")
-
-            for c in t3.columns:
-                t3.columns[c].name = t3.columns[c].name + "1"
-            for c in t4.columns:
-                t4.columns[c].name = t4.columns[c].name + "2"
-
-            t = table.hstack([t3,t4])
-            t.write('xy_exp{:02d}.dat'.format(exp_index), format="ascii.fixed_width", delimiter='', overwrite=True)
-            # this would be analogous to Karl's format
-            #t.write('xy.dat', format="ascii.fast_no_header"
 
 
 def combine_radec(wdir, PLOT=True):
@@ -1009,15 +926,15 @@ def combine_radec(wdir, PLOT=True):
     plt.savefig(os.path.join(wdir, "radec2_final.pdf"))
 
 
-def add_ifu_xy(args, wdir):
+def add_ifu_xy(wdir, offset_exposure_indices):
     """ Adds IFU x y information to stars used for matching,
     and save to xy_expNN.dat.
     Requires: getoff.out, radec2.dat
     Analogous to rastrom3.
 
     Args:
-        args (argparse.Namespace): Parsed configuration parameters.
         wdir (str): Work directory.
+        offset_exposure_indices (list): List of exposure indices to consider.
     """
     def ra_dec_to_xy(table_in, ra, dec, fp, tp):
         """ Little helper function that convinently wraps the call to
@@ -1032,7 +949,7 @@ def add_ifu_xy(args, wdir):
 
     with path.Path(wdir):
         # loop over all exposures in configuration file
-        for exp_index in args.offset_exposure_indices:
+        for exp_index in offset_exposure_indices:
             logging.info("Creating xy_exp{:02d}.dat".format(exp_index) )
 
             fngetoff_out = "getoff_exp{:02d}.out".format(exp_index)
@@ -1283,11 +1200,10 @@ def get_exposures_files(basedir):
     return exposures_files
 
 
-def mk_match_plots(args, wdir, prefixes):
+def mk_match_plots(wdir, prefixes):
     """Creates match plots.
 
     Args:
-        args (argparse.Namespace): Parsed configuration parameters.
         wdir (str): Work directory.
         prefixes (list): List file name prefixes for the collapsed IFU images.
     """
@@ -1399,13 +1315,10 @@ def cp_results(tmp_dir, results_dir):
             shutil.copy2(f, results_dir)
 
 
-def main():
+def main(args):
     """
     Main function.
     """
-    # Parse config file and command line paramters
-    # command line parameters overwrite config file.
-    args = parseArgs()
 
     # set up logging to file - see previous section for more details
     logging.basicConfig(level=logging.DEBUG,
@@ -1428,6 +1341,10 @@ def main():
     cwd = os.getcwd()
     results_dir = os.path.join(cwd, "{}v{}".format(args.night, args.shotid))
     utils.createDir(results_dir)
+
+    # save arguments for the execution
+    with open(os.path.join(results_dir,'args.pickle'), 'wb') as f:
+        pickle.dump(args, f, pickle.HIGHEST_PROTOCOL)
 
     tasks = args.task.split(",")
     if args.use_tmp and not tasks == ['all']:
@@ -1471,7 +1388,7 @@ def main():
 
             if task in ["mktot","all"]:
                # Combine detections accross all IFUs.
-               mktot(args, wdir, prefixes)
+               mktot(wdir, prefixes, args.mktot_ifu_grid, args.mktot_magmin, args.mktot_magmax, args.mktot_xmin, args.mktot_xmax, args.mktot_ymin, args.mktot_ymax)
 
             if task in ["rmaster","all"]:
               # Run daophot master to ???
@@ -1489,31 +1406,36 @@ def main():
 
             if task in ["redo_shuffle","all"]:
                # Rerun shuffle to get IFU stars
-               redo_shuffle(args, wdir)
+               redo_shuffle(wdir, args.ra, args.dec, args.track, args.acam_magadd, args.wfs1_magadd, args.wfs2_magadd)
 
             if task in ["get_ra_dec_orig","all"]:
                # Retrieve original RA DEC from one of the multi files.
                # store in radec.orig
-               get_ra_dec_orig(args, wdir)
+               get_ra_dec_orig(wdir, args.reduction_dir, args.night, args.shotid)
 
             if task in ["compute_offset","all"]:
                # Compute offsets by matching 
                # detected stars to sdss stars from shuffle.
                # This also calls add_ra_dec to add RA DEC information to detections.
-               compute_offset(args,wdir,prefixes)
+               compute_offset(wdir, prefixes, args.getoff2_radii, args.add_radec_angoff_trial,\
+                        args.add_radec_angoff, args.add_radec_angoff_trial_dir,  args.offset_exposure_indices, \
+                        final_ang_offset=None, shout_ifustars = 'shout.ifustars')
 
             if task in ["compute_with_optimal_ang_off","all"]:
                # Compute offsets by matching 
                trial_dir =os.path.join(wdir, "add_radec_angoff_trial")
                optimal_ang_off= compute_optimal_ang_off(trial_dir,\
                        smoothing=args.optimal_ang_off_smoothing, PLOT=True)
-               compute_offset(args, wdir,prefixes, final_ang_offset=optimal_ang_off)
+               compute_offset(wdir, prefixes, args.getoff2_radii, args.add_radec_angoff_trial,\
+                        args.add_radec_angoff, args.add_radec_angoff_trial_dir,  args.offset_exposure_indices, \
+                        final_ang_offset=optimal_ang_off, shout_ifustars = 'shout.ifustars')
 
             if task in ["combine_radec","all"]:
                 # Combine individual exposure radec information.
                 combine_radec(wdir)
+
             if task in ["add_ifu_xy","all"]:
-               add_ifu_xy(args, wdir)
+               add_ifu_xy(wdir, args.offset_exposure_indices)
 
             if task in ["mkmosaic","all"]:
                # build mosaic for focal plane
@@ -1521,7 +1443,7 @@ def main():
 
             if task in ["mk_match_plots","all"]:
                # build mosaic for focal plane
-               mk_match_plots(args, wdir, prefixes)
+               mk_match_plots(wdir, prefixes)
 
     finally:
         if args.use_tmp:
@@ -1534,4 +1456,11 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    argv=None
+    if argv is None:
+        argv = sys.argv
+    # Parse config file and command line paramters
+    # command line parameters overwrite config file.
+    args = parseArgs(argv)
+
+    sys.exit(main(args))

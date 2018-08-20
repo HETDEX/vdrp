@@ -40,3 +40,64 @@ class Test_Cp_Post_Stamps(TestBase):
             for f in files:
                 self.assertTrue( os.path.exists(f) )
 
+class Test_Main(TestBase):
+    dd = ["reductions", "config"]
+    ff = []
+
+    def test_main(self):
+        with path.Path(self.test_dir):
+            from argparse import Namespace
+            args = Namespace
+            args.acam_magadd=5.0
+            args.add_radec_angoff=1.45
+            args.add_radec_angoff_trial=[1.45, 1.475, 1.5]
+            args.add_radec_angoff_trial_dir='add_radec_angoff_trial'
+            args.addin_dir='config'
+            args.cofes_vis_vmax=25.0
+            args.cofes_vis_vmin=-15.0
+            #conf_file=None
+            args.config_source='config/vdrp.config'
+            args.daophot_allstar_opt='config/allstar.opt'
+            args.daophot_opt='config/daophot.opt'
+            args.daophot_phot_psf='config/use.psf'
+            args.daophot_photo_opt='config/photo.opt'
+            args.daophot_sigma=2.0
+            args.daophot_xmax=45
+            args.daophot_xmin=4
+            args.daophot_ymin=4
+            args.daophot_ymix=45
+            args.dec=51.3479
+            args.fluxnorm_mag_max=19.0
+            args.fplane_txt='fplane.txt'
+            args.getoff2_radii=[11.0, 5.0, 3.0]
+            args.logfile='20180611v017.log'
+            args.mkmosaic_angoff=1.8
+            args.mktot_ifu_grid='config/ifu_grid.txt'
+            args.mktot_magmax=21.0
+            args.mktot_magmin=0.0
+            args.mktot_xmax=50.0
+            args.mktot_xmin=0.0
+            args.mktot_ymax=50.0
+            args.mktot_ymin=0.0
+            args.night='20180611'
+            args.offset_exposure_indices=[1, 2, 3]
+            args.optimal_ang_off_smoothing=0.05
+            args.ra=13.8447
+            args.reduction_dir='reductions'
+            args.remove_tmp=True
+            args.shifts_dir='/Users/mxhf/work/MPE/hetdex/src/vdrp_rewrite/shifts'
+            args.shotid='017'
+            args.shuffle_cfg='config/shuffle.cfg'
+            args.task='all'
+            args.track=1
+            args.use_tmp=False
+            args.wfs1_magadd=5.0
+            args.wfs2_magadd=5.0
+
+            from vdrp.astrometry import main
+            main(args)
+
+            #for f in files:
+            #    self.assertTrue( os.path.exists(f) )
+
+
