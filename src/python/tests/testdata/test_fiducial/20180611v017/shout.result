@@ -1,0 +1,16 @@
+# 2018-08-20 10:07:18.678222
+#col  1: RA after shuffling (negative RA indicate failed shots)
+#col  2: DEC after shuffling
+#col  3: original RA
+#col  4: original DEC
+#col  5: parallactic angle
+#col  6: observation time (decimal days from survey start, i.e 1st day of observing
+#col  7: average pupil illumination [m^2]
+#col  8: transparency on night of observation
+#col  9: seeing on night of observation
+#col 10: East (0) or West (1) track
+#col 11: star ID for guide probe 1
+#col 12: star ID for guide probe 2
+#col 13: star ID for WFS 1
+#col 14: star ID for WFS 2
+ 207.670500   51.347900  207.670500   51.347900  291.288081    0.000000    0.000000    0.000000    0.000000    1 1237662303506399392 1237661959906787417 1237662303506268235 1237661959906983980

@@ -11,6 +11,10 @@ from argparse import Namespace
 from testbase import TestBase
 
 from vdrp import astrometry
+from vdrp.utils import read_radec
+from vdrp.astrometry import main
+import glob
+import path
 
 class Test_Get_Exposures_files(TestBase):
     ff = ["20180611T054545_015.fits", "20180611T055249_015.fits", "20180611T060006_015.fits"]
@@ -41,7 +45,7 @@ class Test_Cp_Post_Stamps(TestBase):
                 self.assertTrue( os.path.exists(f) )
 
 class Test_Main(TestBase):
-    dd = ["reductions", "config"]
+    dd = ["reductions", "config", "test_fiducial"]
     ff = []
     delete_test_dir = False
 
@@ -94,9 +98,31 @@ class Test_Main(TestBase):
             args.wfs1_magadd=5.0
             args.wfs2_magadd=5.0
 
-            from vdrp.astrometry import main
             main(args)
 
+            print("Checking *.coo ...")
+            self.cmp_test_files("20180611v017", "*.coo")
+
+            print("Checking *.ap ...")
+            self.cmp_test_files("20180611v017", "*.ap")
+
+            print("Checking *.als ...")
+            self.cmp_test_files("20180611v017", "*.als")
+
+            print("Checking all.mch ...")
+            self.cmp_test_files("20180611v017", "all.mch")
+
+            print("Checking all.raw ...")
+            self.cmp_test_files("20180611v017", "all.raw")
+
+            ff = ["radec2_exp01.dat", "radec2_exp01.dat", "radec2_exp01.dat", "radec2_final.dat"]
+            for f in ff:
+                print("Checking {}".format(f))
+                ra,dec,pa = read_radec("20180611v017/{}".format(f))
+                ra_fid,dec_fid,pa_fid = read_radec("test_fiducial/20180611v017/{}".format(f))
+                self.assertAlmostEqual(ra, ra_fid)
+                self.assertAlmostEqual(dec, dec_fid)
+                self.assertAlmostEqual(pa, pa_fid)
             #for f in files:
             #    self.assertTrue( os.path.exists(f) )
 
