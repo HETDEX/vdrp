@@ -1276,7 +1276,7 @@ def cp_results(tmp_dir, results_dir):
 #    file_pattern += ["*.ap"]
 #    file_pattern += ["*.coo"]
 #    file_pattern += ["*.lst"]
-#    file_pattern += ["2???????T??????_???.fits"]
+    file_pattern += ["2*fp_exp??.fits"]
     file_pattern += ["*.png"]
     file_pattern += ["all.mch"]
     file_pattern += ["all.raw"]
