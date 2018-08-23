@@ -138,6 +138,43 @@ def get_exposures(reduction_dir, night, shotid):
     return np.sort( exposures )
 
 
+def get_active_slots(wdir, exposures):
+    """
+    Figures out which IFU slots actually delivered data, by checking
+    if a corresponding multifits exists for all exposures in a shot.
+    """
+    with path.Path(wdir):
+        all_slots = [] # will hold unique list of all slots that delelivered data in any exposure
+        exp_slots = {} # will hold unique lists of all slots that delelivered data for this exposure
+        for exp in exposures:
+            pattern = "{}/virus/multi*".format(exp)
+            ff = glob.glob(pattern)
+            exp_slots[exp] = []
+            for f in ff:
+                # could get ifuslot from filname
+                #h = fits.getheader(f)
+                #ifuslot = h["IFUSLOT"]
+                # doing it from the filename is much faster
+                __,t = os.path.split(f)
+                ifuslot = t[10:13]
+                exp_slots[exp].append(ifuslot)
+
+            exp_slots[exp] = list( np.sort(np.unique(exp_slots[exp])) )
+            all_slots += list( exp_slots[exp] )
+        all_slots = np.sort(np.unique(all_slots))
+
+        # Now see if all slots that have data in any exposure also have data in all exposures
+        final_slots = []
+        for slot in all_slots:
+            has_all = True
+            for exp in exposures:
+                if not slot in exp_slots[exp]:
+                    has_all = False
+                    logging.warning("Slot has some data in other exposures, but not in {}.".format(exp))
+            if has_all:
+                final_slots.append(slot)
+        return final_slots
+
 def mk_exp_sub_dirs(wdir, exposures):
     """ Make subdirectory structure.
     Creates ./exp??/virus
@@ -289,7 +326,7 @@ def cp_ixy_files(wdir, ixy_dir):
         shutil.copy2(f, os.path.join(wdir,"coords") )
 
 
-def get_fiber_coords(wdir):
+def get_fiber_coords(wdir, active_slots):
     """ Calls add_ra_dec for all IFU slots and all dithers.
 
     The is the main routine for getcoord which computes the on-sky positions
@@ -326,10 +363,15 @@ def get_fiber_coords(wdir):
 
         # Find which IFU slots to operate of based on the
         # existing set og *.addin files.
-        addin_files = glob.glob("???.addin")
         ifuslots = []
-        for f in addin_files:
-            ifuslots.append( f[:3] )
+        addin_files = []
+        for slot in active_slots:
+           fn = "{}.addin".format(slot)
+           if os.path.exists(fn):
+               ifuslots.append(slot)
+               addin_files.append(fn)
+           else:
+               logging.warning("get_fiber_coords: Found no addin file for slot {}. This slot delivers data however.".format(slot))
 
         # Carry out required changes to astrometry
         rot = 360.0 - (pa0 + 90.)
@@ -411,7 +453,7 @@ def read_elist(filename):
     return e
 
 
-def mk_dithall(wdir):
+def mk_dithall(wdir, active_slots):
     """
     This creates the dithall.use file that is required by the downstream
     processing functions like photometry and detect.
@@ -423,18 +465,15 @@ def mk_dithall(wdir):
     logging.info("get_fiber_coords: Computing on-sky fiber coordinates.")
     with path.Path(os.path.join(wdir, "coords")):
         # get sorted list of IFU slots from fplane file
-        fp = fplane.FPlane("fplane.txt")
-        sifuslots = np.sort(fp.ifuslots)
-
 
         column_names = "ra", "dec","ifuslot", "XS", "YS", "dxfplane", "yfplane", "multifits", "timestamp", "exposure"
         # read list of exposures
         elist = read_elist("../elist")
         all_tdith = []
         for i, exp in enumerate(elist):
-            logging.info("get_fiber_coords: Expusure {} ...".format(exp))
+            logging.info("get_fiber_coords: Exposure {} ...".format(exp))
             exp_tdith = []
-            for ifuslot in sifuslots:
+            for ifuslot in active_slots:
                 # read the ixy files, those contain the mapping of x/y (IFU space) to fiber number on the detector
                 ixy_filename = "{}.ixy".format(ifuslot)
                 if not os.path.exists(ixy_filename):
@@ -445,7 +484,11 @@ def mk_dithall(wdir):
                     s = f.read()
                 s = s.replace("\t", " ")
                 ixy = ascii.read(s, format='no_header')
-                csv = ascii.read("i{}_{}.csv".format(ifuslot, i+1))
+                csv_filename = "i{}_{}.csv".format(ifuslot, i+1)
+                if not os.path.exists(csv_filename):
+                    logging.warning("mk_dithall: Found no *.csv file for IFU slot {} ({}).".format(ifuslot, csv_filename))
+                    continue
+                csv = ascii.read(csv_filename)
                 cmulti_name =  ixy["col3"]  # pointer to the multi extention fits and fiber nubmer like: multi_301_015_038_RU_085.ixy
                 cifu = Column(["ifu{}".format(ifuslot)] * len(ixy) )
                 #cc = csv["ra"], csv["dec"], cifu, csv["ifuslot"], csv["XS"], csv["YS"], csv["xfplane"], csv["yfplane"], cmulti_name
@@ -503,16 +546,20 @@ def main():
     # Copy fplane file. 
     cp_fplane_file(wdir, args.fplane_txt)
 
+    # find which slots deleivered data for all exposures (infer from existance of corresponding
+    # multifits files).
+    active_slots = get_active_slots(wdir, exposures)
+
     # This is where the main work happens.
     # Essentially calls add_ra_dec for all IFU slots and all dithers.
     # Actually it uses the direct python interface to tangent_plane thater than calling add_ra_dec.
-    get_fiber_coords(wdir)
+    get_fiber_coords(wdir, active_slots)
 
     # Create exposure list
     create_elist(wdir, args.reduction_dir, args.night, args.shotid, exposures )
 
     # Create final dithall.use file for downstream functions.
-    mk_dithall(wdir)
+    mk_dithall(wdir, active_slots)
 
     logging.info("Done.")
 
