@@ -1,0 +1,3 @@
+"}' dith1.all > dithall.use
+"}' dith2.all >> dithall.use
+"}' dith3.all >> dithall.use

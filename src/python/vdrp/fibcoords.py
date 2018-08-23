@@ -24,9 +24,12 @@ import path
 from distutils import dir_util
 
 from astropy.io import fits
+from astropy.io import ascii
 from astropy.table import Table
+from astropy.table import Column
 from astropy import table
 from astropy.table import Table
+from astropy.table import vstack
 from astropy.stats import biweight_location as biwgt_loc
 
 from pyhetdex.het import fplane
@@ -78,7 +81,7 @@ def parseArgs():
     defaults["reduction_dir"] = "reductions/"
     defaults["addin_dir"] = "vdrp/config/"
     defaults["shifts_dir"] = "shifts/"
-
+    defaults["fplane_txt"] = "vdrp/config/fplane.txt"
     if args.conf_file:
         config = ConfigParser.SafeConfigParser()
         config.read([args.conf_file])
@@ -94,6 +97,7 @@ def parseArgs():
     parser.add_argument("--logfile", type=str)
     parser.add_argument("--addin_dir", type=str)
     parser.add_argument("--shifts_dir", type=str)
+    parser.add_argument("--fplane_txt",  type=str, help="filename for fplane file.")
 
     # positional arguments
     parser.add_argument('night', metavar='night', type=str,
@@ -108,18 +112,21 @@ def parseArgs():
     return args
 
 
-def get_exposures(args):
+def get_exposures(reduction_dir, night, shotid):
     """
     Search reductions directory and find how many exposures there are.
 
     Args:
-        args (argparse.Namespace): Parsed configuration parameters.
+        reduction_dir (str): Directory that holds panacea reductions. Expects
+            subdirectories like ./NIGHTvSHOT.
+        night (str): Night for and observation.
+        shot (str): Shot ID for the observation.
 
     Returns:
         (list): Sorted list with exposures in reduction directory for night and shot
                 (from args). E.g. ['exp01', exp02', 'exp03'].
     """
-    pattern = os.path.join( args.reduction_dir, "{}/virus/virus0000{}/exp??".format( args.night, args.shotid ) )
+    pattern = os.path.join( args.reduction_dir, "{}/virus/virus0000{}/exp??".format( night, shotid ) )
     expdirs = glob.glob(pattern)
     exposures = []
     for d in expdirs:
@@ -129,12 +136,11 @@ def get_exposures(args):
     return np.sort( exposures )
 
 
-def mk_exp_sub_dirs(args, wdir, exposures):
+def mk_exp_sub_dirs(wdir, exposures):
     """ Make subdirectory structure.
     Creates ./exp??/virus
 
     Args:
-        args (argparse.Namespace): Parsed configuration parameters.
         wdir (str): Work directory.
         exposures (list): Sorted list with exposures in reduction directory for night and shot
                 (from args). E.g. ['exp01', exp02', 'exp03'].
@@ -146,12 +152,11 @@ def mk_exp_sub_dirs(args, wdir, exposures):
             createDir(exp + "/virus")
 
 
-def mk_coords_sub_dir(args, wdir):
+def mk_coords_sub_dir(wdir):
     """ Make subdirectory structure.
     Creates ./coords
 
     Args:
-        args (argparse.Namespace): Parsed configuration parameters.
         wdir (str): Work directory.
         exposures (list): Sorted list with exposures in reduction directory for night and shot
                 (from args). E.g. ['exp01', exp02', 'exp03'].
@@ -162,22 +167,49 @@ def mk_coords_sub_dir(args, wdir):
         createDir("coords")
 
 
+def create_elist(wdir, exposures):
+    """ Creates elist file. For each exposure there will be one enry for the exposre number and the 
+    timestamp like
 
-def link_multifits(args, wdir, exposures):
-    """ Link Panacea's multifits files into exp??/virus subdiretories.
+        exp01	20180611T054545.2
+        exp02	20180611T055249.6
+        exp03	20180611T060006.3
 
     Args:
-        args (argparse.Namespace): Parsed configuration parameters.
         wdir (str): Work directory.
         exposures (list): Sorted list with exposures in reduction directory for night and shot
                 (from args). E.g. ['exp01', exp02', 'exp03'].
 
     """
     logging.info("link_multifits: Creating links to multi*fits files.")
+    with open("elist", "w") as felist:
+        with path.Path(wdir):
+            for exp in enumerate(exposures) :
+                pattern = os.path.join( args.reduction_dir, "{}/virus/virus0000{}/{}/virus/CoFeS*"\
+                        .format( args.night, args.shotid, exp ) )
+                CoFeS = glob.glob(pattern)
+                prefix = CoFeS[0][5:22]
+                felist.write("{} {}\n".format(exp, prefix))
+
+
+def link_multifits(wdir, reduction_dir, night, shotid, exposures):
+    """ Link Panacea's multifits files into exp??/virus subdiretories.
+
+    Args:
+        wdir (str): Work directory.
+        reduction_dir (str): Directory that holds panacea reductions. Expects
+            subdirectories like ./NIGHTvSHOT.
+        night (str): Night for and observation.
+        shotid (str): Shot ID for the observation.
+        exposures (list): Sorted list with exposures in reduction directory for night and shotid
+                (from args). E.g. ['exp01', exp02', 'exp03'].
+
+    """
+    logging.info("link_multifits: Creating links to multi*fits files.")
     with path.Path(wdir):
         for exp in exposures:
-            pattern = os.path.join( args.reduction_dir, "{}/virus/virus0000{}/{}/virus/multi*"\
-                    .format( args.night, args.shotid, exp ) )
+            pattern = os.path.join( reduction_dir, "{}/virus/virus0000{}/{}/virus/multi*"\
+                    .format( night, shotidid, exp ) )
             logging.info("    Creating links to multi*fits files {}...".format(pattern))
             multifits = glob.glob(pattern)
             logging.info("    Linking {} files ...".format(len(multifits)))
@@ -188,28 +220,45 @@ def link_multifits(args, wdir, exposures):
                 os.symlink(mf,os.path.join(wdir, target))
 
 
-def cp_astrometry(args, wdir):
+                h = fits.getheader(mf)
+                d = datetime.strptime(h['DATE-OBS'] + "T"  +  h['UT'], "%Y-%m-%dT%H:%M:%S.%f")
+
+
+def cp_astrometry(wdir, shifts_dir, night, shotid):
     """ Copies astrometry information from
     shifts directory.
 
     Args:
-        args (argparse.Namespace): Parsed configuration parameters.
         wdir (str): Work directory.
+        shifts_dir (str): Directory where the astrometry was calculated, usually "shifts".
+        night (str): Night for and observation.
+        shotid (str): Shot ID for the observation.
     """
-    logging.info("cp_astrometry: Copy over all.mch and radec2.dat from {}.".format(args.shifts_dir))
+    logging.info("cp_astrometry: Copy over all.mch and radec2_final.dat from {}.".format(shifts_dir))
     ff = []
-    ff.append( "{}/{}v{}/all.mch".format(args.shifts_dir, args.night, args.shotid) )
-    ff.append(  "{}/{}v{}/radec2.dat".format(args.shifts_dir, args.night, args.shotid) )
+    ff.append( "{}/{}v{}/all.mch".format(shifts_dir, night, shotid) )
+    ff.append(  "{}/{}v{}/radec2_final.dat".format(shifts_dir, night, shotid) )
     for f in ff:
         shutil.copy2(f, os.path.join(wdir,"coords") )
 
 
-def cp_addin_files(args, wdir):
+def cp_fplane_file(wdir, fplane_txt):
+    """ Copies `fplane` file. 
+
+    Args:
+        fplane_txt (str): Full path to fplane file.
+        wdir (str): Work directory.
+    """
+    logging.info("cp_fplane_file: Copy {} to {}.".format(fplane_txt, wdir))
+    shutil.copy2(fplane_txt, os.path.join(wdir,"coords") )
+
+
+def cp_addin_files(wdir, addin_dir):
     """ Copies `addin` files. These are
     essentially the IFUcen files in a different format.
 
     Args:
-        args (argparse.Namespace): Parsed configuration parameters.
+        addin_dir (str): Directory where the *.addin files are stored.
         wdir (str): Work directory.
     """
     logging.info("cp_addin_files: Copy over *.addin from {}.".format(args.addin_dir))
@@ -220,7 +269,23 @@ def cp_addin_files(args, wdir):
         shutil.copy2(f, os.path.join(wdir,"coords") )
 
 
-def get_fiber_coords(args, wdir):
+def cp_ixy_files(wdir, ixy_dir):
+    """ Copies `ixy` files. These are
+    essentially the IFUcen files in a different format.
+
+    Args:
+        ixy_dir_dir (str): Directory where the *.ixy files are stored.
+        wdir (str): Work directory.
+    """
+    logging.info("cp_ixy_files: Copy over *.ixy from {}.".format(ixy_dir))
+    pattern = ixy_dir + "/*.ixy"
+    ff = glob.glob(pattern)
+    logging.info("    Found {} files.".format(len(ff)))
+    for f in ff:
+        shutil.copy2(f, os.path.join(wdir,"coords") )
+
+
+def get_fiber_coords(wdir):
     """ Calls add_ra_dec for all IFU slots and all dithers.
 
     The is the main routine for getcoord which computes the on-sky positions
@@ -246,14 +311,13 @@ def get_fiber_coords(args, wdir):
         fiber coordinates.
 
     Args:
-        args (argparse.Namespace): Parsed configuration parameters.
         wdir (str): Work directory.
 
     """
 
     logging.info("get_fiber_coords: Computing on-sky fiber coordinates.")
     with path.Path(os.path.join(wdir, "coords")):
-        ra0, dec0, pa0 = read_radec("radec2.dat")
+        ra0, dec0, pa0 = read_radec("radec2_final.dat")
         dither_offsets = read_all_mch("all.mch")
 
         # Find which IFU slots to operate of based on the
@@ -269,7 +333,7 @@ def get_fiber_coords(args, wdir):
         # Set up astrometry from user supplied options
         tp = TangentPlane(ra0, dec0, rot)
 
-        fplane = FPlane(args.fplane_txt)
+        fplane = FPlane("fplane.txt")
         for offset_index in dither_offsets:
             for ifuslot,addin_file in zip(ifuslots,addin_files):
                 # idetify ifu 
@@ -309,7 +373,7 @@ def config_logger(args):
                         format='%(asctime)s %(levelname)-8s %(message)s',
                         datefmt='%m-%d %H:%M',
                         filename=args.logfile,
-                        filemode='w')
+                        filemode='a')
     # define a Handler which writes INFO messages or higher to the sys.stderr
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
@@ -319,6 +383,81 @@ def config_logger(args):
     console.setFormatter(formatter)
     # add the handler to the root logger
     logging.getLogger('').addHandler(console)
+
+
+def get_exposures(prefixes):
+    """ Computes unique list of exposures from prefixes.
+
+    Args:
+        args (argparse.Namespace): Parsed configuration parameters.
+        prefixes (list): List file name prefixes for the collapsed IFU images
+
+    Returns:
+        (list): Unique list of exposure strings.
+    """
+    return np.unique([p[:15] for p in prefixes])
+
+
+def read_elist(filename):
+    """
+    Reads exposure lsit file.
+
+    Returns:
+        (OrderedDict): Dictionary that contains exposure identifier and timestamp like
+            {
+            "exp01"	: "20180611T054545.2",
+            "exp02"	: "20180611T055249.6",
+            "exp03"	: "20180611T060006.3"
+            }
+    """
+    with open(filename, 'r') as f:
+        ll = f.readlines()
+    e = OrderedDict()
+    for l in ll:
+        tt = l.spit()
+        e[ tt[0] ] = tt[1]
+    return e
+
+
+def mk_dithall(wdir):
+    """
+    This creates the dithall.use file that is required by the downstream
+    processing functions like photometry and detect.
+
+    The file dithall.use contains for every exposure (1-3) and every fiber the
+    RA/Dec on sky coordinats and the multifits file where the spectrum is stored and
+    the fiber number.
+    """
+    logging.info("get_fiber_coords: Computing on-sky fiber coordinates.")
+    with path.Path(os.path.join(wdir, "coords")):
+        # get sorted list of IFU slots from fplane file
+        fp = fplane.FPlane("fplane.txt")
+        sifuslots = np.sort(fp.ifuslots)
+
+        # read list of exposures
+        elist = read_elist("../elist")
+        for ifuslot in sifuslots:
+            # read the ixy files, those contain the mapping of x/y (IFU space) to fiber number on the detector
+            ixy = ascii.read("{}.ixy".format(ifuslot))
+
+            all_tdithx = []
+            for i, exp in enumerate(elist):
+                csv = ascii.read("{}_{}.csv".format(ifuslot, i+1))
+                cmulti_name =  csv["col3"]  # pointer to the multi extention fits and fiber nubmer like: multi_301_015_038_RU_085.ixy
+                cifu = Column(["ifu{}".format(ifuslot)] * len("ixy") )
+                cc = ixy["ra"], ixy["dec"], cifu, ixy["ifuslot"], ixy["XS"], ixy["YS"], ixy["xfplane"], ixy["yfplane"], cmulti_name
+                tdithx = Table(cc)
+                tdithx.writeto("dith{}.all".format(i+1), overwrite=True)
+
+
+                cprefix = Column(elist[exp] * len("ixy") )
+                cexp    = Column(exp * len("ixy") )
+                cc = ixy["ra"], ixy["dec"], cifu, ixy["ifuslot"], ixy["XS"], ixy["YS"], ixy["xfplane"], ixy["yfplane"], cmulti_name, cprefix, cexp
+                all_tdithx(tdithx)
+
+        tall_tdithx = vstack(all_tdithx)
+        tall_tdithx.writeto("dithall.use". overwrite=True)
+
 
 
 def main():
@@ -339,25 +478,37 @@ def main():
     wdir = os.path.join(cwd, "{}v{}".format(args.night, args.shotid))
     createDir(wdir)
 
-    exposures = get_exposures(args)
+    exposures = get_exposures(args.reduction_dir, args.night, args.shotid)
 
     # create subdirectories for each exposure and ./coords
-    mk_exp_sub_dirs(args, wdir, exposures)
-    mk_coords_sub_dir(args, wdir)
+    mk_exp_sub_dirs(wdir, exposures)
+    mk_coords_sub_dir(wdir)
 
     # create symlinks to multi*fits fitsfiles
-    link_multifits(args, wdir, exposures)
+    link_multifits(wdir, args.reduction_dir, args.night, args.shotid, exposures)
 
     # copy astrometry solution (all.mch and radec2.dat) from shifts directory
-    cp_astrometry(args, wdir)
+    cp_astrometry(wdir, shifts_dir, args.night, args.shotid)
 
-    # Copies `addin` files. These are essentially the IFUcen files in a different format.
-    cp_addin_files(args, wdir)
+    # Copy `addin` files. These are essentially the IFUcen files in a different format.
+    cp_addin_files(wdir, args.addin_dir)
 
-    # The is where the main work happens.
+    # Copy `ixy` files. These conain the IFU x/y to fiber number mapping.
+    cp_ixy_files(wdir, args.ixy_dir)
+
+    # Copy fplane file. 
+    cp_fplane_file(wdir, args.fplane_txt)
+
+    # This is where the main work happens.
     # Essentially calls add_ra_dec for all IFU slots and all dithers.
     # Actually it uses the direct python interface to tangent_plane thater than calling add_ra_dec.
-    get_fiber_coords(args, wdir)
+    get_fiber_coords(wdir)
+
+    # Create exposure list
+    create_elist(wdir, exposures)
+
+    # Create final dithall.use file for downstream functions.
+    mk_dithall(wdir)
 
     logging.info("Done.")
 

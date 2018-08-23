@@ -157,7 +157,7 @@ def parseArgs(args):
     parser.add_argument("--mktot_ymin",  type=float, help="Y limit for offset fit (mktot).")
     parser.add_argument("--mktot_ymax",  type=float, help="Y limit for offset fit (mktot).")
     parser.add_argument("--fluxnorm_mag_max",  type=float, help="Magnitude limit for flux normalisation.")
-    parser.add_argument("--fplane_txt",  type=str, help="Filename for fplane file.")
+    parser.add_argument("--fplane_txt",  type=str, help="filename for fplane file.")
     parser.add_argument("--shuffle_cfg",  type=str, help="Filename for shuffle configuration.")
     parser.add_argument("--acam_magadd",  type=float, help="do_shuffle acam magadd.")
     parser.add_argument("--wfs1_magadd",  type=float, help="do_shuffle wfs1 magadd.")
