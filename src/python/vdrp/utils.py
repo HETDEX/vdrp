@@ -66,7 +66,7 @@ def read_all_mch(all_mch):
         for i,l in enumerate(ll):
             tt = l.split()
             dx,dy = float(tt[2]), float(tt[3])
-        dither_offsets[i+1] = (dx,dy)
+            dither_offsets[i+1] = (dx,dy)
     return dither_offsets
 
 
