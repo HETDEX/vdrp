@@ -1229,7 +1229,7 @@ def mk_match_plots(wdir, prefixes):
             radec_file = radec_files[exp]
             if os.path.exists(xy_file) and os.path.exists(radec_file):
                 mk_match_matrix(wdir, ax, exp, image_files, fplane_file, shout_ifu_file, xy_file, radec_file)
-                f.savefig( "detect_{}.pdf".format(exp) )
+                f.savefig( "match_{}.pdf".format(exp) )
 
 
 def get_prefixes(wdir):
