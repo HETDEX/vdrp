@@ -22,6 +22,7 @@ from collections import OrderedDict
 import tempfile
 import path
 from distutils import dir_util
+import ast
 
 from astropy.io import fits
 from astropy.io import ascii
@@ -42,7 +43,6 @@ from vdrp import daophot
 from vdrp import cltools
 from vdrp.utils import createDir
 from vdrp.utils import read_radec
-from vdrp.utils import read_all_mch
 
 from vdrp.utils import rm
 
@@ -84,7 +84,8 @@ def parseArgs():
     defaults["shifts_dir"] = "shifts/"
     defaults["fplane_txt"] = "vdrp/config/fplane.txt"
     defaults["radec2_dat"] = ""
-    defaults["all_mch"]    = ""
+    defaults["dither_offsets"] = "[(0.,0.),(1.270,-0.730),(1.270,0.730)]"
+
     if args.conf_file:
         config = ConfigParser.SafeConfigParser()
         config.read([args.conf_file])
@@ -103,7 +104,7 @@ def parseArgs():
     parser.add_argument("--shifts_dir", type=str)
     parser.add_argument("--fplane_txt",  type=str, help="filename for fplane file.")
     parser.add_argument("--radec2_dat", type=str, help="Overwrite use of default radec2_final.dat (holds final astrometric solution for shot RA,Dec,PA) by specific file.")
-    parser.add_argument("--all_mch", type=str, help="Overwrite use of default all.raw (holds dither offsets) by specific file.")
+    parser.add_argument("--dither_offsets", type=str, help="List of x,y tuples that define the dither offsets.")
 
 
     # positional arguments
@@ -114,6 +115,7 @@ def parseArgs():
 
     args = parser.parse_args(remaining_argv)
 
+    args.dither_offsets = ast.literal_eval(args.dither_offsets)
 
 
     return args
@@ -271,7 +273,7 @@ def link_multifits(wdir, reduction_dir, night, shotid, exposures):
                 os.symlink(mf,os.path.join(wdir, target))
 
 
-def cp_astrometry(wdir, shifts_dir, night, shotid, radec2_dat, all_mch):
+def cp_astrometry(wdir, shifts_dir, night, shotid, radec2_dat):
     """ Copies astrometry information from
     shifts directory.
 
@@ -281,25 +283,19 @@ def cp_astrometry(wdir, shifts_dir, night, shotid, radec2_dat, all_mch):
         night (str): Night for and observation.
         shotid (str): Shot ID for the observation.
         radec2_dat (str): Default '', if not empty will overwrite the use of the default radec2_final.dat from the shifts directory.
-        all_mch (str): Default '', if not empty will overwrite the use of the default all.mch from the shifts directory.
 
     Notes:
-        If radec2_dat, all_mch are used to specify different source files
-        they will still be named radec2_final.dat and al.mch in the target directory. This is ugly, but
+        If radec2_dat is used to specify different source files
+        it will still be named radec2_final.dat in the target directory. This is ugly, but
         those parameters mostly serve for debugging.
     """
-    logging.info("Copy over all.mch and radec2_final.dat from {}.".format(shifts_dir))
+    logging.info("Copy over radec2_final.dat from {}.".format(shifts_dir))
     ff = []
 
     if radec2_dat == "":
         radec2_dat = "{}/{}v{}/radec2_final.dat".format(shifts_dir, night, shotid)
     logging.info("Using {} for RA, Dec and PA.".format(radec2_dat))
     shutil.copy2(radec2_dat, os.path.join(wdir,"coords","radec2_final.dat") )
-
-    if all_mch == "":
-        all_mch =  "{}/{}v{}/all.mch".format(shifts_dir, night, shotid)
-    logging.info("Using {} for offsets.".format(all_mch))
-    shutil.copy2(all_mch, os.path.join(wdir,"coords","all.mch") )
 
 
 def cp_fplane_file(wdir, fplane_txt):
@@ -346,7 +342,7 @@ def cp_ixy_files(wdir, ixy_dir):
         shutil.copy2(f, os.path.join(wdir,"coords") )
 
 
-def get_fiber_coords(wdir, active_slots):
+def get_fiber_coords(wdir, active_slots, dither_offsets):
     """ Calls add_ra_dec for all IFU slots and all dithers.
 
     The is the main routine for getcoord which computes the on-sky positions
@@ -379,7 +375,6 @@ def get_fiber_coords(wdir, active_slots):
     logging.info("get_fiber_coords: Computing on-sky fiber coordinates.")
     with path.Path(os.path.join(wdir, "coords")):
         ra0, dec0, pa0 = read_radec("radec2_final.dat")
-        dither_offsets = read_all_mch("all.mch")
 
         # Find which IFU slots to operate of based on the
         # existing set og *.addin files.
@@ -400,12 +395,11 @@ def get_fiber_coords(wdir, active_slots):
         tp = TangentPlane(ra0, dec0, rot)
 
         fplane = FPlane("fplane.txt")
-        for offset_index in dither_offsets:
-            logging.info("get_fiber_coords:    offset_index {}.".format(offset_index) )
+        for offset_index, (dx, dy) in enumerate( dither_offsets ):
+            logging.info("get_fiber_coords:    offset_index {} dx = {:.3f}, dy = {:.3f}.".format(offset_index + 1, dx, dy) )
             for ifuslot,addin_file in zip(ifuslots,addin_files):
                 # identify ifu 
                 ifu = fplane.by_ifuslot(ifuslot)
-                dx, dy = dither_offsets[offset_index]
                 # read fiber positions 
                 x, y, table = rc.read_line_detect(addin_file)
                 # skip empty tables
@@ -556,7 +550,7 @@ def main():
     link_multifits(wdir, args.reduction_dir, args.night, args.shotid, exposures)
 
     # copy astrometry solution (all.mch and radec2.dat) from shifts directory
-    cp_astrometry(wdir, args.shifts_dir, args.night, args.shotid, args.radec2_dat, args.all_mch)
+    cp_astrometry(wdir, args.shifts_dir, args.night, args.shotid, args.radec2_dat)
 
     # Copy `addin` files. These are essentially the IFUcen files in a different format.
     cp_addin_files(wdir, args.addin_dir)
@@ -574,7 +568,7 @@ def main():
     # This is where the main work happens.
     # Essentially calls add_ra_dec for all IFU slots and all dithers.
     # Actually it uses the direct python interface to tangent_plane thater than calling add_ra_dec.
-    get_fiber_coords(wdir, active_slots)
+    get_fiber_coords(wdir, active_slots, args.dither_offsets)
 
     # Create exposure list
     create_elist(wdir, args.reduction_dir, args.night, args.shotid, exposures )
