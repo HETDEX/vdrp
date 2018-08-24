@@ -97,6 +97,7 @@ class Test_Main(TestBase):
             args.use_tmp=False
             args.wfs1_magadd=5.0
             args.wfs2_magadd=5.0
+            args.dither_offsets=[(0.,0.),(1.270,-0.730),(1.270,0.730)]
 
             main(args)
 

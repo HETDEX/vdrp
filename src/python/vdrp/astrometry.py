@@ -27,6 +27,7 @@ import tempfile
 import numpy as np
 from collections import OrderedDict
 import pickle
+import ast
 
 #import scipy
 from scipy.interpolate import UnivariateSpline
@@ -119,6 +120,7 @@ def parseArgs(args):
     defaults["task"] = "all"
     defaults["offset_exposure_indices"] = "1,2,3"
     defaults["optimal_ang_off_smoothing"] = 0.05
+    defaults["dither_offsets"] = "[(0.,0.),(1.270,-0.730),(1.270,0.730)]"
 
     config_source = "Default"
     if args.conf_file:
@@ -170,6 +172,7 @@ def parseArgs(args):
     parser.add_argument("-t", "--task",  type=str, help="Task to execute.")
     parser.add_argument("--offset_exposure_indices",  type=str, help="Exposure indices.")
     parser.add_argument("--optimal_ang_off_smoothing", type=float, help="Smothing value for smoothing spline use for measurement of optimal angular offset value.")
+    parser.add_argument("--dither_offsets", type=str, help="List of x,y tuples that define the dither offsets.")
 
     # positional arguments
     parser.add_argument('night', metavar='night', type=str,
@@ -186,11 +189,12 @@ def parseArgs(args):
     args = parser.parse_args(remaining_argv)
 
     args.config_source = config_source
-    # shoul in principle be able to do this with accumulate???
+    # should in principle be able to do this with accumulate???
     args.use_tmp = args.use_tmp == "True"
     args.remove_tmp = args.remove_tmp == "True"
     args.getoff2_radii = [float(t) for t in args.getoff2_radii.split(",")]
     args.add_radec_angoff_trial = [float(offset) for offset in  args.add_radec_angoff_trial.split(",")]
+    args.dither_offsets = ast.literal_eval(args.dither_offsets)
 
     args.offset_exposure_indices = [int(t) for t in args.offset_exposure_indices.split(",")]
 
@@ -300,7 +304,7 @@ def daophot_phot_and_allstar(wdir, prefixes, daophot_photo_opt, daophot_allstar_
             daophot.allstar(prefix,logging=logging)
 
 
-def mktot(wdir, prefixes, mktot_ifu_grid, mktot_magmin, mktot_magmax, mktot_xmin, mktot_xmax, mktot_ymin, mktot_ymax):
+def mktot(wdir, prefixes, mktot_ifu_grid, mktot_magmin, mktot_magmax, mktot_xmin, mktot_xmax, mktot_ymin, mktot_ymax, dither_offsets):
     """ Reads all *.als files. Put detections on a grid
     corresponding to the IFU position in the focal plane as defined in
     config/ifu_grid.txt (should later become fplane.txt.
@@ -378,7 +382,6 @@ def mktot(wdir, prefixes, mktot_ifu_grid, mktot_magmin, mktot_magmax, mktot_xmin
                 logging.info("{} stars in {}.".format(count, fnout))
         # produce all.mch like run6b
         with open("all.mch", 'w') as fout:
-            dither_offsets = [(0.,0.),(1.270,-0.730),(1.270,0.730)]
             s = ""
             for i in range(len(exposures)):
                 s  += " '{:30s}'     {:.3f}     {:.3f}   1.00000   0.00000   0.00000   1.00000     0.000    0.0000\n".format(exposures[i] + "tot.als",dither_offsets[i][0], dither_offsets[i][1])
@@ -859,7 +862,7 @@ def compute_offset(wdir, prefixes, getoff2_radii, add_radec_angoff_trial,\
 
 
 
-def combine_radec(wdir, PLOT=True):
+def combine_radec(wdir, dither_offsets, PLOT=True):
     """
     Computes - based on the RA Dec information of the individual exposures
     (from radec2_exp0?.dat) the final RA/Dec for the shot.
@@ -872,7 +875,6 @@ def combine_radec(wdir, PLOT=True):
         wdir (str): Work directory.
     """
     logging.info("Combining RA, Dec positions of all exposures to final shot RA, Dec.")
-    dither_offsets = [(0.,0.),(1.270,-0.730),(1.270,0.730)]
     ff = np.sort( glob.glob(wdir + "/radec2_exp??.dat") )
     ra0,dec0,pa0 = read_radec(ff[0])
     translated = []
@@ -1319,7 +1321,6 @@ def main(args):
     """
     Main function.
     """
-
     fmt = '%(asctime)s %(levelname)-8s %(funcName)15s(): %(message)s'
     # set up logging to file - see previous section for more details
     logging.basicConfig(level=logging.DEBUG,
@@ -1389,7 +1390,7 @@ def main(args):
 
             if task in ["mktot","all"]:
                # Combine detections accross all IFUs.
-               mktot(wdir, prefixes, args.mktot_ifu_grid, args.mktot_magmin, args.mktot_magmax, args.mktot_xmin, args.mktot_xmax, args.mktot_ymin, args.mktot_ymax)
+               mktot(wdir, prefixes, args.mktot_ifu_grid, args.mktot_magmin, args.mktot_magmax, args.mktot_xmin, args.mktot_xmax, args.mktot_ymin, args.mktot_ymax, args.dither_offsets)
 
             if task in ["rmaster","all"]:
               # Run daophot master to ???
@@ -1433,7 +1434,7 @@ def main(args):
 
             if task in ["combine_radec","all"]:
                 # Combine individual exposure radec information.
-                combine_radec(wdir)
+                combine_radec(wdir, args.dither_offsets)
 
             if task in ["add_ifu_xy","all"]:
                add_ifu_xy(wdir, args.offset_exposure_indices)
