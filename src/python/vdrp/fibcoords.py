@@ -135,6 +135,7 @@ def get_exposures(reduction_dir, night, shotid):
         __, t = os.path.split(d)
         exposures.append(t)
 
+    logging.info("get_exposures: Found {} exposures.".format(len(exposures)) )
     return np.sort( exposures )
 
 
@@ -290,7 +291,8 @@ def cp_fplane_file(wdir, fplane_txt):
         fplane_txt (str): Full path to fplane file.
         wdir (str): Work directory.
     """
-    logging.info("cp_fplane_file: Copy {} to {}.".format(fplane_txt, wdir))
+    logging.info("cp_fplane_file: Copy {} ".format(fplane_txt))
+    logging.info("cp_fplane_file:      to {}.".format(wdir))
     shutil.copy2(fplane_txt, os.path.join(wdir,"coords") )
 
 
