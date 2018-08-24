@@ -406,9 +406,6 @@ def get_fiber_coords(wdir, active_slots):
                 # identify ifu 
                 ifu = fplane.by_ifuslot(ifuslot)
                 dx, dy = dither_offsets[offset_index]
-                # remember to flip x,y
-                xfp = ifu.y + dx
-                yfp = ifu.x + dy
                 # read fiber positions 
                 x, y, table = rc.read_line_detect(addin_file)
                 # skip empty tables
@@ -418,6 +415,8 @@ def get_fiber_coords(wdir, active_slots):
                 xfp = x + ifu.y + dx
                 yfp = y + ifu.x + dy
                 # project to sky
+                #print("ifuslot, addin_file, ifu.x, dx, ifu.y , dy, ra0, dec0, pa0", ifuslot, addin_file, ifu.x, dx, ifu.y , dy, ra0, dec0, pa0)
+
                 ra, dec= tp.xy2raDec(xfp, yfp)
                 # save results
                 table['ra'] = ra
