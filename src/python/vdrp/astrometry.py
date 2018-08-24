@@ -346,7 +346,7 @@ def mktot(wdir, prefixes, mktot_ifu_grid, mktot_magmin, mktot_magmax, mktot_xmin
                     # find xoffset and yoffset for current IFU slot
                     jj = ifugird['IFUSLOT'] == ifuslot
                     if sum(jj) < 1:
-                        logging.warning("mktot: IFU slot {} not found in {}.".format(ifuslot, mktot_ifu_grid))
+                        logging.warning("IFU slot {} not found in {}.".format(ifuslot, mktot_ifu_grid))
                         continue
                     ifugird['X'][jj][0]
                     ifugird['Y'][jj][0]
@@ -357,7 +357,7 @@ def mktot(wdir, prefixes, mktot_ifu_grid, mktot_magmin, mktot_magmax, mktot_xmin
                     try:
                         als = daophot.DAOPHOT_ALS.read(prefix + ".als")
                     except:
-                        logging.warning("mktot: WARNING Unable to read " + prefix + ".als")
+                        logging.warning("Unable to read " + prefix + ".als")
                         continue
 
                     # filter according to magnitude and x and y range
@@ -486,7 +486,7 @@ def redo_shuffle(wdir, ra, dec, track, acam_magadd, wfs1_magadd, wfs2_magadd, sh
         logging.info("Rerunning shuffle for RA = {}, Dec = {} and track = {} ...".format(RA0, DEC0, track))
         cmd  = "do_shuffle -v --acam_magadd {:.2f} --wfs1_magadd {:.2f} --wfs2_magadd {:.2f}".format(acam_magadd, wfs1_magadd, wfs2_magadd)
         cmd += " {:.6f} {:.6f} {:.1f} {:d} {:d} {:.1f} {:.1f}".format(RA0, DEC0, radius, track, ifuslot, x_offset, y_offset )
-        logging.info("redo_shuffle: Calling shuffle with {}.".format(cmd))
+        logging.info("Calling shuffle with {}.".format(cmd))
         subprocess.call(cmd, shell=True)
 
 
@@ -510,7 +510,7 @@ def get_ra_dec_orig(wdir, reduction_dir, night, shotid):
     ra0  = h["TRAJCRA"]
     dec0 = h["TRAJCDEC"]
     pa0  = h["PARANGLE"]
-    logging.info("get_ra_dec_orig: Original RA,DEC,PA = {},{},{}".format(ra0, dec0, pa0))
+    logging.info("Original RA,DEC,PA = {},{},{}".format(ra0, dec0, pa0))
     with path.Path(wdir):
         utils.write_radec(ra0, dec0, pa0, "radec.orig")
 
@@ -635,7 +635,7 @@ def compute_optimal_ang_off(wdir, smoothing=0.05, PLOT=True):
     colors = ['red','green','blue']
     exposures = ['exp01','exp02', 'exp03']
 
-    logging.info("compute_optimal_ang_off: Computing optimal angular offset...")
+    logging.info("Computing optimal angular offset...")
     # load getoff2 data for all exposures
     results = Table(names=['exposure','ang_off','nstar','RMS'], dtype=['S5',float, int, float])
     for exp in exposures:
@@ -773,7 +773,7 @@ def compute_offset(wdir, prefixes, getoff2_radii, add_radec_angoff_trial,\
         angoffsets         = add_radec_angoff_trial
         nominal_angoffset  = add_radec_angoff
         if final_ang_offset != None:
-            logging.info("compute_offset: Using final angular offset value of {} Deg.".format(final_ang_offset))
+            logging.info("Using final angular offset value of {} Deg.".format(final_ang_offset))
             angoffsets = []
             nominal_angoffset = final_ang_offset
         angoffsets = filter( lambda x : x != nominal_angoffset, angoffsets) + [nominal_angoffset]
@@ -782,12 +782,12 @@ def compute_offset(wdir, prefixes, getoff2_radii, add_radec_angoff_trial,\
         s = ""
         for r in radii:
             s+= "{}\" ".format(r)
-        logging.info("compute_offset: Computing offsets with using following sequence of matching radii: {}".format(s))
-        logging.info("compute_offset:  Using nominal angular offset value of {} Deg. ".format(add_radec_angoff))
+        logging.info("Computing offsets with using following sequence of matching radii: {}".format(s))
+        logging.info(" Using nominal angular offset value of {} Deg. ".format(add_radec_angoff))
         s = ""
         for a in add_radec_angoff_trial:
             s+= "{} Deg ".format(a)
-        logging.info("compute_offset:  Also computing offsets for the following set of trial angles: {}".format(s) )
+        logging.info("Also computing offsets for the following set of trial angles: {}".format(s) )
 
         # will contain results of angular offset trials
         utils.createDir(add_radec_angoff_trial_dir)
@@ -800,7 +800,7 @@ def compute_offset(wdir, prefixes, getoff2_radii, add_radec_angoff_trial,\
             # loop over all exposures in configuration file
             for exp_index in offset_exposure_indices:
                 if exp_index > len(exposures):
-                    logging.warning("compute_offset: Have no data for exposure {}. Skipping ...".format(exp_index))
+                    logging.warning("Have no data for exposure {}. Skipping ...".format(exp_index))
                     continue
                 exp = exposures[exp_index-1] # select first exposure
                 exp_prefixes = []
@@ -819,9 +819,9 @@ def compute_offset(wdir, prefixes, getoff2_radii, add_radec_angoff_trial,\
                 # Matching radii are defined in config file.
                 ra_offset, dec_offset = 0., 0.
                 for i, radius in enumerate(radii):
-                    logging.info("compute_offset: Angular offset {:.3} Deg, getoff2 iteration {}, matching radius = {}\"".format(angoff, i+1, radius))
+                    logging.info("Angular offset {:.3} Deg, getoff2 iteration {}, matching radius = {}\"".format(angoff, i+1, radius))
                     radec_outfile='tmp_exp{:02d}.csv'.format(exp_index)
-                    logging.info("compute_offset: Adding RA & Dec to detections, applying offsets ra_offset,dec_offset,pa_offset = {},{},{}".format( ra_offset, dec_offset, angoff) )
+                    logging.info("Adding RA & Dec to detections, applying offsets ra_offset,dec_offset,pa_offset = {},{},{}".format( ra_offset, dec_offset, angoff) )
                     # Call add_ra_dec, add offsets first.
                     new_ra, new_dec, new_pa = ra * 15. + ra_offset, dec + dec_offset, pa + angoff
                     # New direct call to pyhetdex
@@ -832,12 +832,12 @@ def compute_offset(wdir, prefixes, getoff2_radii, add_radec_angoff_trial,\
                     add_ra_dec(wdir, als_data, ra=new_ra, dec=new_dec, pa=new_pa, fp=fp, radec_outfile=radec_outfile)
 
                     # Now compute offsets.
-                    logging.info("compute_offset: Computing offsets ...")
+                    logging.info("Computing offsets ...")
                     dra_offset, ddec_offset = cltools.getoff2(radec_outfile, shout_ifustars, radius, ra_offset=0., dec_offset=0., logging=logging)
                     ra_offset, dec_offset =  ra_offset+dra_offset, dec_offset+ddec_offset
-                    logging.info("compute_offset: End getoff2 iteration {}: Offset adjusted by {:.6f}, {:.6f} to {:.6f}, {:.6f}".format(i+1, dra_offset, ddec_offset, ra_offset, dec_offset))
-                    logging.info("compute_offset: ")
-                    logging.info("compute_offset: ")
+                    logging.info("End getoff2 iteration {}: Offset adjusted by {:.6f}, {:.6f} to {:.6f}, {:.6f}".format(i+1, dra_offset, ddec_offset, ra_offset, dec_offset))
+                    logging.info("")
+                    logging.info("")
 
                 # Copy getoff.out and getoff2.out to add_radec_angoff_trial_dir
                 sangoff = '_{:06.3f}Deg'.format(angoff)
@@ -871,7 +871,7 @@ def combine_radec(wdir, PLOT=True):
     Args:
         wdir (str): Work directory.
     """
-    logging.info("combine_radec: Combining RA, Dec positions of all exposures to final shot RA, Dec.")
+    logging.info("Combining RA, Dec positions of all exposures to final shot RA, Dec.")
     dither_offsets = [(0.,0.),(1.270,-0.730),(1.270,0.730)]
     ff = np.sort( glob.glob(wdir + "/radec2_exp??.dat") )
     ra0,dec0,pa0 = read_radec(ff[0])
@@ -881,7 +881,7 @@ def combine_radec(wdir, PLOT=True):
         ax = plt.subplot(111)
     for i,(f, offset) in enumerate(zip(ff, dither_offsets)):
         ra,dec,pa = read_radec(f)
-        logging.info("combine_radec: Exposure {:d} RA,Dec = {:.6f},{:.6f}".format(i+1,ra,dec))
+        logging.info("Exposure {:d} RA,Dec = {:.6f},{:.6f}".format(i+1,ra,dec))
         rot = 360.0 - (pa + 90.)
         tp = TangentPlane(ra, dec, rot)
 
@@ -909,9 +909,9 @@ def combine_radec(wdir, PLOT=True):
     ddfinal_dec = np.std(translated[:,1])
 
     s1  = "RA = {:.6f} Deg +/- {:.3f}\"".format(final_ra, dfinal_ra*3600.)
-    logging.info("combine_radec: Final shot  " + s1)
+    logging.info("Final shot  " + s1)
     s2  = "Dec = {:.6f} Deg +/- {:.3f}\" ".format(final_dec, ddfinal_dec*3600.)
-    logging.info("combine_radec: Final shot  " + s2)
+    logging.info("Final shot  " + s2)
     if PLOT:
         plt.plot([],[],'s',color='grey',label="exposure center")
         plt.plot([],[],'o',color='grey',label="inferred shot center")
@@ -998,13 +998,13 @@ def mkmosaic(wdir, prefixes, night, shotid, mkmosaic_angoff):
         mkmosaic_angoff (float): Angular offset to add for creation of mosaic image.
     """
     with path.Path(wdir):
-        logging.info("mkmosaic: Creating mosaic image.")
+        logging.info("Creating mosaic image.")
         # build mosaic from IFU images
         #exposures = np.unique([p[:15] for p in prefixes])
         #exp1 = exposures[0]
         exposures_files = get_exposures_files(".")
         for exp in exposures_files:
-            logging.info("mkmosaic: Calling immosaicv ....")
+            logging.info("Calling immosaicv ....")
             daophot.rm(['immosaic.fits'])
             cltools.immosaicv( exposures_files[exp], fplane_file = "fplane.txt", logging=logging)
 
@@ -1012,7 +1012,7 @@ def mkmosaic(wdir, prefixes, night, shotid, mkmosaic_angoff):
             ra,dec,pa = utils.read_radec('radec2_{}.dat'.format(exp))
             alpha = 360. - (pa + 90. + mkmosaic_angoff)
 
-            logging.info("mkmosaic: Calling imrot with angle {} (can take a minute) ....".format(alpha))
+            logging.info("Calling imrot with angle {} (can take a minute) ....".format(alpha))
             daophot.rm(['imrot.fits'])
             cltools.imrot("immosaic.fits", alpha, logging=logging)
             hdu = fits.open("imrot.fits")
@@ -1207,7 +1207,7 @@ def mk_match_plots(wdir, prefixes):
         wdir (str): Work directory.
         prefixes (list): List file name prefixes for the collapsed IFU images.
     """
-    logging.info("mk_match_plots: Creating match plots.")
+    logging.info("Creating match plots.")
 
     shout_ifu_file = "shout.ifustars"
     exposures = ["exp01", "exp02", "exp03"]
@@ -1320,9 +1320,10 @@ def main(args):
     Main function.
     """
 
+    fmt = '%(asctime)s %(levelname)-8s %(funcName)15s(): %(message)s'
     # set up logging to file - see previous section for more details
     logging.basicConfig(level=logging.DEBUG,
-                        format='%(asctime)s %(levelname)-8s %(message)s',
+                        format=fmt,
                         datefmt='%m-%d %H:%M',
                         filename=args.logfile,
                         filemode='w')
@@ -1330,7 +1331,7 @@ def main(args):
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
     # set a format which is simpler for console use
-    formatter = logging.Formatter('%(asctime)s %(levelname)-8s %(message)s')
+    formatter = logging.Formatter(fmt)
     # tell the handler to use this format
     console.setFormatter(formatter)
     # add the handler to the root logger
