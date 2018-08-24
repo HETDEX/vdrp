@@ -83,6 +83,8 @@ def parseArgs():
     defaults["ixy_dir"] = "vdrp/config/"
     defaults["shifts_dir"] = "shifts/"
     defaults["fplane_txt"] = "vdrp/config/fplane.txt"
+    defaults["radec2_dat"] = ""
+    defaults["all_mch"]    = ""
     if args.conf_file:
         config = ConfigParser.SafeConfigParser()
         config.read([args.conf_file])
@@ -100,6 +102,9 @@ def parseArgs():
     parser.add_argument("--ixy_dir", type=str)
     parser.add_argument("--shifts_dir", type=str)
     parser.add_argument("--fplane_txt",  type=str, help="filename for fplane file.")
+    parser.add_argument("--radec2_dat", type=str, help="Overwrite use of default radec2_final.dat (holds final astrometric solution for shot RA,Dec,PA) by specific file.")
+    parser.add_argument("--all_mch", type=str, help="Overwrite use of default all.raw (holds dither offsets) by specific file.")
+
 
     # positional arguments
     parser.add_argument('night', metavar='night', type=str,
@@ -185,7 +190,7 @@ def mk_exp_sub_dirs(wdir, exposures):
                 (from args). E.g. ['exp01', exp02', 'exp03'].
 
     """
-    logging.info("mk_exp_sub_dirs: Creating exp0?/virus structure.")
+    logging.info("Creating exp0?/virus structure.")
     with path.Path(wdir):
         for exp in exposures:
             createDir(exp + "/virus")
@@ -201,7 +206,7 @@ def mk_coords_sub_dir(wdir):
                 (from args). E.g. ['exp01', exp02', 'exp03'].
 
     """
-    logging.info("mk_coords_sub_dir: Creating coords subdirectory.")
+    logging.info("Creating coords subdirectory.")
     with path.Path(wdir):
         createDir("coords")
 
@@ -224,7 +229,7 @@ def create_elist(wdir, reduction_dir, night, shotid, exposures ):
                 (from args). E.g. ['exp01', exp02', 'exp03'].
 
     """
-    logging.info("link_multifits: Creating links to multi*fits files.")
+    logging.info("Creating links to multi*fits files.")
     with path.Path(wdir):
         with open("elist", "w") as felist:
             for exp in exposures :
@@ -250,7 +255,7 @@ def link_multifits(wdir, reduction_dir, night, shotid, exposures):
                 (from args). E.g. ['exp01', exp02', 'exp03'].
 
     """
-    logging.info("link_multifits: Creating links to multi*fits files.")
+    logging.info("Creating links to multi*fits files.")
     with path.Path(wdir):
         for exp in exposures:
             pattern = os.path.join( reduction_dir, "{}/virus/virus0000{}/{}/virus/multi*"\
@@ -265,7 +270,7 @@ def link_multifits(wdir, reduction_dir, night, shotid, exposures):
                 os.symlink(mf,os.path.join(wdir, target))
 
 
-def cp_astrometry(wdir, shifts_dir, night, shotid):
+def cp_astrometry(wdir, shifts_dir, night, shotid, radec2_dat, all_mch):
     """ Copies astrometry information from
     shifts directory.
 
@@ -274,23 +279,36 @@ def cp_astrometry(wdir, shifts_dir, night, shotid):
         shifts_dir (str): Directory where the astrometry was calculated, usually "shifts".
         night (str): Night for and observation.
         shotid (str): Shot ID for the observation.
+        radec2_dat (str): Default '', if not empty will overwrite the use of the default radec2_final.dat from the shifts directory.
+        all_mch (str): Default '', if not empty will overwrite the use of the default all.mch from the shifts directory.
+
+    Notes:
+        If radec2_dat, all_mch are used to specify different source files
+        they will still be named radec2_final.dat and al.mch in the target directory. This is ugly, but
+        those parameters mostly serve for debugging.
     """
-    logging.info("cp_astrometry: Copy over all.mch and radec2_final.dat from {}.".format(shifts_dir))
+    logging.info("Copy over all.mch and radec2_final.dat from {}.".format(shifts_dir))
     ff = []
-    ff.append( "{}/{}v{}/all.mch".format(shifts_dir, night, shotid) )
-    ff.append(  "{}/{}v{}/radec2_final.dat".format(shifts_dir, night, shotid) )
-    for f in ff:
-        shutil.copy2(f, os.path.join(wdir,"coords") )
+
+    if radec2_dat == "":
+        radec2_dat = "{}/{}v{}/radec2_final.dat".format(shifts_dir, night, shotid)
+    logging.info("Using {} for RA, Dec and PA.".format(radec2_dat))
+    shutil.copy2(radec2_dat, os.path.join(wdir,"coords","radec2_final.dat") )
+
+    if all_mch == "":
+        all_mch =  "{}/{}v{}/all.mch".format(shifts_dir, night, shotid)
+    logging.info("Using {} for offsets.".format(all_mch))
+    shutil.copy2(all_mch, os.path.join(wdir,"coords","all.mch") )
 
 
 def cp_fplane_file(wdir, fplane_txt):
-    """ Copies `fplane` file. 
+    """ Copies `fplane` file.
 
     Args:
         fplane_txt (str): Full path to fplane file.
         wdir (str): Work directory.
     """
-    logging.info("cp_fplane_file: Copy {} to {}.".format(fplane_txt, wdir))
+    logging.info("Copy {} to {}.".format(fplane_txt, wdir))
     shutil.copy2(fplane_txt, os.path.join(wdir,"coords") )
 
 
@@ -302,7 +320,7 @@ def cp_addin_files(wdir, addin_dir):
         addin_dir (str): Directory where the *.addin files are stored.
         wdir (str): Work directory.
     """
-    logging.info("cp_addin_files: Copy over *.addin from {}.".format(addin_dir))
+    logging.info("Copy over *.addin from {}.".format(addin_dir))
     pattern = addin_dir + "/*.addin"
     ff = glob.glob(pattern)
     logging.info("    Found {} files.".format(len(ff)))
@@ -318,7 +336,7 @@ def cp_ixy_files(wdir, ixy_dir):
         ixy_dir_dir (str): Directory where the *.ixy files are stored.
         wdir (str): Work directory.
     """
-    logging.info("cp_ixy_files: Copy over *.ixy from {}.".format(ixy_dir))
+    logging.info("Copy over *.ixy from {}.".format(ixy_dir))
     pattern = ixy_dir + "/*.ixy"
     ff = glob.glob(pattern)
     logging.info("    Found {} files.".format(len(ff)))
@@ -415,9 +433,11 @@ def config_logger(args):
     Args:
         args (argparse.Namespace): Parsed configuration parameters.
     """
+
+    fmt = '%(asctime)s %(levelname)-8s %(funcName)15s(): %(message)s'
     # set up logging to file
     logging.basicConfig(level=logging.DEBUG,
-                        format='%(asctime)s %(levelname)-8s %(message)s',
+                        format=fmt,
                         datefmt='%m-%d %H:%M',
                         filename=args.logfile,
                         filemode='a')
@@ -425,7 +445,7 @@ def config_logger(args):
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
     # set a format which is simpler for console use
-    formatter = logging.Formatter('%(asctime)s %(levelname)-8s %(message)s')
+    formatter = logging.Formatter(fmt)
     # tell the handler to use this format
     console.setFormatter(formatter)
     # add the handler to the root logger
@@ -535,7 +555,7 @@ def main():
     link_multifits(wdir, args.reduction_dir, args.night, args.shotid, exposures)
 
     # copy astrometry solution (all.mch and radec2.dat) from shifts directory
-    cp_astrometry(wdir, args.shifts_dir, args.night, args.shotid)
+    cp_astrometry(wdir, args.shifts_dir, args.night, args.shotid, args.radec2_dat, args.all_mch)
 
     # Copy `addin` files. These are essentially the IFUcen files in a different format.
     cp_addin_files(wdir, args.addin_dir)
