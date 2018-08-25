@@ -418,7 +418,7 @@ def get_fiber_coords(wdir, active_slots, dither_offsets):
                 table['ifuslot'] = ifuslot
                 table['xfplane'] = xfp
                 table['yfplane'] = yfp
-                outfilename = "i{}_{}.csv".format(ifuslot, offset_index)
+                outfilename = "i{}_{}.csv".format(ifuslot, offset_index + 1)
                 table.write(outfilename, comment='#', format='ascii.csv', overwrite=True)
 
 
