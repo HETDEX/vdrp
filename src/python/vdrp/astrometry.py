@@ -678,10 +678,15 @@ def compute_optimal_ang_off(wdir, smoothing=0.05, PLOT=True):
     # iterate over all 1-3 exposures.
     for i,exp in enumerate(exposures):
         ii = results['exposure'] == exp
+        if sum(ii) <=3:
+            logging.warning("Insufficient data for exposure {}.".format(exp))
+            continue
+        
         x = results['ang_off'][ii]
         y = results['RMS'][ii]
         n = results['nstar'][ii]
         jj = np.argsort(x)
+
         x = x[jj]
         y = y[jj]
         n = n[jj]
