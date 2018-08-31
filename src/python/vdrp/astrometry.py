@@ -59,6 +59,24 @@ from vdrp import utils
 from vdrp.utils import read_radec, write_radec
 
 
+class VdrpInfo():
+
+    @staticmethod
+    def read(dir, filename='vdrp_info.pickle'):
+        if os.path.exists(os.path.join(dir,filename)):
+            with open(filename, 'rb') as f:
+                return pickle.load(f)
+        else:
+            return VdrpInfo()
+
+    def __init__(self):
+        pass
+
+    def save(self,dir, filename'vdrp_info.pickle')
+        # save arguments for the execution
+        with open(os.path.join(dir,filename), 'wb') as f:
+            pickle.dump(args, f, pickle.HIGHEST_PROTOCOL)
+
 def parseArgs(args):
     """ Parses configuration file and command line arguments.
     Command line arguments overwrite configuration file settiongs which
@@ -1312,6 +1330,7 @@ def cp_results(tmp_dir, results_dir):
     file_pattern += ["detect_*.pdf"]
     file_pattern += ["radec2_final.dat"]
     file_pattern += ["radec2_final.pdf"]
+    file_pattern += ["vdrp_info.pickle"]
 
     for d in dirs:
         td = os.path.join(tmp_dir,d)
@@ -1327,12 +1346,17 @@ def main(args):
     """
     Main function.
     """
+    # Create results directory for given night and shot
+    cwd = os.getcwd()
+    results_dir = os.path.join(cwd, "{}v{}".format(args.night, args.shotid))
+    utils.createDir(results_dir)
+
     fmt = '%(asctime)s %(levelname)-8s %(funcName)15s(): %(message)s'
     # set up logging to file - see previous section for more details
     logging.basicConfig(level=logging.DEBUG,
                         format=fmt,
                         datefmt='%m-%d %H:%M',
-                        filename=args.logfile,
+                        filename=os.path.join(results_dir,args.logfile),
                         filemode='w')
     # define a Handler which writes INFO messages or higher to the sys.stderr
     console = logging.StreamHandler()
@@ -1343,12 +1367,6 @@ def main(args):
     console.setFormatter(formatter)
     # add the handler to the root logger
     logging.getLogger('').addHandler(console)
-
-
-    # Create results directory for given night and shot
-    cwd = os.getcwd()
-    results_dir = os.path.join(cwd, "{}v{}".format(args.night, args.shotid))
-    utils.createDir(results_dir)
 
     # save arguments for the execution
     with open(os.path.join(results_dir,'args.pickle'), 'wb') as f:
@@ -1372,6 +1390,8 @@ def main(args):
         wdir = tmp_dir
 
     logging.info("Configuration {}.".format(args.config_source))
+
+    vdrp_info = VdrpInfo(wdir)
 
     try:
         for task in tasks:
@@ -1454,6 +1474,7 @@ def main(args):
                mk_match_plots(wdir, prefixes)
 
     finally:
+        vdrp_info.save(wdir)
         if args.use_tmp:
             logging.info("Copying over results.")
             cp_results(tmp_dir, results_dir)
