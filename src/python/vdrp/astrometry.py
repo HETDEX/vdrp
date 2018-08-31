@@ -59,23 +59,24 @@ from vdrp import utils
 from vdrp.utils import read_radec, write_radec
 
 
-class VdrpInfo():
+class VdrpInfo(OrderedDict):
+    def __init__(self, *args, **kwargs):
+        super(VdrpInfo, self).__init__(*args, **kwargs)
+
+    def save(self, dir, filename='vdrp_info.pickle'):
+        # save arguments for the execution
+        with open(os.path.join(dir,filename), 'wb') as f:
+            pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
+
 
     @staticmethod
     def read(dir, filename='vdrp_info.pickle'):
         if os.path.exists(os.path.join(dir,filename)):
-            with open(filename, 'rb') as f:
+            with open(os.path.join(dir,filename), 'rb') as f:
                 return pickle.load(f)
         else:
             return VdrpInfo()
 
-    def __init__(self):
-        pass
-
-    def save(self,dir, filename'vdrp_info.pickle')
-        # save arguments for the execution
-        with open(os.path.join(dir,filename), 'wb') as f:
-            pickle.dump(args, f, pickle.HIGHEST_PROTOCOL)
 
 def parseArgs(args):
     """ Parses configuration file and command line arguments.
@@ -461,10 +462,14 @@ def flux_norm(wdir, mag_max, infile='all.raw', outfile='norm.dat'):
         infile (str): Output file of daomaster.
         outfile (str): Filename for result file.
     """
+    global vdrp_info
     logging.info("Computing flux normalisation between exposures 1,2 and 3.")
     with path.Path(wdir):
         all_raw = loadtxt(infile, skiprows=3)
         n1,n2,n3 = getNorm(all_raw, mag_max )
+        vdrp_info["fluxnorm_exp1"] = n1
+        vdrp_info["fluxnorm_exp2"] = n2
+        vdrp_info["fluxnorm_exp3"] = n3
         logging.info("flux_norm: Flux normalisation is {:10.8f} {:10.8f} {:10.8f}".format(n1,n2,n3) )
         with open(outfile, 'w') as f:
             s = "{:10.8f} {:10.8f} {:10.8f}".format(n1,n2,n3)
@@ -524,6 +529,7 @@ def get_ra_dec_orig(wdir, reduction_dir, night, shotid):
         night (str): Night (e.g. 20180611)
         shotid (str): ID of shot (e.g. 017)
     """
+    global vdrp_info
     pattern = os.path.join( reduction_dir, "{}/virus/virus0000{}/*/*/multi_???_*LL*fits".format( night, shotid ) )
     multi_files = glob.glob(pattern)
     if len(multi_files) == 0:
@@ -533,6 +539,11 @@ def get_ra_dec_orig(wdir, reduction_dir, night, shotid):
     dec0 = h["TRAJCDEC"]
     pa0  = h["PARANGLE"]
     logging.info("Original RA,DEC,PA = {},{},{}".format(ra0, dec0, pa0))
+
+    vdrp_info["orig_ra"] = ra0
+    vdrp_info["orig_dec"] = dec0
+    vdrp_info["orig_pa0"] = pa0
+
     with path.Path(wdir):
         utils.write_radec(ra0, dec0, pa0, "radec.orig")
 
@@ -654,6 +665,7 @@ def compute_optimal_ang_off(wdir, smoothing=0.05, PLOT=True):
     Returns:
         (float): Optimal offset angle.
     """
+    global vdrp_info
     colors = ['red','green','blue']
     exposures = ['exp01','exp02', 'exp03']
 
@@ -722,6 +734,7 @@ def compute_optimal_ang_off(wdir, smoothing=0.05, PLOT=True):
         rms_min = f(aa[imin])
         nstar_min = fn(aa[imin])
         aamin.add_row([exp, amin, nstar_min, rms_min] )
+        vdrp_info["ang_off_{}".format(exp)] = amin
 
         if PLOT:
             plt.plot(x,y ,'o', c=colors[i], label=exp)
@@ -741,7 +754,9 @@ def compute_optimal_ang_off(wdir, smoothing=0.05, PLOT=True):
         fig.tight_layout()
         plt.savefig(os.path.join(wdir, "ang_off.pdf"),overwrite=True)
 
+    vdrp_info["ang_off_avg"] = ang_off_avg
     return ang_off_avg
+
 
 def compute_offset(wdir, prefixes, getoff2_radii, add_radec_angoff_trial,\
         add_radec_angoff, add_radec_angoff_trial_dir,  offset_exposure_indices, \
@@ -768,6 +783,7 @@ def compute_offset(wdir, prefixes, getoff2_radii, add_radec_angoff_trial,\
         final_ang_offset (float): Final angular offset to use. This overwrite the values in add_radec_angoff and add_radec_angoff_trial 
         shout_ifustars (str): Shuffle output catalog of IFU stars.
     """
+    global vdrp_info
     shout_ifustars = 'shout.ifustars'
 
     def write_ra_dec_dats(ra, dec, pa, exp_index, angoff, ra_offset, dec_offset, nominal=False):
@@ -803,6 +819,7 @@ def compute_offset(wdir, prefixes, getoff2_radii, add_radec_angoff_trial,\
             logging.info("Using final angular offset value of {} Deg.".format(final_ang_offset))
             angoffsets = []
             nominal_angoffset = final_ang_offset
+            add_radec_angoff = final_ang_offset
         angoffsets = filter( lambda x : x != nominal_angoffset, angoffsets) + [nominal_angoffset]
 
         # Give comprehensive information about the iterations.
@@ -898,6 +915,7 @@ def combine_radec(wdir, dither_offsets, PLOT=True):
     Args:
         wdir (str): Work directory.
     """
+    global vdrp_info
     logging.info("Combining RA, Dec positions of all exposures to final shot RA, Dec.")
     ff = np.sort( glob.glob(wdir + "/radec2_exp??.dat") )
     ra0,dec0,pa0 = read_radec(ff[0])
@@ -932,11 +950,11 @@ def combine_radec(wdir, dither_offsets, PLOT=True):
     translated = np.array(translated)
     final_ra, final_dec = np.mean(translated[:,0]), np.mean(translated[:,1])
     dfinal_ra = np.std(translated[:,0])/np.cos(np.deg2rad(dec0))
-    ddfinal_dec = np.std(translated[:,1])
+    dfinal_dec = np.std(translated[:,1])
 
     s1  = "RA = {:.6f} Deg +/- {:.3f}\"".format(final_ra, dfinal_ra*3600.)
     logging.info("Final shot  " + s1)
-    s2  = "Dec = {:.6f} Deg +/- {:.3f}\" ".format(final_dec, ddfinal_dec*3600.)
+    s2  = "Dec = {:.6f} Deg +/- {:.3f}\" ".format(final_dec, dfinal_dec*3600.)
     logging.info("Final shot  " + s2)
     if PLOT:
         plt.plot([],[],'s',color='grey',label="exposure center")
@@ -946,6 +964,11 @@ def combine_radec(wdir, dither_offsets, PLOT=True):
         plt.text(final_ra, final_dec,s1 + "\n" + s2,ha='right')
         plt.xlabel("RA [Deg]")
         plt.ylabel("Dec [Deg]")
+
+    vdrp_info.final_ra  = final_ra
+    vdrp_info.final_dec  = final_dec
+    vdrp_info.dfinal_ra = dfinal_ra
+    vdrp_info.dfinal_dec = dfinal_dec
 
     write_radec(final_ra,final_dec,pa0, os.path.join(wdir, "radec2_final.dat") )
     fig.tight_layout()
@@ -962,6 +985,8 @@ def add_ifu_xy(wdir, offset_exposure_indices):
         wdir (str): Work directory.
         offset_exposure_indices (list): List of exposure indices to consider.
     """
+    global vdrp_info
+
     def ra_dec_to_xy(table_in, ra, dec, fp, tp):
         """ Little helper function that convinently wraps the call to
         pyhetdex.coordinates.astrometry.ra_dec_to_xy
@@ -984,6 +1009,7 @@ def add_ifu_xy(wdir, offset_exposure_indices):
                 continue
 
             t = Table.read(fngetoff_out, format="ascii.fast_no_header")
+            vdrp_info["getoff_nstars_exp{:02d}".format(exp_index)] = len(t)
             t_detect_coor  = Table([t['col3'], t['col4'], t['col7']], names=["RA","DEC","IFUSLOT"])
             t_catalog_coor = Table([t['col5'], t['col6'], t['col7']], names=["RA","DEC","IFUSLOT"])
 
@@ -1287,7 +1313,7 @@ def get_exposures(prefixes):
 
 
 def cp_results(tmp_dir, results_dir):
-    """ Coppies all relevant result files
+    """ Copies all relevant result files
     from tmp_dir results_dir.
 
     Args:
@@ -1341,11 +1367,14 @@ def cp_results(tmp_dir, results_dir):
         for f in ff:
             shutil.copy2(f, results_dir)
 
+vdrp_info = None
 
 def main(args):
     """
     Main function.
     """
+    global vdrp_info
+
     # Create results directory for given night and shot
     cwd = os.getcwd()
     results_dir = os.path.join(cwd, "{}v{}".format(args.night, args.shotid))
@@ -1374,7 +1403,7 @@ def main(args):
 
     tasks = args.task.split(",")
     if args.use_tmp and not tasks == ['all']:
-        logging.error("Step-by-step execution not possile when running tin a tmp directory.")
+        logging.error("Step-by-step execution not possile when running in a tmp directory.")
         logging.error("   Please either call without -t or set use_tmp to False.")
         sys.exit(1)
 
@@ -1391,7 +1420,9 @@ def main(args):
 
     logging.info("Configuration {}.".format(args.config_source))
 
-    vdrp_info = VdrpInfo(wdir)
+    vdrp_info = VdrpInfo.read(wdir)
+    vdrp_info.night = args.night
+    vdrp_info.shotid = args.shotid
 
     try:
         for task in tasks:
