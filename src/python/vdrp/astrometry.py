@@ -469,8 +469,9 @@ def redo_shuffle(wdir, ra, dec, track, acam_magadd, wfs1_magadd, wfs2_magadd, sh
         wfs1_magadd (float): do_shuffle wfs1 magadd.
         wfs2_magadd (float): do_shuffle wfs2 magadd.
     """
-    shutil.copy2(shuffle_cfg, wdir)
-    shutil.copy2(fplane_txt, wdir)
+    logging.info("Using {}.".format(shuffle_cfg))
+    shutil.copy2(shuffle_cfg, os.path.join(wdir, "shuffle.cfg"))
+    shutil.copy2(fplane_txt, os.path.join(wdir,"fplane.txt"))
     with path.Path(wdir):
         try:
             os.remove(shout.ifustars)
@@ -487,7 +488,7 @@ def redo_shuffle(wdir, ra, dec, track, acam_magadd, wfs1_magadd, wfs2_magadd, sh
 
         daophot.rm(['shout.acamstars','shout.ifustars','shout.info','shout.probestars','shout.result'])
         logging.info("Rerunning shuffle for RA = {}, Dec = {} and track = {} ...".format(RA0, DEC0, track))
-        cmd  = "do_shuffle -v --acam_magadd {:.2f} --wfs1_magadd {:.2f} --wfs2_magadd {:.2f}".format(acam_magadd, wfs1_magadd, wfs2_magadd)
+        cmd  = "do_shuffle -v --acam_magadd {:.2f} --wfs1_magadd {:.2f} --wfs2_magadd {:.2f} ".format(acam_magadd, wfs1_magadd, wfs2_magadd)
         cmd += " {:.6f} {:.6f} {:.1f} {:d} {:d} {:.1f} {:.1f}".format(RA0, DEC0, radius, track, ifuslot, x_offset, y_offset )
         logging.info("Calling shuffle with {}".format(cmd))
         subprocess.call(cmd, shell=True)
@@ -746,7 +747,7 @@ def compute_offset(wdir, prefixes, getoff2_radii, add_radec_angoff_trial,\
         add_radec_angoff (float): Angular offset to add during conversion of x/y coordinate to RA/Dec.
         add_radec_angoff_trial_dir (str): Directory to save results of angular offset trials.
         offset_exposure_indices (list): Exposure indices.
-        final_ang_offset (float): Final angular offset to use. This overwrite the values in 
+        final_ang_offset (float): Final angular offset to use. This overwrite the values in add_radec_angoff and add_radec_angoff_trial 
         shout_ifustars (str): Shuffle output catalog of IFU stars.
     """
     shout_ifustars = 'shout.ifustars'
@@ -791,11 +792,11 @@ def compute_offset(wdir, prefixes, getoff2_radii, add_radec_angoff_trial,\
         for r in radii:
             s+= "{}\" ".format(r)
         logging.info("Computing offsets with using following sequence of matching radii: {}".format(s))
-        logging.info(" Using nominal angular offset value of {} Deg. ".format(add_radec_angoff))
         s = ""
         for a in add_radec_angoff_trial:
             s+= "{} Deg ".format(a)
-        logging.info("Also computing offsets for the following set of trial angles: {}".format(s) )
+        if final_ang_offset == None:
+            logging.info("Also computing offsets for the following set of trial angles: {}".format(s) )
 
         # will contain results of angular offset trials
         utils.createDir(add_radec_angoff_trial_dir)
