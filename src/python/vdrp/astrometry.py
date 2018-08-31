@@ -489,7 +489,7 @@ def redo_shuffle(wdir, ra, dec, track, acam_magadd, wfs1_magadd, wfs2_magadd, sh
         logging.info("Rerunning shuffle for RA = {}, Dec = {} and track = {} ...".format(RA0, DEC0, track))
         cmd  = "do_shuffle -v --acam_magadd {:.2f} --wfs1_magadd {:.2f} --wfs2_magadd {:.2f}".format(acam_magadd, wfs1_magadd, wfs2_magadd)
         cmd += " {:.6f} {:.6f} {:.1f} {:d} {:d} {:.1f} {:.1f}".format(RA0, DEC0, radius, track, ifuslot, x_offset, y_offset )
-        logging.info("Calling shuffle with {}.".format(cmd))
+        logging.info("Calling shuffle with {}".format(cmd))
         subprocess.call(cmd, shell=True)
 
 
