@@ -89,27 +89,31 @@ n
 n
 """
 
+
 class DaophotException(Exception):
     pass
 
+
 from astropy.table import Table
+
 
 class DAOPHOT_ALS(object):
     """
     Reads DAOPHOT ALS files.
     """
-    def __init__(self, NL, NX, NY, LOWBAD, HIGHBAD, THRESH, AP1, PH_ADU, RNOISE, FRAD, data):
-        self.NL      = NL
-        self.NX      = NX
-        self.NY      = NY
-        self.LOWBAD  = LOWBAD
+    def __init__(self, NL, NX, NY, LOWBAD, HIGHBAD, THRESH, AP1, PH_ADU,
+                 RNOISE, FRAD, data):
+        self.NL = NL
+        self.NX = NX
+        self.NY = NY
+        self.LOWBAD = LOWBAD
         self.HIGHBAD = HIGHBAD
-        self.THRESH  = THRESH
-        self.AP1     = AP1
-        self.PH_ADU  = PH_ADU
-        self.RNOISE  = RNOISE
-        self.FRAD    = FRAD
-        self.data    = data
+        self.THRESH = THRESH
+        self.AP1 = AP1
+        self.PH_ADU = PH_ADU
+        self.RNOISE = RNOISE
+        self.FRAD = FRAD
+        self.data = data
 
     @staticmethod
     def read(als_file):
@@ -122,21 +126,25 @@ class DAOPHOT_ALS(object):
             als_file (str): Input file name.
 
         Returns:
-            (DAOPHOT_ALS): Object containing all the infromation in the als file.
+            (DAOPHOT_ALS): Object containing all the infromation
+                           in the als file.
         """
         with open(als_file) as f:
             ll = f.readlines()
         tt = ll[1].split()
         NL, NX, NY, LOWBAD, HIGHBAD, THRESH, AP1, PH_ADU, RNOISE, FRAD = \
-                [int(t) for t in tt[:3]] + [float(t) for t in tt[3:]]
-        names = ["ID", "X", "Y", "MAG", "MAG_ERR", "SKY", "NITER", "CHI", "SHARP"]
-        dtype = [int,float,float,float,float,float,float,float,float]
+            [int(t) for t in tt[:3]] + [float(t) for t in tt[3:]]
+        names = ["ID", "X", "Y", "MAG", "MAG_ERR", "SKY",
+                 "NITER", "CHI", "SHARP"]
+        dtype = [int, float, float, float, float, float,
+                 float, float, float]
         t = Table.read(ll[3:], format='ascii')
-        for i,n,d in zip(range(len(t.columns)),names,dtype):
+        for i, n, d in zip(range(len(t.columns)), names, dtype):
             t.columns[i].name = n
             t.columns[i].dtype = d
-        #, format='ascii', names=names, dtype=dtype)
-        return DAOPHOT_ALS(NL, NX, NY, LOWBAD, HIGHBAD, THRESH, AP1, PH_ADU, RNOISE, FRAD, t)
+        # , format='ascii', names=names, dtype=dtype)
+        return DAOPHOT_ALS(NL, NX, NY, LOWBAD, HIGHBAD, THRESH, AP1,
+                           PH_ADU, RNOISE, FRAD, t)
 
 
 def test_input_files_exist(input_files):
@@ -163,22 +171,25 @@ def daophot_find(prefix, sigma, logging=None):
     Args:
         prefix (str): File name prefix to call daophot phot for.
         sigma (float): Daophot phot sigma parameter.
-        logging (module): Pass logging module if. Otherwise output is passed to the screen.
+        logging (module): Pass logging module if.
+    Otherwise output is passed to the screen.
     """
     global DAOPHOT_FIND_CMD
     input_files = ["daophot.opt", prefix + ".fits"]
     test_input_files_exist(input_files)
 
-    rm([prefix + ".coo",prefix + ".lst",prefix + "jnk.fits"])
-    proc = subprocess.Popen("daophot", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    rm([prefix + ".coo", prefix + ".lst", prefix + "jnk.fits"])
+    proc = subprocess.Popen("daophot", stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE)
     s = DAOPHOT_FIND_CMD.format(prefix, sigma)
-    so,se = proc.communicate(input=s)
+    so, se = proc.communicate(input=s)
     for l in so.split("\n"):
-        if logging != None:
+        if logging is not None:
             logging.info(l)
         else:
             print(l)
-    p_status = proc.wait()
+    # p_status = proc.wait()
+    proc.wait()
     rm([prefix + "jnk.fits"])
 
 
@@ -191,23 +202,28 @@ def daophot_phot(prefix, logging=None):
 
     Args:
         prefix (str): File name prefix to call daophot phot for.
-        logging (module): Pass logging module if. Otherwise output is passed to the screen.
+        logging (module): Pass logging module if.
+        Otherwise output is passed to the screen.
     """
     global DAOPHOT_PHOT_CMD
 
-    input_files = ["daophot.opt", "photo.opt", prefix + ".fits", prefix + ".coo"]
+    input_files = ["daophot.opt", "photo.opt", prefix + ".fits",
+                   prefix + ".coo"]
     test_input_files_exist(input_files)
 
-    rm([prefix + ".ap",prefix + "1s.fits",prefix + ".als", prefix + "jnk.fits"])
-    proc = subprocess.Popen("daophot", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    rm([prefix + ".ap", prefix + "1s.fits",
+        prefix + ".als", prefix + "jnk.fits"])
+    proc = subprocess.Popen("daophot", stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE)
     s = DAOPHOT_PHOT_CMD.format(prefix, prefix, prefix)
-    so,se = proc.communicate(input=s)
+    so, se = proc.communicate(input=s)
     for l in so.split("\n"):
-        if logging != None:
+        if logging is not None:
             logging.info(l)
         else:
             print(l)
-    p_status = proc.wait()
+    # p_status = proc.wait()
+    proc.wait()
     rm([prefix + "jnk.fits"])
 
 
@@ -221,23 +237,26 @@ def allstar(prefix, psf="use.psf", logging=None):
     Args:
         prefix (str): File name prefix to call daophot phot for.
         psf (str): File name for PSF model.
-        logging (module): Pass logging module if. Otherwise output is passed to the screen.
+        logging (module): Pass logging module if.
+        Otherwise output is passed to the screen.
     """
     global ALLSTAR_CMD
 
     input_files = [prefix + ".fits", "allstar.opt", psf, prefix + ".ap"]
     test_input_files_exist(input_files)
 
-    rm([prefix + "s.fits",prefix + ".als", prefix + "jnk.fits"])
-    proc = subprocess.Popen("allstar", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    rm([prefix + "s.fits", prefix + ".als", prefix + "jnk.fits"])
+    proc = subprocess.Popen("allstar", stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE)
     s = ALLSTAR_CMD.format(prefix, psf, prefix)
-    so,se = proc.communicate(input=s)
+    so, se = proc.communicate(input=s)
     for l in so.split("\n"):
-        if logging != None:
+        if logging is not None:
             logging.info(l)
         else:
             print(l)
-    p_status = proc.wait()
+    # p_status = proc.wait()
+    proc.wait()
 
 
 def daomaster(logging=None):
@@ -249,24 +268,28 @@ def daomaster(logging=None):
         and all.mch to be in place.
 
     Args:
-        logging (module): Pass logging module if. Otherwise output is passed to the screen.
+        logging (module): Pass logging module if.
+        Otherwise output is passed to the screen.
     """
     global DAOMASTER_CMD
 
-    # TODO: Shoull check for existence of als input files listed in all.mch, e.g. "20180611T054545tot.als"
+    # TODO: Shoull check for existence of als input files listed in
+    # all.mch, e.g. "20180611T054545tot.als"
     input_files = ["all.mch"]
     test_input_files_exist(input_files)
 
     rm(["all.raw"])
-    proc = subprocess.Popen("daomaster", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    proc = subprocess.Popen("daomaster", stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE)
     s = DAOMASTER_CMD
-    so,se = proc.communicate(input=s)
+    so, se = proc.communicate(input=s)
     for l in so.split("\n"):
-        if logging != None:
+        if logging is not None:
             logging.info(l)
         else:
             print(l)
-    p_status = proc.wait()
+    # p_status = proc.wait()
+    proc.wait()
 
 
 def mk_daophot_opt(args):
@@ -286,6 +309,7 @@ def mk_daophot_opt(args):
 
     with open("daophot.opt", 'w') as f:
         f.write(s)
+
 
 def filter_daophot_out(file_in, file_out, xmin, xmax, ymin, ymax):
     """ Filter daophot coo ouput files. For close-to-edge detections.
@@ -311,7 +335,6 @@ def filter_daophot_out(file_in, file_out, xmin, xmax, ymin, ymax):
             fout.write(ll[i])
         for l in ll[3:]:
             tt = l.split()
-            x,y = float(tt[1]), float(tt[2])
+            x, y = float(tt[1]), float(tt[2])
             if x > xmin and x < xmax and y > ymin and y < ymax:
                 fout.write(l)
-

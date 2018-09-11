@@ -1,4 +1,4 @@
-""" Interface to astrometry command line tools 
+""" Interface to astrometry command line tools
 
 
 Module provide interface routines to the command line
@@ -8,11 +8,13 @@ tools that are use in Karl Gebhardt's astrometry procedure.
 """
 
 from astropy.table import Table
-import  subprocess
+import subprocess
 from pyhetdex.het import fplane
 import os
 
-def getoff2(fnradec, fnshuffle_ifustars, radius, ra_offset, dec_offset, logging=None):
+
+def getoff2(fnradec, fnshuffle_ifustars, radius, ra_offset,
+            dec_offset, logging=None):
     """
     Interface to getoff2.
 
@@ -20,15 +22,20 @@ def getoff2(fnradec, fnshuffle_ifustars, radius, ra_offset, dec_offset, logging=
         fnradec (string): Filename for detections.
         fnshuffle_ifustars (string): Filename of catalog of stars to match to.
         radius (float): Matching radius.
-        ra_offset (float): RA offset to apply to detecions in `fnradec` before computeing offset.
-        dec_offset (float): Dec offset to apply to detecions in `fnradec` before computeing offset.
-        logging (module): Pass logging module if. Otherwise output is passed to the screen.
+        ra_offset (float): RA offset to apply to detecions in `fnradec`
+                           before computing offset.
+        dec_offset (float): Dec offset to apply to detecions in `fnradec`
+                            before computeing offset.
+        logging (module): Pass logging module if.
+                          Otherwise output is passed to the screen.
 
     Notes:
-        Creates files `getoff.out`, `getoff2.out` and intermediate file `shout.ifu`.
+        Creates files `getoff.out`, `getoff2.out` and intermediate
+        file `shout.ifu`.
 
     Retruns:
-        new_ra_offset (float), new_dec_offset (float): New offset after matching (input offset added). 
+        new_ra_offset (float), new_dec_offset (float): New offset after
+        matching (input offset added).
     """
     GETOFF_CMD = "{}\n"
 
@@ -48,35 +55,38 @@ def getoff2(fnradec, fnshuffle_ifustars, radius, ra_offset, dec_offset, logging=
 
     # reformat add_ra_dec outout to j3 fileformat that getoff2 expects
     t = Table.read(fnradec, format="ascii")
-    tmatch_input = Table([t['ra']+ra_offset, t['dec']+dec_offset, t['ifuslot']])
+    tmatch_input = Table([t['ra']+ra_offset, t['dec']+dec_offset,
+                          t['ifuslot']])
     tmatch_input.write('j3', format='ascii.fast_no_header', overwrite=True)
 
     # run getoff2
-    proc = subprocess.Popen("getoff2", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    proc = subprocess.Popen("getoff2", stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE)
     s = GETOFF_CMD.format(radius)
-    so,se = proc.communicate(input=s)
+    so, se = proc.communicate(input=s)
     for l in so.split("\n"):
-        if logging != None:
+        if logging is not None:
             logging.info(l)
         else:
             print(l)
-    #print so
-    p_status = proc.wait()
+    # print so
+    # p_status = proc.wait()
+    proc.wait()
     with open("getoff2.out") as f:
-        l = f.readline()
+        # l = f.readline()
+        f.readline()
     tt = l.split()
     new_ra_offset, new_dec_offset = float(tt[0]), float(tt[1])
     return new_ra_offset+ra_offset, new_dec_offset+dec_offset
 
 
-
-def immosaicv(prefixes, fplane_file = "fplane.txt", logging=None):
+def immosaicv(prefixes, fplane_file="fplane.txt", logging=None):
     """Interface to immosaicv which creates
     a mosaic give a set of fits files and x y coordinates.
     Requires infp.
-    This function will prepare the necessary infp file that is read by immosaicv
-    command line tool.
-    Format of the latter is 
+    This function will prepare the necessary infp file that
+    is read by immosaicv command line tool.
+    Format of the latter is
     20180611T054545_015.fits 015 -450.0 -50.0
     20180611T054545_022.fits 022 -349.743 250.336
     20180611T054545_023.fits 023 -349.798 150.243
@@ -86,24 +96,28 @@ def immosaicv(prefixes, fplane_file = "fplane.txt", logging=None):
     Args:
         prefixes (list): List file name prefixes for the collapsed IFU images.
         fplane_file (str): Fplane file name.
-        logging (module): Pass logging module if. Otherwise output is passed to the screen.
+        logging (module): Pass logging module if.
+        Otherwise output is passed to the screen.
     """
     fp = fplane.FPlane(fplane_file)
 
     with open('infp', 'w') as infp:
         for f in prefixes:
             ifuslot = f[-3:]
-            if not ifuslot in fp.ifuslots:
-                msg = "IFU slot {} for file {}.fits not found int {}.".format(ifuslot, f, fplane_file)
-                if logging != None:
-                    logging.warning("IFU slot {} for file {}.fits not found int {}.".format(ifuslot, f, fplane_file))
+            if ifuslot not in fp.ifuslots:
+                msg = "IFU slot {} for file {}.fits not found int {}."\
+                    .format(ifuslot, f, fplane_file)
+                if logging is not None:
+                    logging.warning("IFU slot {} for file {}.fits not "
+                                    "found int {}.".format(ifuslot, f,
+                                                           fplane_file))
                 else:
                     print(msg)
                 continue
 
             if not os.path.exists(f + ".fits"):
                 msg = "File {}.fits not found.".format(f)
-                if logging != None:
+                if logging is not None:
                     logging.warning(msg)
                 else:
                     print(msg)
@@ -114,14 +128,16 @@ def immosaicv(prefixes, fplane_file = "fplane.txt", logging=None):
             infp.write(s)
 
     # run immosaicv
-    proc = subprocess.Popen("immosaicv", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    so,se = proc.communicate()
+    proc = subprocess.Popen("immosaicv", stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE)
+    so, se = proc.communicate()
     for l in so.split("\n"):
-        if logging != None:
+        if logging is not None:
             logging.info(l)
         else:
             print(l)
-    p_status = proc.wait()
+    # p_status = proc.wait()
+    proc.wait()
 
 
 def imrot(fitsfile, angle, logging=None):
@@ -136,15 +152,15 @@ def imrot(fitsfile, angle, logging=None):
         fitsfile (str): Input fits file name.
         angle (float): Rotation angle.
     """
-    CMD_IMROT="{}\n1\n{}"
+    CMD_IMROT = "{}\n1\n{}"
 
     # run imrot
-    proc = subprocess.Popen("imrot", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    proc = subprocess.Popen("imrot", stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE)
     s = CMD_IMROT.format(fitsfile, angle)
-    so,se = proc.communicate(input=s)
+    so, se = proc.communicate(input=s)
     for l in so.split("\n"):
-        if logging != None:
+        if logging is not None:
             logging.info(l)
         else:
             print(l)
-
