@@ -30,6 +30,7 @@ import numpy as np
 from collections import OrderedDict
 import pickle
 import ast
+import re
 
 # import scipy
 from scipy.interpolate import UnivariateSpline
@@ -55,6 +56,7 @@ from vdrp import cltools
 from vdrp import utils
 from vdrp.daophot import DAOPHOT_ALS
 from vdrp.utils import read_radec, write_radec
+from vdrp import fplane_client
 
 matplotlib.use("agg")
 
@@ -262,6 +264,7 @@ def parseArgs(args):
     args.offset_exposure_indices = [int(t) for t in
                                     args.offset_exposure_indices.split(",")]
 
+    print(args.logfile)
     return args
 
 
@@ -548,8 +551,59 @@ def flux_norm(wdir, mag_max, infile='all.raw', outfile='norm.dat'):
             f.write(s)
 
 
+def retrieve_fplane(night, fplane_txt, wdir):
+    """ Saves the fplane file to the target directory
+    and names it fplane.txt.
+
+    Args:
+    fplane_txt (str) : Either a specific fplane file is specified here, 'DATABASE' is passed,
+                       or a file pattern is provided e.g. fplane_YYYYMMDD.txt.
+                       In case of the latter a substring of format YYYYMMDD is
+                       expected.  The routine will then search
+                       for an fplane file of the current date or pick the next
+                       older one. E.g. if shot 2080611v017 is to be analysed
+                       and fplane files fplane_2080610.txt and
+                       fplane_2080615.txt exist, then fplane_2080610.txt will
+                       be picked.  In the case of DATABASE the fplane file is
+                       retrieved from https://luna.mpe.mpg.de/fplane/.
+
+    """
+    global vdrp_info
+    target_filename =  os.path.join(wdir, "fplane.txt")
+    if fplane_txt == "DATABASE":
+        # fplane is retrieved from MPE server
+        logging.info("Retrieving fplane file from MPE server. ")
+        fplane_client.get_fplane(target_filename, datestr=night, actpos=False, full=True)
+    else:
+        if not "YYYYMMDD" in fplane_txt:
+            # a specific fplane is specified in the config file.
+            logging.info("Using {}.".format(fplane_txt))
+            shutil.copy2(fplane_txt, os.path.join(wdir, "fplane.txt"))
+            return
+        else:
+            # a fplane file pattern is specified in the config file.
+            # find all files that math the pattern
+            ff = glob.glob(fplane_txt.replace("YYYYMMDD", "????????"))
+            ff = np.array(ff)
+            # parse dates
+            dd = []
+            for f in ff:
+                m = re.match("(.*)(20\d{2}\d{2}\d{2})", f)
+                d = m.group(2)
+                dd.append(int(d))
+            dd = np.array(dd)
+            ii = np.argsort(dd)
+            dd = dd[ii]
+            ff = ff[ii]
+            jj = dd <= int(night)
+            source_filename = ff[jj][-1]
+            logging.info("Using {}.".format(source_filename))
+            shutil.copy2(source_filename, os.path.join(wdir, "fplane.txt"))
+
+
+
 def redo_shuffle(wdir, ra, dec, track, acam_magadd, wfs1_magadd, wfs2_magadd,
-                 shuffle_cfg, fplane_txt):
+                 shuffle_cfg, fplane_txt, night):
     """
     Reruns shuffle to obtain catalog of IFU stars.
 
@@ -567,7 +621,7 @@ def redo_shuffle(wdir, ra, dec, track, acam_magadd, wfs1_magadd, wfs2_magadd,
     """
     logging.info("Using {}.".format(shuffle_cfg))
     shutil.copy2(shuffle_cfg, os.path.join(wdir, "shuffle.cfg"))
-    shutil.copy2(fplane_txt, os.path.join(wdir, "fplane.txt"))
+    retrieve_fplane(night, fplane_txt, wdir)
     with path.Path(wdir):
         try:
             os.remove('shout.ifustars')
@@ -1647,7 +1701,7 @@ def main(args):
                 redo_shuffle(wdir, args.ra, args.dec, args.track,
                              args.acam_magadd, args.wfs1_magadd,
                              args.wfs2_magadd, args.shuffle_cfg,
-                             args.fplane_txt)
+                             args.fplane_txt, args.night)
 
             if task in ["get_ra_dec_orig", "all"]:
                 # Retrieve original RA DEC from one of the multi files.
