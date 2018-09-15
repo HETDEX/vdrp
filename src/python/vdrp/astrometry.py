@@ -674,8 +674,8 @@ def get_ra_dec_orig(wdir, reduction_dir, night, shotid):
                         "reduction_dir in configuration file."
                         .format(reduction_dir))
     h = fits.getheader(multi_files[0])
-    ra0 = h["TRAJCRA"]
-    dec0 = h["TRAJCDEC"]
+    ra0 = h["TRAJRA"]
+    dec0 = h["TRAJDEC"]
     pa0 = h["PARANGLE"]
     logging.info("Original RA,DEC,PA = {},{},{}".format(ra0, dec0, pa0))
 
@@ -1544,6 +1544,7 @@ def cp_results(tmp_dir, results_dir):
     file_pattern = []
 #    file_pattern += ["CoFeS*_???_sci.fits"]
 #    file_pattern += ["*.als"]
+    file_pattern += ["*tot.als"]
 #    file_pattern += ["*.ap"]
 #    file_pattern += ["*.coo"]
 #    file_pattern += ["*.lst"]
@@ -1572,7 +1573,7 @@ def cp_results(tmp_dir, results_dir):
     file_pattern += ["use.psf"]
     file_pattern += ["2*fp.fits"]
     file_pattern += ["xy_exp??.dat"]
-    file_pattern += ["detect_*.pdf"]
+    file_pattern += ["match_*.pdf"]
     file_pattern += ["radec2_final.dat"]
     file_pattern += ["radec2_final.pdf"]
     file_pattern += ["vdrp_info.pickle"]
