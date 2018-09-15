@@ -9,6 +9,7 @@ Contains python translation of Karl Gebhardt
 
 from __future__ import print_function
 import matplotlib
+matplotlib.use("agg")
 
 from matplotlib import pyplot as plt
 
@@ -58,7 +59,6 @@ from vdrp.daophot import DAOPHOT_ALS
 from vdrp.utils import read_radec, write_radec
 from vdrp import fplane_client
 
-matplotlib.use("agg")
 
 
 class VdrpInfo(OrderedDict):
