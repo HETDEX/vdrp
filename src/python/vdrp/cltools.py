@@ -73,8 +73,7 @@ def getoff2(fnradec, fnshuffle_ifustars, radius, ra_offset,
     # p_status = proc.wait()
     proc.wait()
     with open("getoff2.out") as f:
-        # l = f.readline()
-        f.readline()
+        l = f.readline()
     tt = l.split()
     new_ra_offset, new_dec_offset = float(tt[0]), float(tt[1])
     return new_ra_offset+ra_offset, new_dec_offset+dec_offset

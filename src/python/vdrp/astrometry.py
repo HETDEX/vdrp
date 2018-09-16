@@ -9,6 +9,7 @@ Contains python translation of Karl Gebhardt
 
 from __future__ import print_function
 import matplotlib
+matplotlib.use("agg")
 
 from matplotlib import pyplot as plt
 
@@ -30,6 +31,7 @@ import numpy as np
 from collections import OrderedDict
 import pickle
 import ast
+import re
 
 # import scipy
 from scipy.interpolate import UnivariateSpline
@@ -55,8 +57,8 @@ from vdrp import cltools
 from vdrp import utils
 from vdrp.daophot import DAOPHOT_ALS
 from vdrp.utils import read_radec, write_radec
+from vdrp.fplane_client import retrieve_fplane
 
-matplotlib.use("agg")
 
 
 class VdrpInfo(OrderedDict):
@@ -262,6 +264,7 @@ def parseArgs(args):
     args.offset_exposure_indices = [int(t) for t in
                                     args.offset_exposure_indices.split(",")]
 
+    print(args.logfile)
     return args
 
 
@@ -548,8 +551,9 @@ def flux_norm(wdir, mag_max, infile='all.raw', outfile='norm.dat'):
             f.write(s)
 
 
+
 def redo_shuffle(wdir, ra, dec, track, acam_magadd, wfs1_magadd, wfs2_magadd,
-                 shuffle_cfg, fplane_txt):
+                 shuffle_cfg, fplane_txt, night):
     """
     Reruns shuffle to obtain catalog of IFU stars.
 
@@ -567,7 +571,7 @@ def redo_shuffle(wdir, ra, dec, track, acam_magadd, wfs1_magadd, wfs2_magadd,
     """
     logging.info("Using {}.".format(shuffle_cfg))
     shutil.copy2(shuffle_cfg, os.path.join(wdir, "shuffle.cfg"))
-    shutil.copy2(fplane_txt, os.path.join(wdir, "fplane.txt"))
+    retrieve_fplane(night, fplane_txt, wdir)
     with path.Path(wdir):
         try:
             os.remove('shout.ifustars')
@@ -620,8 +624,8 @@ def get_ra_dec_orig(wdir, reduction_dir, night, shotid):
                         "reduction_dir in configuration file."
                         .format(reduction_dir))
     h = fits.getheader(multi_files[0])
-    ra0 = h["TRAJCRA"]
-    dec0 = h["TRAJCDEC"]
+    ra0 = h["TRAJRA"]
+    dec0 = h["TRAJDEC"]
     pa0 = h["PARANGLE"]
     logging.info("Original RA,DEC,PA = {},{},{}".format(ra0, dec0, pa0))
 
@@ -1490,6 +1494,7 @@ def cp_results(tmp_dir, results_dir):
     file_pattern = []
 #    file_pattern += ["CoFeS*_???_sci.fits"]
 #    file_pattern += ["*.als"]
+    file_pattern += ["*tot.als"]
 #    file_pattern += ["*.ap"]
 #    file_pattern += ["*.coo"]
 #    file_pattern += ["*.lst"]
@@ -1518,7 +1523,7 @@ def cp_results(tmp_dir, results_dir):
     file_pattern += ["use.psf"]
     file_pattern += ["2*fp.fits"]
     file_pattern += ["xy_exp??.dat"]
-    file_pattern += ["detect_*.pdf"]
+    file_pattern += ["match_*.pdf"]
     file_pattern += ["radec2_final.dat"]
     file_pattern += ["radec2_final.pdf"]
     file_pattern += ["vdrp_info.pickle"]
@@ -1647,7 +1652,7 @@ def main(args):
                 redo_shuffle(wdir, args.ra, args.dec, args.track,
                              args.acam_magadd, args.wfs1_magadd,
                              args.wfs2_magadd, args.shuffle_cfg,
-                             args.fplane_txt)
+                             args.fplane_txt, args.night)
 
             if task in ["get_ra_dec_orig", "all"]:
                 # Retrieve original RA DEC from one of the multi files.

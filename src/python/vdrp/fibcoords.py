@@ -31,9 +31,8 @@ import pyhetdex.tools.read_catalogues as rc
 
 from vdrp.utils import createDir
 from vdrp.utils import read_radec
-
 from vdrp.utils import rm
-
+from vdrp.fplane_client import retrieve_fplane
 
 def parseArgs():
     """ Parses configuration file and command line arguments.
@@ -311,18 +310,6 @@ def cp_astrometry(wdir, shifts_dir, night, shotid, radec2_dat):
     shutil.copy2(radec2_dat, os.path.join(wdir, "coords", "radec2_final.dat"))
 
 
-def cp_fplane_file(wdir, fplane_txt):
-    """ Copies `fplane` file.
-
-    Args:
-        fplane_txt (str): Full path to fplane file.
-        wdir (str): Work directory.
-    """
-    logging.info("Copy {} ".format(fplane_txt))
-    logging.info("     to {}.".format(wdir))
-    shutil.copy2(fplane_txt, os.path.join(wdir, "coords"))
-
-
 def cp_addin_files(wdir, addin_dir):
     """ Copies `addin` files. These are
     essentially the IFUcen files in a different format.
@@ -416,6 +403,9 @@ def get_fiber_coords(wdir, active_slots, dither_offsets):
                          .format(offset_index + 1, dx, dy))
             for ifuslot, addin_file in zip(ifuslots, addin_files):
                 # identify ifu
+                if not ifuslot in fplane.ifuslots:
+                    logging.warning("IFU {} not in fplane file.".format(ifuslot))
+                    continue
                 ifu = fplane.by_ifuslot(ifuslot)
                 # read fiber positions
                 x, y, table = rc.read_line_detect(addin_file)
@@ -441,8 +431,32 @@ def get_fiber_coords(wdir, active_slots, dither_offsets):
                 table.write(outfilename, comment='#', format='ascii.csv',
                             overwrite=True)
 
+def config_loggerNew(args, target_dir):
+    """ Setup logging to file and screen.
 
-def config_logger(args):
+    Args:
+        args (argparse.Namespace): Parsed configuration parameters.
+        target_dir (str): Directory where the logfile shell be saved.
+    """
+
+    fmt = '%(asctime)s %(levelname)-8s %(funcName)15s(): %(message)s'
+    # set up logging to file - see previous section for more details
+    logging.basicConfig(level=logging.DEBUG,
+        format=fmt,
+        datefmt='%m-%d %H:%M',
+        filename=os.path.join(target_dir, args.logfile),
+        filemode='w')
+    # define a Handler which writes INFO messages or higher to the sys.stderr
+    console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
+    # set a format which is simpler for console use
+    formatter = logging.Formatter(fmt)
+    # tell the handler to use this format
+    console.setFormatter(formatter)
+    # add the handler to the root logger
+    logging.getLogger('').addHandler(console)
+
+def config_logger(args, target_dir="20180601v007"):
     """ Setup logging to file and screen.
 
     Args:
@@ -454,7 +468,7 @@ def config_logger(args):
     logging.basicConfig(level=logging.DEBUG,
                         format=fmt,
                         datefmt='%m-%d %H:%M',
-                        filename=args.logfile,
+                        filename=os.path.join(target_dir, args.logfile),
                         filemode='a')
     # define a Handler which writes INFO messages or higher to the sys.stderr
     console = logging.StreamHandler()
@@ -564,15 +578,15 @@ def main():
     # command line parameters overwrite config file.
     args = parseArgs()
 
-    # Set up logging
-    config_logger(args)
-
-    logging.info("Start.")
 
     # Create results directory for given night and shot
     cwd = os.getcwd()
     wdir = os.path.join(cwd, "{}v{}".format(args.night, args.shotid))
     createDir(wdir)
+    # Set up logging
+    config_logger(args, wdir)
+    logging.info("Start.")
+
 
     exposures = get_exposures(args.reduction_dir, args.night, args.shotid)
 
@@ -596,7 +610,7 @@ def main():
     cp_ixy_files(wdir, args.ixy_dir)
 
     # Copy fplane file.
-    cp_fplane_file(wdir, args.fplane_txt)
+    retrieve_fplane(args.night, args.fplane_txt, os.path.join(wdir, "coords") )
 
     # find which slots deleivered data for all exposures
     # (infer from existance of corresponding multifits files).
