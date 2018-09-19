@@ -1,0 +1,9 @@
+name=$1
+wave=$2
+wc=$6
+awk '{if($1>(wave0-wc0)&&$1<(wave0+wc0)) print $0}' wave0=$wave wc0=$wc tmp$name.dat > stmp
+awk '{s+=$2; print s}' stmp | tail -1 > s2
+awk '{if($2!=0) s+=1; print s}' stmp | tail -1 > s2b
+paste s2 s2b | awk '{if($2>0) print $1/$2; else print 0}' > s2c
+awk '{s+=$4*$5; print s}' stmp | tail -1 > s3
+paste s2c s3 > spavg$1.dat

@@ -1,0 +1,9 @@
+~gebhardt/bin/rsp1a2b $2 $3 4 4500 1000 $1 $9 1.6 10
+cd $9_$1
+cp $9_$1specf.dat ../res/sp$1_2.dat
+cp l1 ../res/$1.list
+mv list listo
+ls $9_$1specf.dat > list
+rm -f sumspec.out
+~gebhardt/bin/sumspec
+cp sumspec.out ../res/sp$1_100.dat
