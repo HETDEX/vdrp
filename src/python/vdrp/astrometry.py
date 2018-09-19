@@ -636,7 +636,7 @@ def get_track(wdir, reduction_dir, night, shotid):
     else:
         track = 1
 
-    logging.info("-> track = {}".format(az))
+    logging.info("-> track = {}".format(track))
 
     vdrp_info["STRUCTAZ"] = az
     vdrp_info["track"] = track
@@ -1018,10 +1018,10 @@ def compute_offset(wdir, prefixes, getoff2_radii, add_radec_angoff_trial,
                 # mF: Not sure if we will need radec.dat later,
                 # creating it for now.
                 ra, dec, pa = utils.read_radec("radec.orig")
-                if ra != None:
+                if ra0 != None:
                     logging.info("Overwriting RA from multifits by value from command line = {}".format(ra0))
                     ra = ra0
-                if dec != None:
+                if dec0 != None:
                     logging.info("Overwriting DEC from multifits by value from command line = {}".format(dec0))
                     dec = dec0
 
@@ -1740,7 +1740,7 @@ def main(args):
                                args.offset_exposure_indices,
                                final_ang_offset=None,
                                shout_ifustars='shout.ifustars',
-                               ra=args.ra, dec=args.dec)
+                               ra0=args.ra, dec0=args.dec)
 
             if task in ["compute_with_optimal_ang_off", "all"]:
                 # Compute offsets by matching
@@ -1756,7 +1756,7 @@ def main(args):
                                args.offset_exposure_indices,
                                final_ang_offset=optimal_ang_off,
                                shout_ifustars='shout.ifustars',
-                               ra=args.ra, dec=args.dec)
+                               ra0=args.ra, dec0=args.dec)
 
             if task in ["combine_radec", "all"]:
                 # Combine individual exposure radec information.
