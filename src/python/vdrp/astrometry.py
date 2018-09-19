@@ -890,7 +890,6 @@ def compute_offset(wdir, prefixes, getoff2_radii, add_radec_angoff_trial,
         shout_ifustars (str): Shuffle output catalog of IFU stars.
     """
     global vdrp_info
-    shout_ifustars = 'shout.ifustars'
 
     def write_ra_dec_dats(ra, dec, pa, exp_index, angoff,
                           ra_offset, dec_offset, nominal=False):
@@ -927,6 +926,7 @@ def compute_offset(wdir, prefixes, getoff2_radii, add_radec_angoff_trial,
             angoffsets = []
             nominal_angoffset = final_ang_offset
             add_radec_angoff = final_ang_offset
+
         angoffsets = filter(lambda x: x != nominal_angoffset, angoffsets) \
             + [nominal_angoffset]
 
