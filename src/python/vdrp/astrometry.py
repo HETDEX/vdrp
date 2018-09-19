@@ -244,11 +244,11 @@ def parseArgs(args):
     parser.add_argument('shotid', metavar='shotid', type=str,
                         help='Shot ID (e.g. 017).')
     parser.add_argument('ra', metavar='ra', type=float,
-                        help='RA of the target in decimal hours.')
+                        help='RA of the target in decimal hours.', nargs='?', default=None)
     parser.add_argument('dec', metavar='dec', type=float,
-                        help='Dec of the target in decimal hours degree.')
+                        help='Dec of the target in decimal hours degree.', nargs='?', default=None)
     parser.add_argument('track', metavar='track', type=int, choices=[0, 1],
-                        help='Type of track: 0: East 1: West')
+                        help='Type of track: 0: East 1: West', nargs='?', default=None)
 
     args = parser.parse_args(remaining_argv)
 
