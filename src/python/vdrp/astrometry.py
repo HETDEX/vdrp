@@ -600,6 +600,50 @@ def redo_shuffle(wdir, ra, dec, track, acam_magadd, wfs1_magadd, wfs2_magadd,
         subprocess.call(cmd, shell=True)
 
 
+def get_track(wdir, reduction_dir, night, shotid):
+    """
+    Reads first of the many multi* file'd headers to get
+    the track.
+
+    Notes:
+        This function is so emparrisingly similar to get_ra_dec_orig
+        that they should probably be combined.
+
+    Args:
+        wdir (str): Work directory.
+        reduction_dir (str): Directory that holds panacea reductions.
+        night (str): Night (e.g. 20180611)
+        shotid (str): ID of shot (e.g. 017)
+    Returns:
+        (int): 0 = east track, 1 = west track
+    """
+    global vdrp_info
+    pattern = \
+        os.path.join(reduction_dir,
+                     "{}/virus/virus0000{}/*/*/multi_???_*LL*fits"
+                     .format(night, shotid))
+    multi_files = glob.glob(pattern)
+    if len(multi_files) == 0:
+        raise Exception("Found no multi file in {}. Please check "
+                        "reduction_dir in configuration file."
+                        .format(reduction_dir))
+    h = fits.getheader(multi_files[0])
+    az = h["STRUCTAZ"]
+    logging.info("STRUCTAZ = {}".format(az))
+    track = None
+    if az < 180.:
+        track = 0
+    else:
+        track = 1
+
+    logging.info("-> track = {}".format(az))
+
+    vdrp_info["STRUCTAZ"] = az
+    vdrp_info["track"] = track
+
+    return track
+
+
 def get_ra_dec_orig(wdir, reduction_dir, night, shotid):
     """
     Reads first of the many multi* file'd headers to get
@@ -687,7 +731,7 @@ def add_ra_dec(wdir, als_data, ra, dec, pa, fp, radec_outfile='tmp.csv'):
 
     New version, direct python call to pyheted.coordinates.tangent_projection.
 
-    Requires, fplane.txt, radec.orig.
+    Requires, fplane.txt
     Creates primarely EXPOSURE_tmp.csv but also radec.dat.
 
     Args:
@@ -861,9 +905,11 @@ def compute_optimal_ang_off(wdir, smoothing=0.05, PLOT=True):
 def compute_offset(wdir, prefixes, getoff2_radii, add_radec_angoff_trial,
                    add_radec_angoff, add_radec_angoff_trial_dir,
                    offset_exposure_indices, final_ang_offset=None,
-                   shout_ifustars='shout.ifustars'):
+                   shout_ifustars='shout.ifustars', ra0=None, dec0=None):
     """
-    Requires, fplane.txt, radec.orig.
+    Requires, fplane.txt and radec.orig. If not ra, dec are passed
+    explicitly then the values from radec.orig are used. The 
+    pa value from radec.orig is used in any case.
     Creates primarely EXPOSURE_tmp.csv but also radec2.dat.
 
     Compute offset in RA DEC  by matching detected stars in IFUs
@@ -888,6 +934,8 @@ def compute_offset(wdir, prefixes, getoff2_radii, add_radec_angoff_trial,
                                   the values in add_radec_angoff and
                                   add_radec_angoff_trial
         shout_ifustars (str): Shuffle output catalog of IFU stars.
+        ra0 (float) : Optionally allows to overwrite use of RA from radec.orig
+        dec0 (float) : Optionally allows to overwrite use of DEC from radec.orig
     """
     global vdrp_info
     shout_ifustars = 'shout.ifustars'
@@ -970,6 +1018,12 @@ def compute_offset(wdir, prefixes, getoff2_radii, add_radec_angoff_trial,
                 # mF: Not sure if we will need radec.dat later,
                 # creating it for now.
                 ra, dec, pa = utils.read_radec("radec.orig")
+                if ra != None:
+                    logging.info("Overwriting RA from multifits by value from command line = {}".format(ra0))
+                    ra = ra0
+                if dec != None:
+                    logging.info("Overwriting DEC from multifits by value from command line = {}".format(dec0))
+                    dec = dec0
 
                 # Now compute offsets iteratively with increasingly
                 # smaller matching radii.
@@ -1647,18 +1701,32 @@ def main(args):
                 else:
                     logging.info("Only one exposure, skipping flux_norm.")
 
-            if task in ["redo_shuffle", "all"]:
-                # Rerun shuffle to get IFU stars
-                redo_shuffle(wdir, args.ra, args.dec, args.track,
-                             args.acam_magadd, args.wfs1_magadd,
-                             args.wfs2_magadd, args.shuffle_cfg,
-                             args.fplane_txt, args.night)
-
             if task in ["get_ra_dec_orig", "all"]:
                 # Retrieve original RA DEC from one of the multi files.
                 # store in radec.orig
                 get_ra_dec_orig(wdir, args.reduction_dir, args.night,
                                 args.shotid)
+
+            if task in ["redo_shuffle", "all"]:
+                # Rerun shuffle to get IFU stars
+                # if ra,dec, track were passed on command line, then use those
+                # otherwise use corresponding vaules from the multifits header.
+                # Note that get_ra_dec_orig read the multifits and stores
+                # the ra,dec in radec.orig.
+                ra, dec, track = args.ra, args.dec, args.track
+                if track == None:
+                    track = get_track(wdir, args.reduction_dir, args.night,
+                                args.shotid)
+                if ra == None or dec == None:
+                    _ra, _dec, _pa = utils.read_radec(os.path.join(wdir,"radec.orig"))
+                    if ra == None:
+                        ra = _ra 
+                    if dec == None:
+                        dec = _dec
+                redo_shuffle(wdir, ra, dec, track,
+                             args.acam_magadd, args.wfs1_magadd,
+                             args.wfs2_magadd, args.shuffle_cfg,
+                             args.fplane_txt, args.night)
 
             if task in ["compute_offset", "all"]:
                 # Compute offsets by matching
@@ -1671,7 +1739,8 @@ def main(args):
                                args.add_radec_angoff_trial_dir,
                                args.offset_exposure_indices,
                                final_ang_offset=None,
-                               shout_ifustars='shout.ifustars')
+                               shout_ifustars='shout.ifustars',
+                               ra=args.ra, dec=args.dec)
 
             if task in ["compute_with_optimal_ang_off", "all"]:
                 # Compute offsets by matching
@@ -1686,7 +1755,8 @@ def main(args):
                                args.add_radec_angoff_trial_dir,
                                args.offset_exposure_indices,
                                final_ang_offset=optimal_ang_off,
-                               shout_ifustars='shout.ifustars')
+                               shout_ifustars='shout.ifustars',
+                               ra=args.ra, dec=args.dec)
 
             if task in ["combine_radec", "all"]:
                 # Combine individual exposure radec information.
