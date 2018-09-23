@@ -60,7 +60,6 @@ from vdrp.utils import read_radec, write_radec
 from vdrp.fplane_client import retrieve_fplane
 
 
-
 class VdrpInfo(OrderedDict):
     def __init__(self, *args, **kwargs):
         super(VdrpInfo, self).__init__(*args, **kwargs)
