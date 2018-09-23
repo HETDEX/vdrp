@@ -21,7 +21,7 @@ import sys
 import ConfigParser
 import logging
 import subprocess
-# from astropy.io import fits
+from astropy.io import fits
 # from astropy.io import ascii
 # import tempfile
 import numpy as np
@@ -118,6 +118,28 @@ class ShuffleStar():
         self.mag_r = r
         self.mag_i = i
         self.mag_z = z
+
+
+class StarObservation():
+
+    def __init__(self, night=-1, shot=-1, ra=-1, dec=-1, x=-1, y=-1, fname='',
+                 shotname='', expname='', offset_ra=-1, offset_dec=1):
+
+        self.night = night
+        self.shot = shot
+        self.ra = ra
+        self.dec = dec
+        self.x = x
+        self.y = y
+        self.full_fname = fname
+        self.shotname = shotname
+        self.expname = expname
+        self.offset_ra = offset_ra
+        self.offset_dec = offset_dec
+        self.fname = ''
+        self.ifuslot = ''
+
+        self.fname, self.ifuslot = self.full_fname.split('.')[0].rsplit('_', 1)
 
 
 def parseArgs(args):
@@ -317,9 +339,29 @@ def apply_factor_spline(factor):
             f.write('%f %f' % (w, f*1.e17 / factor))
 
 
-def extract_star_spectrum(star, args):
+def read_stuctaz(fname):
     """
-    Equivalent of the rspstar and rsp1a2b scripts
+    Equivalent of the rgetadc script
+
+    Parameters:
+    -----------
+
+    fname : string
+    Filename to read from
+
+    Read the STRUCTAZ parameter from the fits file ``fname``
+    """
+
+    with fits.open(fname, 'r') as hdu:
+        return hdu[0].header['STRUCTAZ']
+
+
+def get_star_spectrum_data(star, args):
+    """
+    This extracts the data about the different observations of the same star
+    on different ifus.
+
+    This is essentially the information stored in the l1 file.
     """
 
     # First find matching shots
@@ -332,32 +374,45 @@ def extract_star_spectrum(star, args):
 
     # If this code should be run in a more general fashion, use the
     # ra / dec
-    w = np.where((night == int(args.night)) & (shot == int(args.shotid)))
+    w = np.where((night == int(args.night)) & (shot == int(args.shotid))
+                 & ((np.sqrt((np.cos(star.dec/57.3)*(ra_ifu-star.ra))**2
+                             + (dec_ifu-star.dec)**2)*3600.)
+                    < args.ifu_search_radius))
 
-    c = 0
     night_shots = []
+
+    starobs = []
 
     for i in w:
 
-        w_i = ((np.sqrt((np.cos(star.dec/57.3)*(ra_ifu-star.ra))**2
-                        + (dec_ifu-star.dec)**2)*3600.)
-               < args.ifu_search_radius)
-
-        night_shots.append('%d %d' % (night[i], shot[i]))
+        so = StarObservation((night[i], shot[i], ra_ifu[i], dec_ifu[i],
+                              x_ifu[i], y_ifu[i], fname_ifu[i],
+                              shotname_ifu[i], expname_ifu[i]))
 
         # This is written to loffset
-        # offsets_ra = 3600.*(ra_ifu[w_i]-star.ra)
-        # offsets_dec = 3600.*(dec_ifu[w_i]-star.dec)
+        so.offsets_ra = 3600.*(ra_ifu[i]-star.ra)
+        so.offsets_dec = 3600.*(dec_ifu[i]-star.dec)
 
-        fname, ifuslot = fname_ifu[w_i].split('.')[0].rsplit('_', 1)
+        starobs.append(so)
+        night_shots.append('%d %d' % (night[i], shot[i]))
 
-        call_imextsp(args.bin_dir, args.multifits_dir+'/'+fname+'.fits',
-                     ifuslot, args.extraction_wl, args.extraction_wlrange,
-                     get_throughput_file(args.tp_path, night+'v'+shot),
-                     args.norm_path+'/'+fname+".norm", 'tmp%d.dat' % c+101)
+    return starobs, np.unique(night_shots)
+
+
+def extract_star_spectrum(starobs, args):
+    """
+    Equivalent of the rextsp0 and parts of the rsp1b scripts
+    """
+
+    c = 0
+
+    for s in starobs:
+        call_imextsp(args.bin_dir, args.multifits_dir+'/'+s.fname+'.fits',
+                     s.ifuslot, args.extraction_wl, args.extraction_wlrange,
+                     get_throughput_file(args.tp_path, s.night+'v'+s.shot),
+                     args.norm_path+'/'+s.fname+".norm", 'tmp%d.dat' % c+101)
+
         c += 1
-
-    return c, np.unique(night_shots)
 
 
 def get_shuffle_stars(shuffledir, nightshot, maglim):
@@ -381,39 +436,9 @@ def get_shuffle_stars(shuffledir, nightshot, maglim):
                       % (args.night, args.shotid))
 
 
-def run_star_photometry(args):
-    """
-    Equivalent of the rsetstar script
-    """
-    nightshot = args.night + 'v' + args.shotid
-
-    stars = get_shuffle_stars(args.shuffle_ifustars_dir, nightshot,
-                              args.shuffle_mag_limit)
-
-    for star in stars:
-
-        # Call rspstar
-        nspec, nshots = extract_star_spectrum(star, args)
-
-        call_sumsplines(args.bin_dir, nspec)
-
-        apply_factor_spline(nshots)
-
-        call_fitonevp(args.bin_dir, args.extraction_wl,
-                      nightshot+'_'+star.starid+'spec.res')
-
-
-def prepare_model():
-    """
-2    Corresponds to rsp2 script
-    """
-
-    pass
-
-
 def average_spectrum(spec, wlmin, wlmax):
     """
-    Corresponds to ravgsp0 script. Calculate the average of the
+    Corresponds to ravgspq script. Calculate the average of the
     spectrum in the range [wlmin, wlmax]
 
     Parameters
@@ -431,6 +456,50 @@ def average_spectrum(spec, wlmin, wlmax):
     norm = (spec.amp_norm[wh]*spec.tp_norm[wh]).sum()
 
     return avg, norm
+
+
+def run_star_photometry(args):
+    """
+    Equivalent of the rsetstar script
+    """
+    nightshot = args.night + 'v' + args.shotid
+
+    stars = get_shuffle_stars(args.shuffle_ifustars_dir, nightshot,
+                              args.shuffle_mag_limit)
+
+    curdir = os.path.abspath(os.path.curdir)
+
+    for star in stars:
+
+        stardir = curdir + '/%s_%d' % (nightshot, star.starid)
+        os.mkdir(stardir)
+        os.chdir(stardir)
+
+        # Create the workdirectory for this star
+        os.mkdir()
+
+        # Extract data like the data in l1
+        starobs, nshots = get_star_spectrum_data(star, args)
+
+        # Call rspstar
+        extract_star_spectrum(starobs, args)
+
+        call_sumsplines(args.bin_dir, len(starobs))
+
+        apply_factor_spline(nshots)
+
+        call_fitonevp(args.bin_dir, args.extraction_wl,
+                      nightshot+'_'+star.starid+'spec.res')
+
+        # run_fit2d()
+
+
+def prepare_model():
+    """
+2    Corresponds to rsp2 script
+    """
+
+    pass
 
 
 def cp_results(tmp_dir, results_dir):
