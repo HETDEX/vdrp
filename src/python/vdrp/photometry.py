@@ -179,8 +179,11 @@ def parseArgs(args):
     defaults = {}
     defaults['logfile'] = 'photometry.log'
 
-    defaults['single_shot'] = True
-    
+    defaults['starid'] = 1
+
+    defaults['shuffle_stars'] = False
+
+    defaults['dithall_dir'] = '/work/00115/gebhardt/maverick/detect/'
     defaults["shuffle_mag_limit"] = 20.
 
     defaults["shuffle_ifustars_dir"] = \
@@ -195,6 +198,7 @@ def parseArgs(args):
     defaults['extraction_wlrange'] = 1000.
     defaults['radec_file'] = '/work/00115/gebhardt/maverick/getfib/radec.all'
     defaults['ifu_search_radius'] = 4.
+    defaults['shot_search_radius'] = 4.
 
     defaults['seeing'] = 1.6
 
@@ -213,9 +217,10 @@ def parseArgs(args):
 
     parser.set_defaults(**defaults)
     parser.add_argument("--logfile", type=str, help="Filename for log file.")
-    parser.add_argument("--multi_shot", action='store_true',
-                        help="Run using all shots containing the star at the "
-                        "given coordinates. Equivalent of rsp1 script")
+    parser.add_argument("--starid", type=int,
+                        help="Star ID to use, default is 1")
+    parser.add_argument("--dithall_file", type=str, help="Dithall.use "
+                        "filename to use for the analysis.")
     parser.add_argument("--shuffle_mag_limit", type=float,
                         help="Magnitude cutoff for selection of stars found by"
                         " shuffle")
@@ -239,20 +244,30 @@ def parseArgs(args):
     parser.add_argument("--radec_file", type=str, help="Filename of file with "
                         "RA DEC PA positions for all shots")
     parser.add_argument("--ifu_search_radius", type=float, help="Radius for "
-                        "search for shots near a given shuffle star.")
+                        "search for fibers near a given star.")
+    parser.add_argument("--shot_search_radius", type=float, help="Radius for "
+                        "search for shots near a given star.")
 
     parser.add_argument("--seeing", type=float, help="Seeing in arcseconds"
                         "to assume for spectral extraction.")
+
+    # Commandline only paramters
+    parser.add_argument("--multi_shot", action='store_true',
+                        help="Run using all shots containing the star at the "
+                        "given coordinates. Equivalent of rsp1 script")
+    parser.add_argument("--shuffle_stars", action='store_true',
+                        help="Run over all stars from shuffle for the given"
+                        "night and shot, ignoring the ra and dec parameters")
 
     # positional arguments
     parser.add_argument('night', metavar='night', type=str,
                         help='Night of observation (e.g. 20180611).')
     parser.add_argument('shotid', metavar='shotid', type=str,
                         help='Shot ID (e.g. 017).')
-    # parser.add_argument('ra', metavar='ra', type=float,
-    #                     help='RA of the target in decimal hours.')
-    # parser.add_argument('dec', metavar='dec', type=float,
-    #                     help='Dec of the target in decimal hours degree.')
+    parser.add_argument('ra', metavar='ra', type=float,
+                        help='RA of the target in decimal hours.')
+    parser.add_argument('dec', metavar='dec', type=float,
+                        help='Dec of the target in decimal hours degree.')
     # parser.add_argument('track', metavar='track', type=int, choices=[0, 1],
     #                     help='Type of track: 0: East 1: West')
 
@@ -352,7 +367,7 @@ def call_fit2d(ra, dec, outname):
     shutil.move('out', 'out2d')
 
 
-def call_mkimage(star, starobs):
+def call_mkimage(ra, dec, starobs):
     """
     Call mkimage, equivalent of rmkim
     """
@@ -362,9 +377,9 @@ def call_mkimage(star, starobs):
     # First write the first j4 input file
     with open('j4', 'w') as f:
         for obs in starobs:
-            f.write('%f %f %f\n' % (3600.*(obs.ra-star.ra)
-                                    * np.cos(star.dec/57.3),
-                                    3600*(obs.dec-star.dec)), obs.avg)
+            f.write('%f %f %f\n' % (3600.*(obs.ra-ra)
+                                    * np.cos(dec/57.3),
+                                    3600*(obs.dec-dec)), obs.avg)
 
     run_command('mkimage')
 
@@ -372,9 +387,9 @@ def call_mkimage(star, starobs):
 
     with open('j4', 'w') as f:
         for i in range(0, len(starobs)):
-            f.write('%f %f %f\n' % (3600.*(starobs[i].ra-star.ra)
-                                    * np.cos(star.dec/57.3),
-                                    3600*(starobs[i].dec-star.dec)),
+            f.write('%f %f %f\n' % (3600.*(starobs[i].ra-ra)
+                                    * np.cos(dec/57.3),
+                                    3600*(starobs[i].dec-dec)),
                     starobs[i].avg - gausa[i])
 
     run_command('mkimage')
@@ -383,9 +398,9 @@ def call_mkimage(star, starobs):
 
     with open('j4', 'w') as f:
         for i in range(0, len(starobs)):
-            f.write('%f %f %f\n' % (3600.*(starobs[i].ra-star.ra)
-                                    * np.cos(star.dec/57.3),
-                                    3600*(starobs[i].dec-star.dec)),
+            f.write('%f %f %f\n' % (3600.*(starobs[i].ra-ra)
+                                    * np.cos(dec/57.3),
+                                    3600*(starobs[i].dec-dec)),
                     gausa[i])
 
     run_command('mkimage')
@@ -429,7 +444,7 @@ def apply_factor_spline(factor):
             f.write('%f %f' % (w, f*1.e17 / factor))
 
 
-def get_star_spectrum_data(star, args):
+def get_star_spectrum_data(ra, dec, args):
     """
     This extracts the data about the different observations of the same star
     on different ifus.
@@ -439,56 +454,68 @@ def get_star_spectrum_data(star, args):
 
     # First find matching shots
     night, shot = np.loadtxt(args.radec_file, unpack=True, usecols=[0, 1])
-    ra_ifu, dec_ifu, x_ifu, y_ifu = np.loadtxt(args.dithall_file, unpack=True,
-                                               usecols=[0, 1, 3, 4])
-    fname_ifu, shotname_ifu, expname_ifu = np.loadtxt(args.dithall_file,
-                                                      unpack=True,
-                                                      usecols=[7, 8, 9])
+    ra_shot, dec_shot = np.loadtxt(args.radec_file, unpack=True,
+                                   usecols=[2, 3])
 
-    # If this code should be run in a more general fashion, use the
-    # ra / dec
+    # First find shots overlapping with the RA/DEC coordinates
+    w_s = np.where(((np.sqrt((np.cos(dec/57.3)*(ra_shot-ra))**2
+                             + (dec_shot-dec)**2)*3600.)
+                    < args.shot_search_radius))[0]
+
+    if not len(np.where(w_s)[0]):
+        raise Exception('No shots found!')
+
+    night = night[w_s]
+    shot = shot[w_s]
+
     if args.single_shot:  # rsp1b mode
-        w = np.where((night == int(args.night)) & (shot == int(args.shotid))
-                     & ((np.sqrt((np.cos(star.dec/57.3)*(ra_ifu-star.ra))**2
-                                 + (dec_ifu-star.dec)**2)*3600.)
-                        < args.ifu_search_radius))[0]
-    else:
-        w = np.where(((np.sqrt((np.cos(star.dec/57.3)*(ra_ifu-star.ra))**2
-                               + (dec_ifu-star.dec)**2)*3600.)
-                      < args.ifu_search_radius))[0]
+        w = (night == int(args.night)) & (shot == int(args.shotid))
+        night = night[w]
+        shot = shot[w]
 
     night_shots = []
-
     starobs = []
-
     c = 0
 
-    for i in w:
+    for n, s in zip(night, shot):
+        dithall_file = args.dithall_dir+'/'+s+'v'+n+'/dithall.use'
+        ra_ifu, dec_ifu, x_ifu, y_ifu = np.loadtxt(dithall_file,
+                                                   unpack=True,
+                                                   usecols=[0, 1, 3, 4])
+        fname_ifu, shotname_ifu, expname_ifu = np.loadtxt(dithall_file,
+                                                          unpack=True,
+                                                          usecols=[7, 8, 9])
 
-        so = StarObservation()
+        w = np.where(((np.sqrt((np.cos(dec/57.3)*(ra_ifu-ra))**2
+                               + (dec_ifu-dec)**2)*3600.)
+                      < args.ifu_search_radius))[0]
 
-        so.num = c+101
-        so.night = night[i]
-        so.shot = shot[i]
-        so.ra = ra_ifu[i]
-        so.dec = dec_ifu[i]
-        so.x = x_ifu[i]
-        so.y = y_ifu[i]
-        so.set_fname(fname_ifu[i])
-        so.shotname = shotname_ifu[i]
-        so.expname = expname_ifu[i]
+        for i in w:
 
-        so.dist = 3600.*np.sqrt((np.cos(star.dec/57.3)*(so.ra-star.ra))**2
-                                + (so.dec-star.dec)**2)
+            so = StarObservation()
 
-        # This is written to loffset
-        so.offsets_ra = 3600.*(ra_ifu[i]-star.ra)
-        so.offsets_dec = 3600.*(dec_ifu[i]-star.dec)
+            so.num = c+101
+            so.night = night[i]
+            so.shot = shot[i]
+            so.ra = ra_ifu[i]
+            so.dec = dec_ifu[i]
+            so.x = x_ifu[i]
+            so.y = y_ifu[i]
+            so.set_fname(fname_ifu[i])
+            so.shotname = shotname_ifu[i]
+            so.expname = expname_ifu[i]
 
-        starobs.append(so)
-        night_shots.append('%d %d' % (night[i], shot[i]))
+            so.dist = 3600.*np.sqrt((np.cos(dec/57.3)*(so.ra-ra))**2
+                                    + (so.dec-dec)**2)
 
-        c += 1
+            # This is written to loffset
+            so.offsets_ra = 3600.*(ra_ifu[i]-ra)
+            so.offsets_dec = 3600.*(dec_ifu[i]-dec)
+
+            starobs.append(so)
+            night_shots.append('%d %d' % (night[i], shot[i]))
+
+            c += 1
 
     return starobs, np.unique(night_shots)
 
@@ -648,7 +675,7 @@ def run_fitem(wl, outname):
     shutil.move('lines.out', outname+'_2d.res')
 
 
-def run_star_photometry(args):
+def run_shuffle_photometry(args):
     """
     Equivalent of the rsetstar script
     """
@@ -657,50 +684,54 @@ def run_star_photometry(args):
     stars = get_shuffle_stars(args.shuffle_ifustars_dir, nightshot,
                               args.shuffle_mag_limit)
 
-    curdir = os.path.abspath(os.path.curdir)
-
     for star in stars:
+        run_star_photometry(star.ra, star.dec, star.starid, args)
 
-        starname = '%s_%d' % (nightshot, star.starid)
 
-        stardir = curdir + '/' + starname
-        os.mkdir(stardir)
-        os.chdir(stardir)
+def run_star_photometry(ra, dec, starid, args):
+    """
+    Equivalent of the rsp1a2b script
+    """
+    nightshot = args.night + 'v' + args.shotid
 
-        # Create the workdirectory for this star
-        os.mkdir()
+    starname = '%s_%d' % (nightshot, starid)
 
-        # Extract data like the data in l1
-        starobs, nshots = get_star_spectrum_data(star, args)
+    # Create the workdirectory for this star
+    stardir = args.curdir + '/' + starname
+    os.mkdir(stardir)
+    os.chdir(stardir)
 
-        # Call rspstar
-        specfiles = extract_star_spectrum(starobs, args)
+    # Extract data like the data in l1
+    starobs, nshots = get_star_spectrum_data(ra, dec, args)
 
-        call_sumsplines(args.bin_dir, len(starobs))
+    # Call rspstar
+    specfiles = extract_star_spectrum(starobs, args)
 
-        apply_factor_spline(nshots)
+    call_sumsplines(args.bin_dir, len(starobs))
 
-        call_fitonevp(args.bin_dir, args.extraction_wl,
-                      nightshot+'_'+star.starid+'spec.res')
+    apply_factor_spline(nshots)
 
-        average_spectra(starobs, args.extraction_wl, args.extraction_wlrange)
+    call_fitonevp(args.bin_dir, args.extraction_wl,
+                  nightshot+'_'+starid+'spec.res')
 
-        get_structaz(starobs, args.multifits_dir)
+    average_spectra(starobs, args.extraction_wl, args.extraction_wlrange)
 
-        run_fit2d(star.ra, star.dec, starobs, args.seeing,
-                  starname + '.ps')
+    get_structaz(starobs, args.multifits_dir)
 
-        call_mkimage(star, starobs)
+    run_fit2d(ra, dec, starobs, args.seeing,
+              starname + '.ps')
 
-        run_sumlineserr(specfiles)
+    call_mkimage(ra, dec, starobs)
 
-        run_fitem(args.extraction_wl, starname)
+    run_sumlineserr(specfiles)
 
-        # Extract full spectrum
+    run_fitem(args.extraction_wl, starname)
 
-        fspecfiles = extract_star_spectrum(starobs, args, prefix='f')
+    # Extract full spectrum
 
-        run_sumlineserr(fspecfiles)
+    fspecfiles = extract_star_spectrum(starobs, args, prefix='f')
+
+    run_sumlineserr(fspecfiles)
 
 
 def prepare_model():
@@ -773,13 +804,13 @@ def main(args):
     with open(os.path.join(results_dir, 'args.pickle'), 'wb') as f:
         pickle.dump(args, f, pickle.HIGHEST_PROTOCOL)
 
-    tasks = args.task.split(",")
-    if args.use_tmp and not tasks == ['all']:
-        logging.error("Step-by-step execution not possile when running "
-                      "in a tmp directory.")
-        logging.error("   Please either call without -t or set "
-                      "use_tmp to False.")
-        sys.exit(1)
+    #tasks = args.task.split(",")
+    #if args.use_tmp and not tasks == ['all']:
+    #    logging.error("Step-by-step execution not possile when running "
+    #                  "in a tmp directory.")
+    #    logging.error("   Please either call without -t or set "
+    #                  "use_tmp to False.")
+    #    sys.exit(1)
 
     # default is to work in results_dir
     wdir = results_dir
@@ -790,10 +821,19 @@ def main(args):
     vdrp_info.night = args.night
     vdrp_info.shotid = args.shotid
 
+    args.curdir = os.path.abspath(os.path.curdir)
+
     try:
-        for task in tasks:
-            os.chdir(wdir)
-            run_star_photometry(args)
+        os.chdir(wdir)
+        if args.shuffle_stars:
+            logging.info('Running over all shuffle stars')
+            run_shuffle_photometry(args)
+        else:
+            logging.info('Rungin on a single RA/DEC position')
+            run_star_photometry(args.ra, args.dec, args.starid, args)
+        # for task in tasks:
+        #     os.chdir(wdir)
+        #     run_star_photometry(args)
             # if task in ["cp_post_stamps", "all"]:
             #    # Copy over collapsed IFU cubes, aka IFU postage stamps.
             #    cp_post_stamps(wdir, args.reduction_dir, args.night,
