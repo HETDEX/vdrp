@@ -310,7 +310,7 @@ def cp_astrometry(wdir, shifts_dir, night, shotid, radec2_dat):
     shutil.copy2(radec2_dat, os.path.join(wdir, "coords", "radec2_final.dat"))
 
 
-def cp_addin_files(wdir, addin_dir):
+def cp_addin_files(wdir, addin_dir, subdir="coords"):
     """ Copies `addin` files. These are
     essentially the IFUcen files in a different format.
 
@@ -323,10 +323,10 @@ def cp_addin_files(wdir, addin_dir):
     ff = glob.glob(pattern)
     logging.info("    Found {} files.".format(len(ff)))
     for f in ff:
-        shutil.copy2(f, os.path.join(wdir, "coords"))
+        shutil.copy2(f, os.path.join(wdir, subdir))
 
 
-def cp_ixy_files(wdir, ixy_dir):
+def cp_ixy_files(wdir, ixy_dir, subdir="coords"):
     """ Copies `ixy` files. These are
     essentially the IFUcen files in a different format.
 
@@ -339,10 +339,10 @@ def cp_ixy_files(wdir, ixy_dir):
     ff = glob.glob(pattern)
     logging.info("    Found {} files.".format(len(ff)))
     for f in ff:
-        shutil.copy2(f, os.path.join(wdir, "coords"))
+        shutil.copy2(f, os.path.join(wdir, subdir))
 
 
-def get_fiber_coords(wdir, active_slots, dither_offsets):
+def get_fiber_coords(wdir, active_slots, dither_offsets, subdir="coords"):
     """ Calls add_ra_dec for all IFU slots and all dithers.
 
     The is the main routine for getcoord which computes the on-sky positions
@@ -373,7 +373,7 @@ def get_fiber_coords(wdir, active_slots, dither_offsets):
     """
 
     logging.info("get_fiber_coords: Computing on-sky fiber coordinates.")
-    with path.Path(os.path.join(wdir, "coords")):
+    with path.Path(os.path.join(wdir, subdir)):
         ra0, dec0, pa0 = read_radec("radec2_final.dat")
 
         # Find which IFU slots to operate of based on the
@@ -503,7 +503,7 @@ def read_elist(filename):
     return e
 
 
-def mk_dithall(wdir, active_slots):
+def mk_dithall(wdir, active_slots, subdir="."):
     """
     This creates the dithall.use file that is required by the downstream
     processing functions like photometry and detect.
@@ -513,7 +513,7 @@ def mk_dithall(wdir, active_slots):
     stored and the fiber number.
     """
     logging.info("get_fiber_coords: Computing on-sky fiber coordinates.")
-    with path.Path(os.path.join(wdir, "coords")):
+    with path.Path(os.path.join(wdir, subdir)):
         # get sorted list of IFU slots from fplane file
 
         column_names = "ra", "dec", "ifuslot", "XS", "YS", "dxfplane", \
@@ -612,7 +612,7 @@ def main():
     # Copy fplane file.
     retrieve_fplane(args.night, args.fplane_txt, os.path.join(wdir, "coords") )
 
-    # find which slots deleivered data for all exposures
+    # find which slots delivered data for all exposures
     # (infer from existance of corresponding multifits files).
     active_slots = get_active_slots(wdir, exposures)
 
