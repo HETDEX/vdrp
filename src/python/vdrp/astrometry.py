@@ -137,6 +137,9 @@ def parseArgs(args):
     defaults["offset_exposure_indices"] = "1,2,3"
     defaults["optimal_ang_off_smoothing"] = 0.05
     defaults["dither_offsets"] = "[(0.,0.),(1.270,-0.730),(1.270,0.730)]"
+    # for fibcoords
+    defaults["ixy_dir"] = "vdrp/config/"
+    defaults["addin_dir"] = "vdrp/config/"
 
     config_source = "Default"
     if args.conf_file:
@@ -236,6 +239,9 @@ def parseArgs(args):
     parser.add_argument("--dither_offsets", type=str,
                         help="List of x,y tuples that define the "
                         "dither offsets.")
+    # for fibcoords
+    parser.add_argument("--ixy_dir", type=str)
+    parser.add_argument("--shifts_dir", type=str)
 
     # positional arguments
     parser.add_argument('night', metavar='night', type=str,
@@ -1534,6 +1540,18 @@ def get_exposures(prefixes):
     return np.unique([p[:15] for p in prefixes])
 
 
+
+### 
+from vdrp.fibcoords import get_exposures
+from vdrp.fibcoords import cp_addin_files
+from vdrp.fibcoords import cp_ixy_files
+from vdrp.fibcoords import get_active_slots
+from vdrp.fibcoords import get_fiber_coords
+from vdrp.fibcoords import create_elist
+from vdrp.fibcoords import mk_dithall
+###
+
+
 def cp_results(tmp_dir, results_dir):
     """ Copies all relevant result files
     from tmp_dir results_dir.
@@ -1772,6 +1790,32 @@ def main(args):
             if task in ["mk_match_plots", "all"]:
                 # build mosaic for focal plane
                 mk_match_plots(wdir, prefixes)
+
+            if task in ["fibcoords", "all"]:
+                exposures = get_exposures(args.reduction_dir, args.night, args.shotid)
+
+                # Copy `addin` files. These are essentially the IFUcen files
+                # in a different format.
+                cp_addin_files(wdir, args.addin_dir, subdir = ".")
+
+                # Copy `ixy` files. These conain the IFU x/y to fiber number mapping.
+                cp_ixy_files(wdir, args.ixy_dir, subdir = ".")
+
+                # find which slots delivered data for all exposures
+                # (infer from existance of corresponding multifits files).
+                active_slots = get_active_slots(wdir, exposures)
+
+                # This is where the main work happens.
+                # Essentially calls add_ra_dec for all IFU slots and all dithers.
+                # Actually it uses the direct python interface to tangent_plane
+                # rhater than calling add_ra_dec.
+                get_fiber_coords(wdir, active_slots, args.dither_offsets, subdir = ".")
+
+                # Create exposure list
+                create_elist(wdir, args.reduction_dir, args.night, args.shotid, exposures)
+
+                # Create final dithall.use file for downstream functions.
+                mk_dithall(wdir, active_slots)
 
     finally:
         vdrp_info.save(wdir)
