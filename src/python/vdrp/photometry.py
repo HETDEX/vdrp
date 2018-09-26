@@ -275,13 +275,14 @@ def parseArgs(args):
 
     args.config_source = config_source
     # should in principle be able to do this with accumulate???
-    args.use_tmp = args.use_tmp == "True"
-    args.remove_tmp = args.remove_tmp == "True"
+    # args.use_tmp = args.use_tmp == "True"
+    # args.remove_tmp = args.remove_tmp == "True"
 
     return args
 
 
 def run_command(cmd, input=None):
+    logging.info('Running %s' % cmd)
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
@@ -299,16 +300,16 @@ def call_imextsp(bindir, filename, ifuslot, wl, wlw, tpavg, norm, outfile):
     Equivalent of the rextsp script,
     a wrapper around the imextsp fortran routine.
     """
-    input = '{filename:s}\n{ifuslot} {wl} {wlw}\n {tpavg} {norm}'
+    input = '"{filename:s}"\n{ifuslot} {wl} {wlw}\n"{tpavg}"\n"{norm}"\n'
 
     try:
         os.remove('out.sp')
-    except os.FileNotFoundError:
+    except OSError:
         pass
 
     try:
         os.remove('outfile')
-    except os.FileNotFoundError:
+    except OSError:
         pass
 
     s = input.format(filename=filename, ifuslot=ifuslot, wl=wl, wlw=wlw,
@@ -340,7 +341,7 @@ def call_fitonevp(bindir, wave, outname):
     """
     input = '0 0\n{wave:f}\n/vcps\n'
 
-    run_command('fitonevp', input.format(wave=wave))
+    run_command(bindir + 'fitonevp', input.format(wave=wave))
 
     shutil.move('pgplot.ps', outname+'tot.ps')
     shutil.move('out', outname+'spec.dat')
@@ -350,10 +351,11 @@ def call_fitonevp(bindir, wave, outname):
 
     with open(outname+'spece.dat', 'w') as f:
         for d in splinedata:
-            f.write(d[0], d[1], d[3], d[2]*1e17, d[4]*1e17)
+            f.write('%.4f\t%.7f\t%.8e\t%.7f\t%.8e\n'
+                    % (d[0], d[1], d[3], d[2]*1e17, d[4]*1e17))
 
 
-def call_fit2d(ra, dec, outname):
+def call_fit2d(bindir, ra, dec, outname):
     """
     Call fit2d
 
@@ -361,13 +363,13 @@ def call_fit2d(ra, dec, outname):
     """
     input = '{ra:f} {dec:f}\n/vcps\n'
 
-    run_command('fit2d', input.format(ra=ra, dec=dec))
+    run_command(bindir + '/fit2d', input.format(ra=ra, dec=dec))
 
     shutil.move('pgplot.ps', outname)
     shutil.move('out', 'out2d')
 
 
-def call_mkimage(ra, dec, starobs):
+def call_mkimage(bindir, ra, dec, starobs):
     """
     Call mkimage, equivalent of rmkim
     """
@@ -381,7 +383,7 @@ def call_mkimage(ra, dec, starobs):
                                     * np.cos(dec/57.3),
                                     3600*(obs.dec-dec)), obs.avg)
 
-    run_command('mkimage')
+    run_command(bindir + '/mkimage')
 
     shutil.move('image.fits', 'im1.fits')
 
@@ -392,7 +394,7 @@ def call_mkimage(ra, dec, starobs):
                                     3600*(starobs[i].dec-dec)),
                     starobs[i].avg - gausa[i])
 
-    run_command('mkimage')
+    run_command(bindir + '/mkimage')
 
     shutil.move('image.fits', 'im2.fits')
 
@@ -403,19 +405,19 @@ def call_mkimage(ra, dec, starobs):
                                     3600*(starobs[i].dec-dec)),
                     gausa[i])
 
-    run_command('mkimage')
+    run_command(bindir + '/mkimage')
 
     shutil.move('image.fits', 'im3.fits')
 
 
-def call_fitem(wl):
+def call_fitem(bindir, wl):
     """
     Call fitem requires input files created by run_fitem
     """
 
     input = '{wl:f}\n/vcps\n'
 
-    run_command('fitem', input.format(wl=wl))
+    run_command(bindir + '/fitem', input.format(wl=wl))
 
 
 def get_throughput_file(path, shotname):
@@ -437,11 +439,11 @@ def apply_factor_spline(factor):
     """
     Equivalent of the rawksp[12] scripts
     """
-    wave, flx = np.loadtxt('splines.out', usecols=[0, 2])
+    wave, flx = np.loadtxt('splines.out', unpack=True, usecols=[0, 2])
 
     with open('fitghsp.in', 'w') as f:
-        for w, f in zip(wave, flx):
-            f.write('%f %f' % (w, f*1.e17 / factor))
+        for w, fl in zip(wave, flx):
+            f.write('%f %f\n' % (w, fl*1.e17 / factor))
 
 
 def get_star_spectrum_data(ra, dec, args):
@@ -453,10 +455,14 @@ def get_star_spectrum_data(ra, dec, args):
     """
 
     # First find matching shots
-    night, shot = np.loadtxt(args.radec_file, unpack=True, usecols=[0, 1])
+    logging.info('Reading radec file %s' % args.radec_file)
+    night, shot = np.loadtxt(args.radec_file, unpack=True, dtype='U50',
+                             usecols=[0, 1])
     ra_shot, dec_shot = np.loadtxt(args.radec_file, unpack=True,
                                    usecols=[2, 3])
 
+    logging.info('Searching for shots within %f arcseconds of %f %f'
+                 % (args.shot_search_radius, ra, dec))
     # First find shots overlapping with the RA/DEC coordinates
     w_s = np.where(((np.sqrt((np.cos(dec/57.3)*(ra_shot-ra))**2
                              + (dec_shot-dec)**2)*3600.)
@@ -468,8 +474,8 @@ def get_star_spectrum_data(ra, dec, args):
     night = night[w_s]
     shot = shot[w_s]
 
-    if args.single_shot:  # rsp1b mode
-        w = (night == int(args.night)) & (shot == int(args.shotid))
+    if not args.multi_shot:  # rsp1b mode
+        w = (night == args.night) & shot == int(args.shotid)
         night = night[w]
         shot = shot[w]
 
@@ -478,12 +484,15 @@ def get_star_spectrum_data(ra, dec, args):
     c = 0
 
     for n, s in zip(night, shot):
-        dithall_file = args.dithall_dir+'/'+s+'v'+n+'/dithall.use'
+        dithall_file = args.dithall_dir+'/'+n+'v'+s+'/dithall.use'
+        logging.info('Reading dithall file %s' % dithall_file)
+
         ra_ifu, dec_ifu, x_ifu, y_ifu = np.loadtxt(dithall_file,
                                                    unpack=True,
                                                    usecols=[0, 1, 3, 4])
         fname_ifu, shotname_ifu, expname_ifu = np.loadtxt(dithall_file,
                                                           unpack=True,
+                                                          dtype='U50',
                                                           usecols=[7, 8, 9])
 
         w = np.where(((np.sqrt((np.cos(dec/57.3)*(ra_ifu-ra))**2
@@ -495,8 +504,8 @@ def get_star_spectrum_data(ra, dec, args):
             so = StarObservation()
 
             so.num = c+101
-            so.night = night[i]
-            so.shot = shot[i]
+            so.night = n
+            so.shot = s
             so.ra = ra_ifu[i]
             so.dec = dec_ifu[i]
             so.x = x_ifu[i]
@@ -513,7 +522,7 @@ def get_star_spectrum_data(ra, dec, args):
             so.offsets_dec = 3600.*(dec_ifu[i]-dec)
 
             starobs.append(so)
-            night_shots.append('%d %d' % (night[i], shot[i]))
+            night_shots.append('%s %s' % (n, s))
 
             c += 1
 
@@ -530,8 +539,8 @@ def extract_star_spectrum(starobs, args, prefix=''):
     for s in starobs:
         call_imextsp(args.bin_dir, args.multifits_dir+'/'+s.fname+'.fits',
                      s.ifuslot, args.extraction_wl, args.extraction_wlrange,
-                     get_throughput_file(args.tp_path, s.night+'v'+s.shot),
-                     args.norm_path+'/'+s.fname+".norm",
+                     get_throughput_file(args.tp_dir, s.night+'v'+s.shot),
+                     args.norm_dir+'/'+s.fname+".norm",
                      prefix+'tmp%d.dat' % s.num)
 
         specfiles.append(prefix+'tmp%d.dat' % s.num)
@@ -626,26 +635,29 @@ def get_structaz(starobs, path):
     """
 
     for obs in starobs:
-        with fits.open(path+'/'+obs.fname+'.fits', 'r') as hdu:
+        fpath = '%s/%s/virus/virus%07d/%s/virus/%s' \
+            % (path, obs.night, int(obs.shot),
+               obs.expname, obs.fname) + '.fits'
+        with fits.open(fpath, 'readonly') as hdu:
             obs.structaz = hdu[0].header['STRUCTAZ']
 
 
-def run_fit2d(ra, dec, starobs, seeing, outname):
+def run_fit2d(bindir, ra, dec, starobs, seeing, outname):
     """
     Prepare input files for running fit2d
     """
     with open('in', 'w') as f:
         for obs in starobs:
-            f.write('%f %f %f %f %s %d %03d %s\n'
+            f.write('%f %f %f %f %s %s %s %s\n'
                     % (obs.ra, obs.dec, obs.avg, obs.avg_norm, obs.shotname,
                        obs.night, obs.shot, obs.expname))
     with open('fwhm.use', 'w') as f:
         f.write('%f\n' % seeing)
 
-    call_fit2d(ra, dec, outname)
+    call_fit2d(bindir, ra, dec, outname)
 
 
-def run_sumlineserr(specfiles):
+def run_sumlineserr(bindir, specfiles):
 
     indata = np.loadtxt('out', dtype='U50',
                         use_cols=[8, 9, 10, 11, 12, 13, 14])
@@ -655,10 +667,10 @@ def run_sumlineserr(specfiles):
             f.write('%s %s %s %s %s %s %s %s\n',
                     spf, d[0], d[1], d[2], d[3], d[4], d[5], d[6])
 
-    run_command('sumlineserr')
+    run_command(bindir, 'sumlineserr')
 
 
-def run_fitem(wl, outname):
+def run_fitem(bindir, wl, outname):
 
     indata = np.loadtxt('splines.out', dtype='U50',
                         use_cols=[0, 1, 2, 3, 4])
@@ -668,7 +680,7 @@ def run_fitem(wl, outname):
             f.write('%s %s %s %s %s\n',
                     d[0], d[2], d[4], d[1], d[3])
 
-    call_fitem(wl)
+    call_fitem(bindir, wl)
 
     shutil.move('fitghsp.in', outname+'spece.dat')
     shutil.move('pgplot.ps', outname+'_2dn.ps')
@@ -709,21 +721,22 @@ def run_star_photometry(ra, dec, starid, args):
 
     call_sumsplines(args.bin_dir, len(starobs))
 
-    apply_factor_spline(nshots)
+    apply_factor_spline(len(nshots))
 
     call_fitonevp(args.bin_dir, args.extraction_wl,
-                  nightshot+'_'+starid+'spec.res')
+                  nightshot+'_'+str(starid)+'spec.res')
 
-    average_spectra(starobs, args.extraction_wl, args.extraction_wlrange)
+    average_spectra(specfiles, starobs, args.extraction_wl,
+                    args.extraction_wlrange)
 
     get_structaz(starobs, args.multifits_dir)
 
-    run_fit2d(ra, dec, starobs, args.seeing,
+    run_fit2d(args.bin_dir, ra, dec, starobs, args.seeing,
               starname + '.ps')
 
-    call_mkimage(ra, dec, starobs)
+    call_mkimage(args.bin_dir, ra, dec, starobs)
 
-    run_sumlineserr(specfiles)
+    run_sumlineserr(args.bin_dir, specfiles)
 
     run_fitem(args.extraction_wl, starname)
 
@@ -731,7 +744,7 @@ def run_star_photometry(ra, dec, starid, args):
 
     fspecfiles = extract_star_spectrum(starobs, args, prefix='f')
 
-    run_sumlineserr(fspecfiles)
+    run_sumlineserr(args.bin_dir, fspecfiles)
 
 
 def prepare_model():
@@ -829,7 +842,7 @@ def main(args):
             logging.info('Running over all shuffle stars')
             run_shuffle_photometry(args)
         else:
-            logging.info('Rungin on a single RA/DEC position')
+            logging.info('Running on a single RA/DEC position')
             run_star_photometry(args.ra, args.dec, args.starid, args)
         # for task in tasks:
         #     os.chdir(wdir)
