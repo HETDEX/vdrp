@@ -3,95 +3,44 @@ HET VIRUS data reduction pipeline
 
 
 ## Installation
-### Astrometry
-Go to your run
+Go to your data reduction directory e.g.
 
-  /work/?????/USER/maverick/sci/panacea/shifts
+  cd /work/?????/USER/maverick/sci/panacea
 
-directory.
 
-Run 
-
+Clone the GIT repository 
   git clone https://github.com/mxhf/vdrp.git
 
-Link the runall1.sh, test.sh and setup.sh files.
 
-  ln -s vdrp/runall1.sh runall1
-  cp vdrp/setup.sh setup.sh
-  ln -s vdrp/test.sh test.sh
-
-Note, I omitted the extension to runall1 such that it serves as direct 
-drop in replacement to the legacy runall1.
-
-Copy the config file from the vdrp config subdirectory.
-
-  cp vdrp/config/vdrp.config vdrp.config
-
-Now edit and adjust setup.sh and vdrp.config to point to the 
-correct paths.
-
-You might want to runs the tests now.
-  ./test.sh
-
-Execute like
-  runall1 20180611 017 13.8447 51.3479 1
-
-Open runall1.sh for various options for executing the astrometry.py routine.
+create the directories, shifts, specphot
+    mkdir shifts, specphot
 
 
-Proposed directory structure
-.
-├── daoprogs
-│   ├── moreprogs
-│   └── moreprogs2
-│       └── dao2
-│
-├── sciprogs
-│
-├── vdrp
-│   ├── bin
-│   ├── config
-│   ├── lib
-│   └── src
-│       ├── legacy
-│       │   ├── astrometry
-│       │   │   └── scripts
-│       │   └── getcoords
-│       └── python
-│           ├── jynp
-│           ├── tests
-│           │   └── testdata
-│           ├── validation
-│           └── vdrp
-│
-│
-├── vdrp.config or 20180611v017.vdrpconfig
-├── setup.sh
-│
-├── reductions
-│   └── 20180611
-│       └── virus
-│           └── virus0000017
-│               ├── exp01
-│               │   └── virus
-│               ├── exp02
-│               │   └── virus
-│               └── exp03
-│                   └── virus
-├── shifts
-│   ├── run_shifts.sh
-│   └── 20180611v017
-│
-├── fibcoords
-│   ├── run_fibcoords.sh
-│   └── 20180611v017
-│       ├── coords
-│       ├── exp01
-│       │   └── virus
-│       ├── exp02
-│       │   └── virus
-│       └── exp03
-│           └── virus
-├── detect
-│   ├── run_detect.sh
+Link the config file.
+  ln -s vdrp/config/vdrp.config .
+
+
+In shifts and specphot, link the corresponding run scripts.
+  cd shifts 
+  ln -s ../vdrp/src/shifts/run_shifts.sh
+  cd ..
+
+In shifts and specphot, link the corresponding run scripts.
+  cd specphot
+  ln -s ../vdrp/src/shifts/run_specphot.sh
+  cd ..
+
+
+Execution
+  # Astrometry
+  cd shifts
+  ./run_shifts.sh 20180611 017
+  cd ..
+  # alternatively give specific RA/Dec and track information
+  ./run_shifts.sh 20180611 017 13.8447 51.3479 1
+
+  cd specphot
+  ./run_specphot.sh 20180611 017
+  cd ..
+
 
