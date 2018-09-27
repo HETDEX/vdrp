@@ -810,10 +810,10 @@ def cp_results(starname, starid, results_dir):
         os.path.mkdir(results_dir)
 
     shutil.copy2(starname+'specf.dat',
-                 os.path.join(results_dir, 'sp'+starid+'_2.dat'))
+                 os.path.join(results_dir, 'sp%d_2.dat' % starid))
 
     shutil.copy2('sumspec.out',
-                 os.path.join(results_dir, 'sp'+starid+'_100.dat'))
+                 os.path.join(results_dir, 'sp%d_100.dat' % starid))
 
 
 vdrp_info = None
