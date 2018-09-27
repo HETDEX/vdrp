@@ -15,7 +15,6 @@ from argparse import RawDescriptionHelpFormatter as ap_RDHF
 from argparse import ArgumentParser as AP
 
 import os
-import glob
 import shutil
 import sys
 import ConfigParser
@@ -32,7 +31,7 @@ import pickle
 # import scipy
 # from scipy.interpolate import UnivariateSpline
 
-from distutils import dir_util
+# from distutils import dir_util
 
 # from astropy import table
 # from astropy.table import Table
@@ -73,6 +72,10 @@ class VdrpInfo(OrderedDict):
                 return pickle.load(f)
         else:
             return VdrpInfo()
+
+
+class NoShotsException(Exception):
+    pass
 
 
 class Spectrum():
@@ -720,7 +723,11 @@ def run_shuffle_photometry(args):
                               args.shuffle_mag_limit)
 
     for star in stars:
-        run_star_photometry(star.ra, star.dec, star.starid, args)
+        try:
+            run_star_photometry(star.ra, star.dec, star.starid, args)
+        except NoShotsException:
+            logging.info('No shots found for shuffle star at %f %f'
+                         % (star.ra,  star.dec))
 
 
 def run_star_photometry(ra, dec, starid, args):
@@ -852,8 +859,8 @@ def main(args):
     with open(os.path.join(results_dir, 'args.pickle'), 'wb') as f:
         pickle.dump(args, f, pickle.HIGHEST_PROTOCOL)
 
-    #tasks = args.task.split(",")
-    #if args.use_tmp and not tasks == ['all']:
+    # tasks = args.task.split(",")
+    # if args.use_tmp and not tasks == ['all']:
     #    logging.error("Step-by-step execution not possile when running "
     #                  "in a tmp directory.")
     #    logging.error("   Please either call without -t or set "
