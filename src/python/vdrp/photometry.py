@@ -180,7 +180,7 @@ def parseArgs(args):
     args, remaining_argv = conf_parser.parse_known_args()
 
     defaults = {}
-    defaults['logfile'] = 'photometry.log'
+    defaults['photometry_logfile'] = 'photometry.log'
 
     defaults['starid'] = 1
 
@@ -220,12 +220,13 @@ def parseArgs(args):
     parser = AP(parents=[conf_parser])
 
     parser.set_defaults(**defaults)
-    parser.add_argument("--logfile", type=str, help="Filename for log file.")
+    parser.add_argument("--photometry_logfile", type=str,
+                        help="Filename for log file.")
 
     parser.add_argument("--starid", type=int,
                         help="Star ID to use, default is 1")
-    parser.add_argument("--dithall_file", type=str, help="Dithall.use "
-                        "filename to use for the analysis.")
+    parser.add_argument("--dithall_dir", type=str, help="Base directory "
+                        "used to find the dithall.use files")
     parser.add_argument("--shuffle_mag_limit", type=float,
                         help="Magnitude cutoff for selection of stars found by"
                         " shuffle")
@@ -275,8 +276,6 @@ def parseArgs(args):
                         help='RA of the target in decimal hours.')
     parser.add_argument('dec', metavar='dec', type=float,
                         help='Dec of the target in decimal hours degree.')
-    # parser.add_argument('track', metavar='track', type=int, choices=[0, 1],
-    #                     help='Type of track: 0: East 1: West')
 
     args = parser.parse_args(remaining_argv)
 
@@ -381,7 +380,7 @@ def call_mkimage(bindir, ra, dec, starobs):
     Call mkimage, equivalent of rmkim
     """
 
-    gausa = np.loadtxt('out2d', usecols=[9])
+    gausa = np.loadtxt('out2d', ndmin=1, usecols=[9])
 
     # First write the first j4 input file
     with open('j4', 'w') as f:
@@ -540,6 +539,16 @@ def get_star_spectrum_data(ra, dec, args):
             so.offsets_ra = 3600.*(ra_ifu[i]-ra)
             so.offsets_dec = 3600.*(dec_ifu[i]-dec)
 
+            # Make sure we actually have data for this shot
+            fpath = '%s/%s/virus/virus%07d/%s/virus/%s' \
+                % (args.multifits_dirpath, so.night, int(so.shot),
+                   so.expname, so.fname) + '.fits'
+
+            if not os.path.exists(fpath):
+                logging.warn('No fits data found for ifuslot %d in  %sv%s'
+                             % (so.ifuslot, so.night, so.shot))
+                continue
+
             starobs.append(so)
             night_shots.append('%s %s' % (n, s))
 
@@ -578,8 +587,8 @@ def get_shuffle_stars(shuffledir, nightshot, maglim):
     try:
         indata = np.loadtxt(shuffledir + '/' + nightshot + '/shout.ifustars')
         for d in indata:
-            star = ShuffleStar(20000 + c, d[0], d[1], d[2], d[3], d[4], d[5], d[6],
-                               d[7], d[8])
+            star = ShuffleStar(20000 + c, d[0], d[1], d[2], d[3], d[4], d[5],
+                               d[6], d[7], d[8])
             if star.mag_g < maglim:
                 stars.append(star)
                 c += 1
@@ -745,6 +754,10 @@ def run_star_photometry(ra, dec, starid, args):
 
     # Extract data like the data in l1
     starobs, nshots = get_star_spectrum_data(ra, dec, args)
+
+    if not len(starobs):
+        logging.warn('No shots found, skipping!')
+        return
 
     # Call rspstar
     specfiles = extract_star_spectrum(starobs, args)
