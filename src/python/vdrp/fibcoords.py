@@ -235,7 +235,7 @@ def create_elist(wdir, reduction_dir, night, shotid, exposures):
                 (from args). E.g. ['exp01', exp02', 'exp03'].
 
     """
-    logging.info("Creating links to multi*fits files.")
+    logging.info("Creating elist.")
     with path.Path(wdir):
         with open("elist", "w") as felist:
             for exp in exposures:
@@ -401,6 +401,8 @@ def get_fiber_coords(wdir, active_slots, dither_offsets, subdir="coords"):
             logging.info("get_fiber_coords:    offset_index {} dx "
                          "= {:.3f}, dy = {:.3f}."
                          .format(offset_index + 1, dx, dy))
+            #print("ifuslots: ", ifuslots)
+            #print("addin_files: ", addin_files)
             for ifuslot, addin_file in zip(ifuslots, addin_files):
                 # identify ifu
                 if not ifuslot in fplane.ifuslots:
@@ -428,6 +430,7 @@ def get_fiber_coords(wdir, active_slots, dither_offsets, subdir="coords"):
                 table['xfplane'] = xfp
                 table['yfplane'] = yfp
                 outfilename = "i{}_{}.csv".format(ifuslot, offset_index + 1)
+                logging.info("Writing {}.".format(outfilename))
                 table.write(outfilename, comment='#', format='ascii.csv',
                             overwrite=True)
 
@@ -503,7 +506,7 @@ def read_elist(filename):
     return e
 
 
-def mk_dithall(wdir, active_slots, subdir="."):
+def mk_dithall(wdir, active_slots, subdir="coords", fnelist = "../elist"):
     """
     This creates the dithall.use file that is required by the downstream
     processing functions like photometry and detect.
@@ -519,7 +522,7 @@ def mk_dithall(wdir, active_slots, subdir="."):
         column_names = "ra", "dec", "ifuslot", "XS", "YS", "dxfplane", \
             "yfplane", "multifits", "timestamp", "exposure"
         # read list of exposures
-        elist = read_elist("../elist")
+        elist = read_elist(fnelist)
         all_tdith = []
         for i, exp in enumerate(elist):
             logging.info("get_fiber_coords: Exposure {} ...".format(exp))
