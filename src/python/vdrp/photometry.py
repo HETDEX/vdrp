@@ -111,7 +111,7 @@ class ShuffleStar():
 
     def __init__(self, starid=-1, shotid=-1, shuffleid=-1, ra=-1.0, dec=-1.0,
                  u=99., g=99., r=99., i=99., z=99.):
-        self.starid = -1
+        self.starid = starid
         self.shotid = shotid
         self.shuffleid = shuffleid
         self.ra = ra
