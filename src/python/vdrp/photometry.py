@@ -827,7 +827,7 @@ def main(args):
 
     # Create results directory for given night and shot
     cwd = os.getcwd()
-    results_dir = os.path.join(cwd, "res")
+    results_dir = os.path.join(cwd, args.night + 'v' + args.shotid + '_res')
     utils.createDir(results_dir)
     args.results_dir = results_dir
 
