@@ -545,7 +545,7 @@ def get_star_spectrum_data(ra, dec, args):
                    so.expname, so.fname) + '.fits'
 
             if not os.path.exists(fpath):
-                logging.warn('No fits data found for ifuslot %d in  %sv%s'
+                logging.warn('No fits data found for ifuslot %s in  %sv%s'
                              % (so.ifuslot, so.night, so.shot))
                 continue
 
