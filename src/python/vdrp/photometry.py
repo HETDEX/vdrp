@@ -541,7 +541,7 @@ def get_star_spectrum_data(ra, dec, args):
 
             # Make sure we actually have data for this shot
             fpath = '%s/%s/virus/virus%07d/%s/virus/%s' \
-                % (args.multifits_dirpath, so.night, int(so.shot),
+                % (args.multifits_dir, so.night, int(so.shot),
                    so.expname, so.fname) + '.fits'
 
             if not os.path.exists(fpath):
