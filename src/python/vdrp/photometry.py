@@ -193,12 +193,13 @@ def parseArgs(args):
     defaults['norm_dir'] = '/work/00115/gebhardt/maverick/getampnorm/all/'
     defaults['bin_dir'] = '/home/00115/gebhardt/bin/'
 
-    defaults['extraction_aperture'] = 1.6
+    defaults['extraction_aperture'] = 1.5
     defaults['extraction_wl'] = 4500.
     defaults['extraction_wlrange'] = 1000.
+    defaults['average_wlrange'] = 100.
     defaults['radec_file'] = '/work/00115/gebhardt/maverick/getfib/radec.all'
     defaults['ifu_search_radius'] = 4.
-    defaults['shot_search_radius'] = 4.
+    defaults['shot_search_radius'] = 600.
 
     defaults['seeing'] = 1.6
 
@@ -217,6 +218,9 @@ def parseArgs(args):
 
     parser.set_defaults(**defaults)
     parser.add_argument("--logfile", type=str, help="Filename for log file.")
+
+    parser.add_argument("--logfile", type=str, help="Filename for log file.")
+
     parser.add_argument("--starid", type=int,
                         help="Star ID to use, default is 1")
     parser.add_argument("--dithall_file", type=str, help="Dithall.use "
@@ -241,6 +245,8 @@ def parseArgs(args):
                         "wavelength for the extraction")
     parser.add_argument("--extraction_wlrange", type=float, help="Wavelength "
                         "range for the extraction")
+    parser.add_argument("--average_wlrange", type=float, help="Wavelength "
+                        "range for the averaging")
     parser.add_argument("--radec_file", type=str, help="Filename of file with "
                         "RA DEC PA positions for all shots")
     parser.add_argument("--ifu_search_radius", type=float, help="Radius for "
@@ -328,7 +334,7 @@ def call_sumsplines(bindir, nspec):
     """
     with open('list', 'w') as f:
         for i in range(0, nspec):
-            f.write('tmp%d.dat\n' % i+101)
+            f.write('tmp{c}.dat\n'.format(c=i+101))
 
     run_command(bindir + '/sumsplines')
 
@@ -381,7 +387,7 @@ def call_mkimage(bindir, ra, dec, starobs):
         for obs in starobs:
             f.write('%f %f %f\n' % (3600.*(obs.ra-ra)
                                     * np.cos(dec/57.3),
-                                    3600*(obs.dec-dec)), obs.avg)
+                                    3600*(obs.dec-dec), obs.avg))
 
     run_command(bindir + '/mkimage')
 
@@ -391,8 +397,8 @@ def call_mkimage(bindir, ra, dec, starobs):
         for i in range(0, len(starobs)):
             f.write('%f %f %f\n' % (3600.*(starobs[i].ra-ra)
                                     * np.cos(dec/57.3),
-                                    3600*(starobs[i].dec-dec)),
-                    starobs[i].avg - gausa[i])
+                                    3600*(starobs[i].dec-dec),
+                    starobs[i].avg - gausa[i]))
 
     run_command(bindir + '/mkimage')
 
@@ -402,8 +408,8 @@ def call_mkimage(bindir, ra, dec, starobs):
         for i in range(0, len(starobs)):
             f.write('%f %f %f\n' % (3600.*(starobs[i].ra-ra)
                                     * np.cos(dec/57.3),
-                                    3600*(starobs[i].dec-dec)),
-                    gausa[i])
+                                    3600*(starobs[i].dec-dec),
+                    gausa[i]))
 
     run_command(bindir + '/mkimage')
 
@@ -418,6 +424,14 @@ def call_fitem(bindir, wl):
     input = '{wl:f}\n/vcps\n'
 
     run_command(bindir + '/fitem', input.format(wl=wl))
+
+
+def call_sumspec(bindir, starname):
+
+    with open('list', 'w') as f:
+        f.write(starname + 'specf.dat')
+
+    run_command(bindir + '/sumspec')
 
 
 def get_throughput_file(path, shotname):
@@ -475,13 +489,15 @@ def get_star_spectrum_data(ra, dec, args):
     shot = shot[w_s]
 
     if not args.multi_shot:  # rsp1b mode
-        w = (night == args.night) & shot == int(args.shotid)
+        w = (night == args.night) & (shot == args.shotid)
         night = night[w]
         shot = shot[w]
 
     night_shots = []
     starobs = []
     c = 0
+
+    logging.info('Found %d shots' % len(shot))
 
     for n, s in zip(night, shot):
         dithall_file = args.dithall_dir+'/'+n+'v'+s+'/dithall.use'
@@ -498,6 +514,8 @@ def get_star_spectrum_data(ra, dec, args):
         w = np.where(((np.sqrt((np.cos(dec/57.3)*(ra_ifu-ra))**2
                                + (dec_ifu-dec)**2)*3600.)
                       < args.ifu_search_radius))[0]
+
+        logging.info('Found %d fibers' % len(w))
 
         for i in w:
 
@@ -537,8 +555,11 @@ def extract_star_spectrum(starobs, args, prefix=''):
     specfiles = []
 
     for s in starobs:
-        call_imextsp(args.bin_dir, args.multifits_dir+'/'+s.fname+'.fits',
-                     s.ifuslot, args.extraction_wl, args.extraction_wlrange,
+        fpath = '%s/%s/virus/virus%07d/%s/virus/%s' \
+            % (args.multifits_dir, s.night, int(s.shot),
+               s.expname, s.fname) + '.fits'
+        call_imextsp(args.bin_dir, fpath, s.ifuslot, args.extraction_wl,
+                     args.extraction_wlrange,
                      get_throughput_file(args.tp_dir, s.night+'v'+s.shot),
                      args.norm_dir+'/'+s.fname+".norm",
                      prefix+'tmp%d.dat' % s.num)
@@ -593,14 +614,14 @@ def average_spectrum(spec, wlmin, wlmax):
     if len(np.where(wh)[0]):
         avg = spec.cnts[wh].mean()
         norm = (spec.amp_norm[wh]*spec.tp_norm[wh]).mean()
-        uncert = np.sqrt(spec.err_cts_local*spec.err_cts_local
+        uncert = np.sqrt((spec.err_cts_local[wh]*spec.err_cts_local[wh]).sum()
                          / len(np.where(wh)[0]))
     else:
         avg = 0.
         norm = 0.
         uncert = 0.
 
-        return avg, norm, uncert
+    return avg, norm, uncert
 
 
 def average_spectra(specfiles, starobs, wl, wlrange):
@@ -614,11 +635,14 @@ def average_spectra(specfiles, starobs, wl, wlrange):
     wlmin = wl - wlrange
     wlmax = wl + wlrange
 
-    for spf, obs in zip(specfiles, starobs):
-        sp = Spectrum()
-        sp.read(spf)
-        obs.avg, obs.avg_norm, obs.avg_error = \
-            average_spectrum(sp, wlmin, wlmax)
+    with open('spavg.all', 'w') as f:
+        for spf, obs in zip(specfiles, starobs):
+            sp = Spectrum()
+            sp.read(spf)
+            obs.avg, obs.avg_norm, obs.avg_error = \
+                average_spectrum(sp, wlmin, wlmax)
+
+            f.write('%f %.7f %.4f\n' % (obs.avg, obs.avg_norm, obs.avg_error))
 
 
 def get_structaz(starobs, path):
@@ -648,9 +672,10 @@ def run_fit2d(bindir, ra, dec, starobs, seeing, outname):
     """
     with open('in', 'w') as f:
         for obs in starobs:
-            f.write('%f %f %f %f %s %s %s %s\n'
+            f.write('%f %f %f %f %s %s %s %s %f %f\n'
                     % (obs.ra, obs.dec, obs.avg, obs.avg_norm, obs.shotname,
-                       obs.night, obs.shot, obs.expname))
+                       obs.night, obs.shot, obs.expname, obs.structaz,
+                       obs.avg_error))
     with open('fwhm.use', 'w') as f:
         f.write('%f\n' % seeing)
 
@@ -659,26 +684,26 @@ def run_fit2d(bindir, ra, dec, starobs, seeing, outname):
 
 def run_sumlineserr(bindir, specfiles):
 
-    indata = np.loadtxt('out', dtype='U50',
-                        use_cols=[8, 9, 10, 11, 12, 13, 14])
+    indata = np.loadtxt('out2d', dtype='U50',
+                        usecols=[8, 9, 10, 11, 12, 13, 14])
 
     with open('list2', 'w') as f:
         for spf, d in zip(specfiles, indata):
-            f.write('%s %s %s %s %s %s %s %s\n',
-                    spf, d[0], d[1], d[2], d[3], d[4], d[5], d[6])
+            f.write('%s %s %s %s %s %s %s %s\n' %
+                    (spf, d[0], d[1], d[2], d[3], d[4], d[5], d[6]))
 
-    run_command(bindir, 'sumlineserr')
+    run_command(bindir + '/sumlineserr')
 
 
 def run_fitem(bindir, wl, outname):
 
     indata = np.loadtxt('splines.out', dtype='U50',
-                        use_cols=[0, 1, 2, 3, 4])
+                        usecols=[0, 1, 2, 3, 4])
 
     with open('fitghsp.in', 'w') as f:
         for d in indata:
-            f.write('%s %s %s %s %s\n',
-                    d[0], d[2], d[4], d[1], d[3])
+            f.write('%s %s %s %s %s\n' %
+                    (d[0], d[2], d[4], d[1], d[3]))
 
     call_fitem(bindir, wl)
 
@@ -724,10 +749,10 @@ def run_star_photometry(ra, dec, starid, args):
     apply_factor_spline(len(nshots))
 
     call_fitonevp(args.bin_dir, args.extraction_wl,
-                  nightshot+'_'+str(starid)+'spec.res')
+                  nightshot+'_'+str(starid))
 
     average_spectra(specfiles, starobs, args.extraction_wl,
-                    args.extraction_wlrange)
+                    args.average_wlrange)
 
     get_structaz(starobs, args.multifits_dir)
 
@@ -738,7 +763,7 @@ def run_star_photometry(ra, dec, starid, args):
 
     run_sumlineserr(args.bin_dir, specfiles)
 
-    run_fitem(args.extraction_wl, starname)
+    run_fitem(args.bin_dir, args.extraction_wl, starname)
 
     # Extract full spectrum
 
@@ -746,40 +771,51 @@ def run_star_photometry(ra, dec, starid, args):
 
     run_sumlineserr(args.bin_dir, fspecfiles)
 
+    indata = np.loadtxt('splines.out', dtype='U50',
+                        usecols=[0, 1, 2, 3, 4])
 
-def prepare_model():
+    with open(starname + 'specf.dat', 'w') as f:
+        for d in indata:
+            f.write('%s %s %s %s %s\n' % (d[0], d[2], d[4], d[1], d[3]))
+
+    call_sumspec(args.bin_dir, starname)
+
+    mind = args.shot_search_radius
+    for o in starobs:
+        if o.dist < mind:
+            mind = o.dist
+
+    logging.info('Closest fiber is %.5f arcseconds away' % mind)
+
+    cp_results(starname, starid, args.results_dir)
+
+    os.chdir(args.curdir)
+
+
+def cp_results(starname, starid, results_dir):
+    """ Copies the result files from workdir results_dir as done by rspstar.
+
+    Args
+    ----
+    workdir : str
+        Work directory.
+    results_dir : str
+        Final directory for results.
+
     """
-    Corresponds to rsp2 script
-    """
 
-    pass
+    if results_dir == '':
+        logging.info('No results dir specified, skipping copying.')
+        return
 
+    if not os.path.exists:
+        os.path.mkdir(results_dir)
 
-def cp_results(tmp_dir, results_dir):
-    """ Copies all relevant result files
-    from tmp_dir results_dir.
+    shutil.copy2(starname+'specf.dat',
+                 os.path.join(results_dir, 'sp'+starid+'_2.dat'))
 
-    Args:
-        tmp_dir (str): Temporary work directory.
-        results_dir (str): Final directory for results.
-
-    """
-    dirs = ['add_radec_angoff_trial']
-    file_pattern = []
-#    file_pattern += ["CoFeS*_???_sci.fits"]
-#    file_pattern += ["*.als"]
-#    file_pattern += ["*.ap"]
-#    file_pattern += ["*.coo"]
-#    file_pattern += ["*.lst"]
-
-    for d in dirs:
-        td = os.path.join(tmp_dir, d)
-        if os.path.exists(td):
-            dir_util.copy_tree(td, os.path.join(results_dir, d))
-    for p in file_pattern:
-        ff = glob.glob("{}/{}".format(tmp_dir, p))
-        for f in ff:
-            shutil.copy2(f, results_dir)
+    shutil.copy2('sumspec.out',
+                 os.path.join(results_dir, 'sp'+starid+'_100.dat'))
 
 
 vdrp_info = None
@@ -793,8 +829,9 @@ def main(args):
 
     # Create results directory for given night and shot
     cwd = os.getcwd()
-    results_dir = os.path.join(cwd, "{}v{}".format(args.night, args.shotid))
+    results_dir = os.path.join(cwd, "res")
     utils.createDir(results_dir)
+    args.results_dir = results_dir
 
     fmt = '%(asctime)s %(levelname)-8s %(funcName)15s(): %(message)s'
     # set up logging to file - see previous section for more details
