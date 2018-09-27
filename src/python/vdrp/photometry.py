@@ -693,7 +693,7 @@ def run_fit2d(bindir, ra, dec, starobs, seeing, outname):
 
 def run_sumlineserr(bindir, specfiles):
 
-    indata = np.loadtxt('out2d', dtype='U50',
+    indata = np.loadtxt('out2d', dtype='U50', ndmin=2,
                         usecols=[8, 9, 10, 11, 12, 13, 14])
 
     with open('list2', 'w') as f:
