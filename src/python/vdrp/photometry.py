@@ -484,7 +484,7 @@ def get_star_spectrum_data(ra, dec, args):
                     < args.shot_search_radius))[0]
 
     if not len(np.where(w_s)[0]):
-        raise Exception('No shots found!')
+        raise NoShotsException('No shots found!')
 
     night = night[w_s]
     shot = shot[w_s]
