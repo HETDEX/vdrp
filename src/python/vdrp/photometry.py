@@ -856,7 +856,8 @@ def main(args):
     logging.basicConfig(level=logging.DEBUG,
                         format=fmt,
                         datefmt='%m-%d %H:%M',
-                        filename=os.path.join(results_dir, args.logfile),
+                        filename=os.path.join(results_dir,
+                                              args.photometry_logfile),
                         filemode='w')
     # define a Handler which writes INFO messages or higher to the sys.stderr
     console = logging.StreamHandler()
