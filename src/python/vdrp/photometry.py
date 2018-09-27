@@ -740,7 +740,8 @@ def run_star_photometry(ra, dec, starid, args):
 
     # Create the workdirectory for this star
     stardir = args.curdir + '/' + starname
-    os.mkdir(stardir)
+    if not os.path.exists(stardir):
+        os.mkdir(stardir)
     os.chdir(stardir)
 
     # Extract data like the data in l1
