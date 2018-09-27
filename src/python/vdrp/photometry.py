@@ -193,7 +193,7 @@ def parseArgs(args):
     defaults['norm_dir'] = '/work/00115/gebhardt/maverick/getampnorm/all/'
     defaults['bin_dir'] = '/home/00115/gebhardt/bin/'
 
-    defaults['extraction_aperture'] = 1.5
+    defaults['extraction_aperture'] = 1.6
     defaults['extraction_wl'] = 4500.
     defaults['extraction_wlrange'] = 1000.
     defaults['average_wlrange'] = 100.
@@ -201,7 +201,7 @@ def parseArgs(args):
     defaults['ifu_search_radius'] = 4.
     defaults['shot_search_radius'] = 600.
 
-    defaults['seeing'] = 1.6
+    defaults['seeing'] = 1.5
 
     config_source = "Default"
     if args.conf_file:
@@ -217,8 +217,6 @@ def parseArgs(args):
     parser = AP(parents=[conf_parser])
 
     parser.set_defaults(**defaults)
-    parser.add_argument("--logfile", type=str, help="Filename for log file.")
-
     parser.add_argument("--logfile", type=str, help="Filename for log file.")
 
     parser.add_argument("--starid", type=int,
