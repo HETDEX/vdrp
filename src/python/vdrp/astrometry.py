@@ -255,11 +255,14 @@ def parseArgs(args):
     parser.add_argument('shotid', metavar='shotid', type=str,
                         help='Shot ID (e.g. 017).')
     parser.add_argument('ra', metavar='ra', type=float,
-                        help='RA of the target in decimal hours.', nargs='?', default=None)
+                        help='RA of the target in decimal hours.', nargs='?',
+                        default=None)
     parser.add_argument('dec', metavar='dec', type=float,
-                        help='Dec of the target in decimal hours degree.', nargs='?', default=None)
+                        help='Dec of the target in decimal hours degree.',
+                        nargs='?', default=None)
     parser.add_argument('track', metavar='track', type=int, choices=[0, 1],
-                        help='Type of track: 0: East 1: West', nargs='?', default=None)
+                        help='Type of track: 0: East 1: West', nargs='?',
+                        default=None)
 
     args = parser.parse_args(remaining_argv)
 
@@ -559,7 +562,6 @@ def flux_norm(wdir, mag_max, infile='all.raw', outfile='norm.dat'):
         with open(outfile, 'w') as f:
             s = "{:10.8f} {:10.8f} {:10.8f}".format(n1, n2, n3)
             f.write(s)
-
 
 
 def redo_shuffle(wdir, ra, dec, track, acam_magadd, wfs1_magadd, wfs2_magadd,
@@ -918,7 +920,7 @@ def compute_offset(wdir, prefixes, getoff2_radii, add_radec_angoff_trial,
                    shout_ifustars='shout.ifustars', ra0=None, dec0=None):
     """
     Requires, fplane.txt and radec.orig. If not ra, dec are passed
-    explicitly then the values from radec.orig are used. The 
+    explicitly then the values from radec.orig are used. The
     pa value from radec.orig is used in any case.
     Creates primarely EXPOSURE_tmp.csv but also radec2.dat.
 
@@ -1028,11 +1030,13 @@ def compute_offset(wdir, prefixes, getoff2_radii, add_radec_angoff_trial,
                 # mF: Not sure if we will need radec.dat later,
                 # creating it for now.
                 ra, dec, pa = utils.read_radec("radec.orig")
-                if ra0 != None:
-                    logging.info("Overwriting RA from multifits by value from command line = {}".format(ra0))
+                if ra0 is not None:
+                    logging.info("Overwriting RA from multifits by value "
+                                 "from command line = {}".format(ra0))
                     ra = ra0
-                if dec0 != None:
-                    logging.info("Overwriting DEC from multifits by value from command line = {}".format(dec0))
+                if dec0 is not None:
+                    logging.info("Overwriting DEC from multifits by value "
+                                 "from command line = {}".format(dec0))
                     dec = dec0
 
                 # Now compute offsets iteratively with increasingly
@@ -1636,12 +1640,13 @@ def get_fiber_coords(wdir, active_slots, dither_offsets, subdir="coords"):
             logging.info("get_fiber_coords:    offset_index {} dx "
                          "= {:.3f}, dy = {:.3f}."
                          .format(offset_index + 1, dx, dy))
-            #print("ifuslots: ", ifuslots)
-            #print("addin_files: ", addin_files)
+            # print("ifuslots: ", ifuslots)
+            # print("addin_files: ", addin_files)
             for ifuslot, addin_file in zip(ifuslots, addin_files):
                 # identify ifu
-                if not ifuslot in fplane.ifuslots:
-                    logging.warning("IFU {} not in fplane file.".format(ifuslot))
+                if ifuslot not in fplane.ifuslots:
+                    logging.warning("IFU {} not in fplane "
+                                    "file.".format(ifuslot))
                     continue
                 ifu = fplane.by_ifuslot(ifuslot)
                 # read fiber positions
@@ -1669,6 +1674,7 @@ def get_fiber_coords(wdir, active_slots, dither_offsets, subdir="coords"):
                 table.write(outfilename, comment='#', format='ascii.csv',
                             overwrite=True)
 
+
 def get_active_slots(wdir, reduction_dir, exposures, night, shotid):
     """
     Figures out which IFU slots actually delivered data, by checking
@@ -1683,7 +1689,7 @@ def get_active_slots(wdir, reduction_dir, exposures, night, shotid):
         exp_slots = {}
         for exp in exposures:
             pattern = os.path.join(reduction_dir,
-                                               "{}/virus/virus0000{}/*/*/multi*".format(night, shotid))
+                                   "{}/virus/virus0000{}/*/*/multi*".format(night, shotid))
             ff = glob.glob(pattern)
             exp_slots[exp] = []
             for f in ff:
@@ -1728,8 +1734,8 @@ def mk_dithall(wdir, active_slots, reduction_dir, night, shotid, subdir="."):
         # get sorted list of IFU slots from fplane file
         elist = OrderedDict()
         pattern = os.path.join(reduction_dir,
-                                "{}/virus/virus0000{}/exp*"
-                                                      .format(night, shotid))
+                               "{}/virus/virus0000{}/exp*"
+                               .format(night, shotid))
         ee = glob.glob(pattern)
         exposures = []
         for e in ee:
@@ -1737,10 +1743,10 @@ def mk_dithall(wdir, active_slots, reduction_dir, night, shotid, subdir="."):
             exposures.append(t)
         for exp in exposures:
             pattern = os.path.join(reduction_dir,
-                "{}/virus/virus0000{}/*/virus/CoFeS*"
-                      .format(night, shotid))
+                                   "{}/virus/virus0000{}/*/virus/CoFeS*"
+                                   .format(night, shotid))
             logging.info("    using CoFes*fits files {}..."
-                .format(pattern))
+                         .format(pattern))
             CoFeS = glob.glob(pattern)
             __, t = os.path.split(CoFeS[0])
             prefix = t[5:22]
@@ -1981,14 +1987,15 @@ def main(args):
                 # Note that get_ra_dec_orig read the multifits and stores
                 # the ra,dec in radec.orig.
                 ra, dec, track = args.ra, args.dec, args.track
-                if track == None:
+                if track is None:
                     track = get_track(wdir, args.reduction_dir, args.night,
-                                args.shotid)
-                if ra == None or dec == None:
-                    _ra, _dec, _pa = utils.read_radec(os.path.join(wdir,"radec.orig"))
-                    if ra == None:
-                        ra = _ra 
-                    if dec == None:
+                                      args.shotid)
+                if ra is None or dec is None:
+                    _ra, _dec, _pa = \
+                        utils.read_radec(os.path.join(wdir, "radec.orig"))
+                    if ra is None:
+                        ra = _ra
+                    if dec is None:
                         dec = _dec
                 redo_shuffle(wdir, ra, dec, track,
                              args.acam_magadd, args.wfs1_magadd,
@@ -2045,29 +2052,36 @@ def main(args):
 
                 # Copy `addin` files. These are essentially the IFUcen files
                 # in a different format.
-                cp_addin_files(wdir, args.addin_dir, subdir = ".")
+                cp_addin_files(wdir, args.addin_dir, subdir=".")
 
-                # Copy `ixy` files. These conain the IFU x/y to fiber number mapping.
-                cp_ixy_files(wdir, args.ixy_dir, subdir = ".")
+                # Copy `ixy` files. These conain the IFU x/y to fiber
+                # number mapping.
+                cp_ixy_files(wdir, args.ixy_dir, subdir=".")
 
                 # find which slots delivered data for all exposures
                 # (infer from existance of corresponding multifits files).
-                active_slots = get_active_slots(wdir, args.reduction_dir, exposures, args.night, args.shotid)
-                logging.info("Found following exposures: {}".format( exposures) )
-                logging.info("Found {} active slots.".format( len(active_slots)) )
+                active_slots = get_active_slots(wdir, args.reduction_dir,
+                                                exposures, args.night,
+                                                args.shotid)
+                logging.info("Found following exposures: {}".format(exposures))
+                logging.info("Found {} active slots.".format(len(active_slots)))
 
                 # This is where the main work happens.
-                # Essentially calls add_ra_dec for all IFU slots and all dithers.
+                # Essentially calls add_ra_dec for all IFU slots
+                # and all dithers.
                 # Actually it uses the direct python interface to tangent_plane
                 # rhater than calling add_ra_dec.
-                get_fiber_coords(wdir, active_slots, args.dither_offsets, subdir = ".")
+                get_fiber_coords(wdir, active_slots, args.dither_offsets,
+                                 subdir=".")
 
                 # Create exposure list
-                #create_elist(wdir, args.reduction_dir, args.night, args.shotid, exposures)
+                # create_elist(wdir, args.reduction_dir, args.night,
+                #              args.shotid, exposures)
 
                 # Create final dithall.use file for downstream functions.
-                #mk_dithall(wdir, active_slots, fnelist = "elist")
-                mk_dithall(wdir, active_slots, args.reduction_dir, args.night, args.shotid, subdir=".")
+                # mk_dithall(wdir, active_slots, fnelist = "elist")
+                mk_dithall(wdir, active_slots, args.reduction_dir, args.night,
+                           args.shotid, subdir=".")
 
     finally:
         vdrp_info.save(wdir)
