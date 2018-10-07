@@ -81,6 +81,28 @@ class NoShotsException(Exception):
 class Spectrum():
     """
     This class encapsulates the content of a tmp*.dat spectrum file
+
+    Attributes
+    ----------
+
+    wl : float
+        Wavelength
+    cnts : float
+        Counts of the spectrum
+    flx : float
+        Flux of the spectrum
+    amp_norm : float
+        Ampliflier normalization
+    tp_norm : float
+        Throughput normalization
+    ftf_norm : float
+        Fiber to fiber normalization
+    err_cts : float
+
+    err_cts_local : float
+
+    err_max_flux : float
+    
     """
     def __init__(self):
         self.wl = None
@@ -108,6 +130,33 @@ class Spectrum():
 
 
 class ShuffleStar():
+    """
+    Class to store the information about one star from the shuffle output
+
+    Attributes
+    ----------
+
+    starid : int
+        ID for the star.
+    shotid : int
+        Shot number of the star observation
+    shuffleid : int
+        ID of the star in shuffle catalog
+    ra : float
+        Right ascension
+    dec : float
+        Declination
+    u : float
+        U-Band magnitude from the shuffle catalog
+    g : float
+        G-Band magnitude from the shuffle catalog
+    r : float
+        R-Band magnitude from the shuffle catalog
+    i : float
+        I-Band magnitude from the shuffle catalog
+    z : float
+        Z-Band magnitude from the shuffle catalog
+    """
 
     def __init__(self, starid=-1, shotid=-1, shuffleid=-1, ra=-1.0, dec=-1.0,
                  u=99., g=99., r=99., i=99., z=99.):
@@ -124,7 +173,51 @@ class ShuffleStar():
 
 
 class StarObservation():
+    """
+    Data for one spectrum covering a star observation. This corresponds to the
+    data stored in the l1 file with additions from other files
 
+    Attributes
+    ----------
+    num : int
+        Star number
+    night : int
+        Night of the observation
+    shot : int
+        Shot of the observation
+    ra : float
+        Right Ascension of the fiber center
+    dec : float
+        Declination of the fiber center
+    x : float
+        Offset of fiber relative to IFU center in x direction
+    y : float
+        Offset of fiber relative to IFU center in y direction
+    full_fname : str
+        Filename of the multi extension fits file.
+    shotname : str
+        NightvShot shot name
+    expname : str
+        Name of the exposure.
+    dist : float
+        Distance of the fiber from the star position
+    offset_ra : float
+        Offset in ra of the fiber from the star position
+    offset_dec : float
+        Offset in dec of the fiber from the star position
+    fname : str
+        Basename of the fits filenname
+    ifuslot : str
+        IFU slot ID
+    avg : float
+        Average of the spectrum
+    avg_norm : float
+
+    avg_error : float
+        Error of the average of the spectrum
+    structaz : float
+        Azimuth of the telescope structure, read from the image header
+    """
     def __init__(self, num=0., night=-1, shot=-1, ra=-1, dec=-1, x=-1, y=-1,
                  fname='', shotname='', expname='', offset_ra=-1,
                  offset_dec=1):
@@ -145,7 +238,7 @@ class StarObservation():
         self.fname = ''
         self.ifuslot = ''
 
-        # l1 - 8q is args.extraction_wl
+        # l1 - 8 is args.extraction_wl
 
         self.avg = 0.
         self.avg_norm = 0.
@@ -154,6 +247,9 @@ class StarObservation():
         self.structaz = -1.
 
     def set_fname(self, fname):
+        """
+        Split the full filename into the base name and the ifuslot
+        """
         self.full_fname = fname
         self.fname, self.ifuslot = self.full_fname.split('.')[0].rsplit('_', 1)
 
@@ -180,7 +276,7 @@ def parseArgs(args):
     args, remaining_argv = conf_parser.parse_known_args()
 
     defaults = {}
-    defaults['logfile'] = 'photometry.log'
+    defaults['photometry_logfile'] = 'photometry.log'
 
     defaults['starid'] = 1
 
@@ -220,12 +316,13 @@ def parseArgs(args):
     parser = AP(parents=[conf_parser])
 
     parser.set_defaults(**defaults)
-    parser.add_argument("--logfile", type=str, help="Filename for log file.")
+    parser.add_argument("--photometry_logfile", type=str,
+                        help="Filename for log file.")
 
     parser.add_argument("--starid", type=int,
                         help="Star ID to use, default is 1")
-    parser.add_argument("--dithall_file", type=str, help="Dithall.use "
-                        "filename to use for the analysis.")
+    parser.add_argument("--dithall_dir", type=str, help="Base directory "
+                        "used to find the dithall.use files")
     parser.add_argument("--shuffle_mag_limit", type=float,
                         help="Magnitude cutoff for selection of stars found by"
                         " shuffle")
@@ -275,8 +372,6 @@ def parseArgs(args):
                         help='RA of the target in decimal hours.')
     parser.add_argument('dec', metavar='dec', type=float,
                         help='Dec of the target in decimal hours degree.')
-    # parser.add_argument('track', metavar='track', type=int, choices=[0, 1],
-    #                     help='Type of track: 0: East 1: West')
 
     args = parser.parse_args(remaining_argv)
 
@@ -289,6 +384,16 @@ def parseArgs(args):
 
 
 def run_command(cmd, input=None):
+    """
+    Run and fortran command sending the optional input string on stdin.
+
+    Parameters
+    ----------
+    cmd : str
+        The command to be run, must be full path to executable
+    input : str, optional
+        Input to be sent to the command through stdin.
+    """
     logging.info('Running %s' % cmd)
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -306,6 +411,29 @@ def call_imextsp(bindir, filename, ifuslot, wl, wlw, tpavg, norm, outfile):
     """
     Equivalent of the rextsp script,
     a wrapper around the imextsp fortran routine.
+
+    Extracts the spectrum from the multi fits files and writes the tmp*dat.
+    This also calculates the appropriate photon errors, using counting and
+    sky residual errors. This applies the throughput and fiber to fiber.
+
+    Parameters
+    ----------
+    bindir : str
+        The path to the imextsp binary
+    filename : str
+        The filename to process
+    ifuslot : str
+        The ifuslot name
+    wl : float
+        The central extraction wavelength
+    wlw : float
+        The width of the extraction window around wl
+    tpavg : float
+        Throughput average for the spectrum
+    norm : float
+        Fiber to fiber normaliztion for the spectrum
+    outfile : str
+        Name of the output filename
     """
     input = '"{filename:s}"\n{ifuslot} {wl} {wlw}\n"{tpavg}"\n"{norm}"\n'
 
@@ -329,9 +457,18 @@ def call_imextsp(bindir, filename, ifuslot, wl, wlw, tpavg, norm, outfile):
 
 def call_sumsplines(bindir, nspec):
     """
-    Call sumsplines
+    Call sumsplines, calculate a straight sum of the spectra in a list,
+    including errors. Expects the spectra to be called tmp101 to
+    tmp100+nspec.
 
     Creates a file called splines.out
+
+    Parameters
+    ----------
+    bindir : str
+        The path to the sumsplines binary
+    nspec : int
+        Number of spectra to read.
     """
     with open('list', 'w') as f:
         for i in range(0, nspec):
@@ -345,6 +482,15 @@ def call_fitonevp(bindir, wave, outname):
     Call fitonevp
 
     Requires fitghsp.in created by apply_factor_spline
+
+    Parameters
+    ----------
+    bindir : str
+        The path to the sumsplines binary
+    wave : float
+        Wavelength
+    outname : str
+        Output filename
     """
     input = '0 0\n{wave:f}\n/vcps\n'
 
@@ -364,9 +510,22 @@ def call_fitonevp(bindir, wave, outname):
 
 def call_fit2d(bindir, ra, dec, outname):
     """
-    Call fit2d
+    Call fit2d. Calculate the 2D spatial fit based on fwhm, fiber locations,
+    and ADC. This convolves the PSF over each fiber, for a given input
+    position. It fits the ampltiude, minimizing to a chi^2.
 
     Requires input files generated by run_fit2d
+
+    Parameters
+    ----------
+    bindir : str
+        The path to the fit2d binary
+    ra : float
+        Right Ascension of the star.
+    dec : float
+        Declination of the star.
+    outname : str
+        Output filename.
     """
     input = '{ra:f} {dec:f}\n/vcps\n'
 
@@ -379,9 +538,24 @@ def call_fit2d(bindir, ra, dec, outname):
 def call_mkimage(bindir, ra, dec, starobs):
     """
     Call mkimage, equivalent of rmkim
+
+    Reads the out2d file and creates three images of the
+    emission line data, best fit model and residuals, called
+    im[123].fits.
+
+    Parameters
+    ----------
+    bindir : str
+        The path to the mkimage binary
+    ra : float
+        Right Ascension of the star.
+    dec : float
+        Declination of the star.
+    starobs : list
+        List of StarObservation objects for the star
     """
 
-    gausa = np.loadtxt('out2d', usecols=[9])
+    gausa = np.loadtxt('out2d', ndmin=1, usecols=[9])
 
     # First write the first j4 input file
     with open('j4', 'w') as f:
@@ -420,6 +594,15 @@ def call_mkimage(bindir, ra, dec, starobs):
 def call_fitem(bindir, wl):
     """
     Call fitem requires input files created by run_fitem
+
+    The line fitter. It fits a gauss-hermite. input is fitghsp.in.
+
+    Parameters
+    ----------
+    bindir : str
+        The path to the fitem binary
+    wl : float
+        Wavelength
     """
 
     input = '{wl:f}\n/vcps\n'
@@ -428,7 +611,17 @@ def call_fitem(bindir, wl):
 
 
 def call_sumspec(bindir, starname):
+    """
+    Call sumpspec. Sums a set of spectra, and then bins to 100AA bins.
+    Used for SED fitting.
 
+    Parameters
+    ----------
+    bindir : str
+        The path to the sumspec binary.
+    starname : str
+        Star name used to create the outputn filename (adds specf.dat)
+    """
     with open('list', 'w') as f:
         f.write(starname + 'specf.dat')
 
@@ -443,6 +636,13 @@ def get_throughput_file(path, shotname):
 
     If true, return the filename, otherise the filename
     for an average throughput file.
+
+    Parameters
+    ----------
+    path : str
+        Path to the throughput files
+    shotname : str
+        Name of the shot
     """
     if os.path.exists(path + '/' + shotname + "sedtp_f.dat"):
         return path + '/' + shotname + "sedtp_f.dat"
@@ -453,6 +653,14 @@ def get_throughput_file(path, shotname):
 def apply_factor_spline(factor):
     """
     Equivalent of the rawksp[12] scripts
+
+    Apply the factor to the splines.out file. The factor is the number
+    of individual shots the star was observed in.
+
+    Parameters
+    ----------
+    factor : int
+        The factor to apply.
     """
     wave, flx = np.loadtxt('splines.out', unpack=True, usecols=[0, 2])
 
@@ -467,6 +675,15 @@ def get_star_spectrum_data(ra, dec, args):
     on different ifus.
 
     This is essentially the information stored in the l1 file.
+
+    Parameters
+    ----------
+    ra : float
+        Right Ascension of the star.
+    dec : float
+        Declination of the star.
+    args : struct
+        The arguments structure
     """
 
     # First find matching shots
@@ -540,6 +757,16 @@ def get_star_spectrum_data(ra, dec, args):
             so.offsets_ra = 3600.*(ra_ifu[i]-ra)
             so.offsets_dec = 3600.*(dec_ifu[i]-dec)
 
+            # Make sure we actually have data for this shot
+            fpath = '%s/%s/virus/virus%07d/%s/virus/%s' \
+                % (args.multifits_dir, so.night, int(so.shot),
+                   so.expname, so.fname) + '.fits'
+
+            if not os.path.exists(fpath):
+                logging.warn('No fits data found for ifuslot %s in  %sv%s'
+                             % (so.ifuslot, so.night, so.shot))
+                continue
+
             starobs.append(so)
             night_shots.append('%s %s' % (n, s))
 
@@ -550,7 +777,24 @@ def get_star_spectrum_data(ra, dec, args):
 
 def extract_star_spectrum(starobs, args, prefix=''):
     """
-    Equivalent of the rextsp[1] and parts of the rsp1b scripts
+    Equivalent of the rextsp[1] and parts of the rsp1b scripts.
+
+    Extract stellar spectra, creating the tmp*.dat files. If prefix
+    is set, it is prefixed to the tmp*dat file names.
+
+    Parameters
+    ----------
+    starobs : list
+        List with StarObservation objects.
+    args : struct
+        The arguments structure
+    prefix : str (optional)
+        Optional prefix for the output filenames.
+
+    Returns
+    -------
+    list
+        List of tmp*dat filenames created.
     """
 
     specfiles = []
@@ -571,6 +815,19 @@ def extract_star_spectrum(starobs, args, prefix=''):
 
 
 def get_shuffle_stars(shuffledir, nightshot, maglim):
+    """
+    Find the all stars for a given night / shot.
+
+    Parameters
+    ----------
+    shuffledir : str
+        Path to a directory where a nightshot directory with a
+        shout.ifustars file.
+    nightshot : str
+        Night + shot name to work on.
+    maglim : float
+        Magnitude limit to apply to the star selection.
+    """
 
     stars = []
 
@@ -578,8 +835,8 @@ def get_shuffle_stars(shuffledir, nightshot, maglim):
     try:
         indata = np.loadtxt(shuffledir + '/' + nightshot + '/shout.ifustars')
         for d in indata:
-            star = ShuffleStar(20000 + c, d[0], d[1], d[2], d[3], d[4], d[5], d[6],
-                               d[7], d[8])
+            star = ShuffleStar(20000 + c, d[0], d[1], d[2], d[3], d[4], d[5],
+                               d[6], d[7], d[8])
             if star.mag_g < maglim:
                 stars.append(star)
                 c += 1
@@ -599,10 +856,13 @@ def average_spectrum(spec, wlmin, wlmax):
     ----------
     spec : Spectrum
         Spectrum class object
+    wlmin : float
+        Minimum wavelength of range to average.
+    wlmax : float
+        Maximum wavelength of range to average.
 
     Returns
     -------
-
     average, normaliztaion and uncertainty, equivalent to the spavg*.dat files.
     """
 
@@ -630,6 +890,17 @@ def average_spectra(specfiles, starobs, wl, wlrange):
     StarObservation class.
 
     This corresponds to the ravgsp0 script
+
+    Parameters
+    ----------
+    specfiles : list
+        List of spectrum filenames.
+    starobs : list
+        List with StarObservation objects.
+    wl : float
+        Central wavelength for the averaging.
+    wlrange : float
+        Half width of the wavelength range for averaging.
     """
 
     wlmin = wl - wlrange
@@ -648,14 +919,15 @@ def average_spectra(specfiles, starobs, wl, wlrange):
 def get_structaz(starobs, path):
     """
     Equivalent of the rgetadc script
+    Read the STRUCTAZ parameter from the multi extension fits files and fill
+    in the StarObservation entries.
 
     Parameters:
     -----------
-
-    fname : string
-    Filename to read from
-
-    Read the STRUCTAZ parameter from the fits file ``fname``
+    starobs : list
+        List with StarObservation objects.
+    path : string
+        Path to the directory where the multi extension fits are stored.
     """
 
     for obs in starobs:
@@ -668,7 +940,23 @@ def get_structaz(starobs, path):
 
 def run_fit2d(bindir, ra, dec, starobs, seeing, outname):
     """
-    Prepare input files for running fit2d
+    Prepare input files for running fit2d, and run it.
+
+    Parameters
+    ----------
+    bindir : str
+        The path to the fit2d binary
+    ra : float
+        Right Ascension of the star.
+    dec : float
+        Declination of the star.
+    starobs : list
+        List with StarObservation objects.
+    seeing : float
+        Assumed seeing for the observation.
+    outname : str
+        Output filename.
+
     """
     with open('in', 'w') as f:
         for obs in starobs:
@@ -683,8 +971,20 @@ def run_fit2d(bindir, ra, dec, starobs, seeing, outname):
 
 
 def run_sumlineserr(bindir, specfiles):
+    """
+    Prepare input and run sumlineserr. It sums a set of spectra, and then bins
+    to 100AA bins. Used for SED fitting.
 
-    indata = np.loadtxt('out2d', dtype='U50',
+    Parameters
+    ----------
+    bindir : str
+        The path to the sumlineserr binary
+    specfiles : list
+        List of spectrum filenames.
+
+    """
+
+    indata = np.loadtxt('out2d', dtype='U50', ndmin=2,
                         usecols=[8, 9, 10, 11, 12, 13, 14])
 
     with open('list2', 'w') as f:
@@ -696,6 +996,27 @@ def run_sumlineserr(bindir, specfiles):
 
 
 def run_fitem(bindir, wl, outname):
+    """
+    Prepare input file for fitem, and run it.
+
+    Parameters
+    ----------
+    bindir : str
+        The path to the sumlineserr binary
+    wl : float
+        Wavelength
+    outname : str
+        Base output filename.
+
+    Output
+    ------
+    outname+'spece.dat' :
+        Saved input file.
+    outname+'_2dn.ps' :
+        Control plot
+    outname+'_2d.res' :
+        Parameters of the line fit
+    """
 
     indata = np.loadtxt('splines.out', dtype='U50',
                         usecols=[0, 1, 2, 3, 4])
@@ -714,7 +1035,15 @@ def run_fitem(bindir, wl, outname):
 
 def run_shuffle_photometry(args):
     """
-    Equivalent of the rsetstar script
+    Equivalent of the rsetstar script. Find all shuffle stars observed
+    for the night / shot given on the command line, and the loop over all
+    stars ra / dec.
+
+    Parameters
+    ----------
+    args : struct
+        The arguments structure
+
     """
     nightshot = args.night + 'v' + args.shotid
 
@@ -731,7 +1060,21 @@ def run_shuffle_photometry(args):
 
 def run_star_photometry(ra, dec, starid, args):
     """
-    Equivalent of the rsp1a2b script
+    Equivalent of the rsp1a2b script.
+
+    Run the stellar extraction code for a given ra / dec position.
+
+    Parameters
+    ----------
+    ra : float
+        Right Ascension of the star.
+    dec : float
+        Declination of the star.
+    starid : int
+        ID to give to the star / position
+    args : struct
+        The arguments structure
+
     """
     nightshot = args.night + 'v' + args.shotid
 
@@ -745,6 +1088,10 @@ def run_star_photometry(ra, dec, starid, args):
 
     # Extract data like the data in l1
     starobs, nshots = get_star_spectrum_data(ra, dec, args)
+
+    if not len(starobs):
+        logging.warn('No shots found, skipping!')
+        return
 
     # Call rspstar
     specfiles = extract_star_spectrum(starobs, args)
@@ -798,12 +1145,15 @@ def run_star_photometry(ra, dec, starid, args):
 
 
 def cp_results(starname, starid, results_dir):
-    """ Copies the result files from workdir results_dir as done by rspstar.
+    """
+    Copies the result files from workdir results_dir as done by rspstar.
 
-    Args
-    ----
-    workdir : str
-        Work directory.
+    Parameters
+    ----------
+    starname : str
+        Star name to copy over.
+    starid : int
+        Star ID to use for the final filename.
     results_dir : str
         Final directory for results.
 
@@ -843,7 +1193,8 @@ def main(args):
     logging.basicConfig(level=logging.DEBUG,
                         format=fmt,
                         datefmt='%m-%d %H:%M',
-                        filename=os.path.join(results_dir, args.logfile),
+                        filename=os.path.join(results_dir,
+                                              args.photometry_logfile),
                         filemode='w')
     # define a Handler which writes INFO messages or higher to the sys.stderr
     console = logging.StreamHandler()

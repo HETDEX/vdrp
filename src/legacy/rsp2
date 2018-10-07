@@ -3,8 +3,7 @@ cd $7_$6
 if [ -e list ]
  then
 ~gebhardt/bin/rgetadc
-paste s5 l1 a1 | awk '{print $1,$2,$3,$4,$13,$14,$15,$10,$16}' > in
-# paste s5 l1 | awk '{if($3!=0) print $1,$2,$3,$4,$13,$14,$15,$10}' > in
+paste s5 l1 a1 | awk '{print $1,$2,$3,$4,$14,$15,$16,$11,$17,$5}' > in
 echo $8 > fwhm.use
 ~gebhardt/bin/fit2d << eof
 $1 $2
@@ -14,29 +13,25 @@ mv pgplot.ps $7_$6_2d.ps
 paste list out | awk '{print $1,$10,$11,$12,$13,$14,$15,$16}' > list2
 mv out out2d
 ~gebhardt/bin/rmkim
-# ~gebhardt/bin/sumsplinesn
 ~gebhardt/bin/sumlineserr
 sed s/rawksp2/rawksp3/ rjunk > rjunk2
-# cp splines.out fitghsp.in
-#awk '{print $1,$3/1e-17,$5/1e-17,$2,$4}' splines.out > fitghsp.in
-#awk '{print $1,$3/1e-17,$5/1e-17,$2,$4}' splines.out > $7_$6spece.dat
 awk '{print $1,$3,$5,$2,$4}' splines.out > fitghsp.in
 awk '{print $1,$3,$5,$2,$4}' splines.out > $7_$6spece.dat
-# ~gebhardt/bin/fitonesig << eof
 ~gebhardt/bin/fitem << eof
 $4
 /vcps
 eof
 mv pgplot.ps $7_$6_2dn.ps
 mv lines.out $7_$6_2d.res
+
 # Now get the optimally-weighted 2d image
-sed s/rextsp/rextsp2d/ rextsp0 | sed s/" tmp"/" 2dtmp"/ > rextsp2d0
-chmod +x rextsp2d0; rextsp2d0
-awk '{print "2d"$1,$2,$3}' list2 > list3
-~gebhardt/bin/sum2dsp
-rm -f 2dtmp*dat 2dsp.fits
-~gebhardt/bin/mk2dsp
-mv 2dsp.fits $7_$6.fits
+#sed s/rextsp/rextsp2d/ rextsp0 | sed s/" tmp"/" 2dtmp"/ > rextsp2d0
+#chmod +x rextsp2d0; rextsp2d0
+#awk '{print "2d"$1,$2,$3}' list2 > list3
+#~gebhardt/bin/sum2dsp
+#rm -f 2dtmp*dat 2dsp.fits
+#~gebhardt/bin/mk2dsp
+#mv 2dsp.fits $7_$6.fits
 
 # Now get the full spectrum
 awk '{print $1,$2,$3,4500,1000,"f"$6,$7,$8}' rextsp0 > rextspf0
@@ -44,12 +39,7 @@ chmod +x rextspf0; rextspf0
 awk '{print "f"$1,$2,$3,$4,$5,$6,$7,$8}' list2 > list4
 mv list2 list2o
 cp list4 list2
-# ~gebhardt/bin/sumspf
-# mv splines.out $7_$6specf.dat
 ~gebhardt/bin/sumlineserr
-# awk '{print $1,$2,$4,$3/1e-17,$5/1e-17,$2,$4}' splines.out > fitghsp.in
-# mv splines.out $7_$6specf.dat
-#awk '{print $1,$3/1e-17,$5/1e-17,$2,$4}' splines.out > $7_$6specf.dat
 awk '{print $1,$3,$5,$2,$4}' splines.out > $7_$6specf.dat
 mv list2o list2
 rm -f ftmp*dat
@@ -64,6 +54,6 @@ wc spavg.all > j2
 paste j1 j2 | awk '{print $1,$4}' > j3
 echo " "
 awk '{if($1==$2) print "NO VIRUS DATA AVAILABLE"}' j3
-paste spavg.all l1 | awk '{if($1!=0) print $9}' | sort -n | head -1 > j1
+paste spavg.all l1 | awk '{if($1!=0) print $10}' | sort -n | head -1 > j1
 awk '{print "Closest fiber is",$1,"arcseconds away"}' j1
 echo " "
