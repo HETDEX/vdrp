@@ -1846,7 +1846,7 @@ def cp_results(tmp_dir, results_dir):
     file_pattern += ["radec2_final.pdf"]
     file_pattern += ["vdrp_info.pickle"]
     file_pattern += ["dithall.use"]
-    file_pattern += ["dith_exp01.all"]
+    file_pattern += ["dith_exp??.all"]
 
     for d in dirs:
         td = os.path.join(tmp_dir, d)
