@@ -1270,14 +1270,14 @@ def run_star_photometry(ra, dec, starid, args):
 
     # Finally save the results to the results_dir
 
-    shutil.copy2(starname+'.ps' % args.results_dir)
-    shutil.copy2(starname+'_2d.res' % args.results_dir)
-    shutil.copy2(starname+'_2dn.ps' % args.results_dir)
-    shutil.copy2(starname+'spec.dat' % args.results_dir)
-    shutil.copy2(starname+'spec.res' % args.results_dir)
-    shutil.copy2(starname+'spece.dat' % args.results_dir)
-    shutil.copy2(starname+'specf.dat' % args.results_dir)
-    shutil.copy2(starname+'tot.ps' % args.results_dir)
+    shutil.copy2(starname+'.ps', args.results_dir)
+    shutil.copy2(starname+'_2d.res', args.results_dir)
+    shutil.copy2(starname+'_2dn.ps', args.results_dir)
+    shutil.copy2(starname+'spec.dat', args.results_dir)
+    shutil.copy2(starname+'spec.res', args.results_dir)
+    shutil.copy2(starname+'spece.dat', args.results_dir)
+    shutil.copy2(starname+'specf.dat', args.results_dir)
+    shutil.copy2(starname+'tot.ps', args.results_dir)
     shutil.copy2('sp%d_2.dat' % starid, args.results_dir)
     shutil.copy2('sp%d_100.dat' % starid, args.results_dir)
     shutil.copy2('sp%d.obsdata' % starid, args.results_dir)
