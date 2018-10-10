@@ -1743,8 +1743,8 @@ def mk_dithall(wdir, active_slots, reduction_dir, night, shotid, subdir="."):
             exposures.append(t)
         for exp in exposures:
             pattern = os.path.join(reduction_dir,
-                                   "{}/virus/virus0000{}/*/virus/CoFeS*"
-                                   .format(night, shotid))
+                "{}/virus/virus0000{}/exp{}/virus/CoFeS*"
+                      .format(night, shotid, exp))
             logging.info("    using CoFes*fits files {}..."
                          .format(pattern))
             CoFeS = glob.glob(pattern)
@@ -1852,7 +1852,7 @@ def cp_results(tmp_dir, results_dir):
     file_pattern += ["radec2_final.pdf"]
     file_pattern += ["vdrp_info.pickle"]
     file_pattern += ["dithall.use"]
-    file_pattern += ["dith_exp01.all"]
+    file_pattern += ["dith_exp??.all"]
 
     for d in dirs:
         td = os.path.join(tmp_dir, d)
