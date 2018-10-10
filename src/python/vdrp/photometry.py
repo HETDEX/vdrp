@@ -313,7 +313,7 @@ def parseArgs(argv):
     defaults['shot_search_radius'] = 600.
 
     defaults['seeing'] = 1.5
-    defaults['sdds_filter_file'] = \
+    defaults['sdss_filter_file'] = \
         '/work/00115/gebhardt/maverick/detect/cal_script/sdssg.dat'
 
     defaults["task"] = "all"
@@ -1433,15 +1433,10 @@ if __name__ == "__main__":
 
     if args.multi and os.path.isfile(args.multi):
         try:  # Try to read the file
-            indata = np.loadtxt(args.multi, dtype='U50')
-            for d in indata:
+            with open(args.multi) as f:
+                line = f.readline()
                 largs = copy.copy(remaining_argv)
-                largs.append('-c')
-                largs.append(d[0])
-                largs.append('-t')
-                largs.append(d[1])
-                largs.append(d[2])
-                largs.append(d[3])
+                largs += line.split()
 
                 main_args = parseArgs(largs)
                 main(main_args)
