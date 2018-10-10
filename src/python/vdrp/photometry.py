@@ -1183,7 +1183,7 @@ def run_shuffle_photometry(args):
 
     # Finally save the results to the results_dir
 
-    shutil.copy2(nightshot+'shstars', args.results_dir)
+    shutil.copy2(nightshot+'.shstars', args.results_dir)
 
 
 def run_star_photometry(ra, dec, starid, args):
@@ -1209,7 +1209,8 @@ def run_star_photometry(ra, dec, starid, args):
     starname = '%s_%d' % (nightshot, starid)
 
     # Create the workdirectory for this star
-    stardir = args.curdir + '/' + starname
+    curdir = os.path.abspath(os.path.curdir)
+    stardir = curdir + '/' + starname
     if not os.path.exists(stardir):
         os.mkdir(stardir)
     os.chdir(stardir)
@@ -1285,6 +1286,7 @@ def run_star_photometry(ra, dec, starid, args):
     shutil.copy2('sp%d_100.dat' % starid, args.results_dir)
     shutil.copy2('sp%d.obsdata' % starid, args.results_dir)
 
+    os.chdir(curdir)
 
 def get_g_band_throughput(args):
 
