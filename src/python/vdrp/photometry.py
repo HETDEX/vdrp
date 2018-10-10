@@ -14,24 +14,30 @@ from __future__ import print_function
 from argparse import RawDescriptionHelpFormatter as ap_RDHF
 from argparse import ArgumentParser as AP
 
+import pyhetdex.tools.processes as pproc
+
 import os
 import shutil
 import sys
 import ConfigParser
 import logging
+import copy
 import subprocess
 from astropy.io import fits
 # from astropy.io import ascii
-# import tempfile
+import tempfile
 import numpy as np
 from collections import OrderedDict
-import pickle
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 # import ast
 
 # import scipy
 # from scipy.interpolate import UnivariateSpline
 
-# from distutils import dir_util
+from distutils import dir_util
 
 # from astropy import table
 # from astropy.table import Table
@@ -102,7 +108,7 @@ class Spectrum():
     err_cts_local : float
 
     err_max_flux : float
-    
+
     """
     def __init__(self):
         self.wl = None
@@ -254,7 +260,7 @@ class StarObservation():
         self.fname, self.ifuslot = self.full_fname.split('.')[0].rsplit('_', 1)
 
 
-def parseArgs(args):
+def parseArgs(argv):
     """ Parses configuration file and command line arguments.
     Command line arguments overwrite configuration file settiongs which
     in turn overwrite default values.
@@ -273,14 +279,20 @@ def parseArgs(args):
                      add_help=False)
     conf_parser.add_argument("-c", "--conf_file",
                              help="Specify config file", metavar="FILE")
-    args, remaining_argv = conf_parser.parse_known_args()
+    print('ARGV', argv)
+    args, remaining_argv = conf_parser.parse_known_args(argv)
 
     defaults = {}
+
+    defaults["use_tmp"] = False
+    defaults["remove_tmp"] = True
+
     defaults['photometry_logfile'] = 'photometry.log'
 
     defaults['starid'] = 1
 
-    defaults['shuffle_stars'] = False
+    defaults['multi_shot'] = False
+    defaults['target_coords'] = False
 
     defaults['dithall_dir'] = '/work/00115/gebhardt/maverick/detect/'
     defaults["shuffle_mag_limit"] = 20.
@@ -301,13 +313,23 @@ def parseArgs(args):
     defaults['shot_search_radius'] = 600.
 
     defaults['seeing'] = 1.5
+    defaults['sdds_filter_file'] = \
+        '/work/00115/gebhardt/maverick/detect/cal_script/sdssg.dat'
+
+    defaults["task"] = "all"
 
     config_source = "Default"
     if args.conf_file:
+        print('Reading')
         config_source = args.conf_file
         config = ConfigParser.SafeConfigParser()
         config.read([args.conf_file])
-        defaults.update(dict(config.items("Astrometry")))
+        defaults.update(dict(config.items("Photometry")))
+
+        bool_flags = ['use_tmp', 'remove_tmp', 'multi_shot', 'target_coords']
+        for bf in bool_flags:
+            if config.has_option('Photometry', bf):
+                defaults[bf] = config.getboolean('Photometry', bf)
 
     # Parse rest of arguments
     # Don't suppress add_help here so it will handle -h
@@ -355,11 +377,24 @@ def parseArgs(args):
     parser.add_argument("--seeing", type=float, help="Seeing in arcseconds"
                         "to assume for spectral extraction.")
 
-    # Commandline only paramters
+    parser.add_argument("--target_ra", type=float, help="Target RA for multi"
+                        " shot mode.")
+    parser.add_argument("--target_dec", type=float, help="Target DEC for multi"
+                        " shot mode.")
+
+    parser.add_argument("--sdss_filter_file", type=str, help="Filter cureve "
+                        "for SDSS g-Band filter.")
+
+    parser.add_argument("-t", "--task", type=str, help="Task to execute.")
+
+    # Boolean paramters
+    parser.add_argument("--use_tmp", action='store_true',
+                        help="Run using all shots containing the star at the "
+                        "given coordinates. Equivalent of rsp1 script")
     parser.add_argument("--multi_shot", action='store_true',
                         help="Run using all shots containing the star at the "
                         "given coordinates. Equivalent of rsp1 script")
-    parser.add_argument("--shuffle_stars", action='store_true',
+    parser.add_argument("--target_coords", action='store_true',
                         help="Run over all stars from shuffle for the given"
                         "night and shot, ignoring the ra and dec parameters")
 
@@ -368,10 +403,6 @@ def parseArgs(args):
                         help='Night of observation (e.g. 20180611).')
     parser.add_argument('shotid', metavar='shotid', type=str,
                         help='Shot ID (e.g. 017).')
-    parser.add_argument('ra', metavar='ra', type=float,
-                        help='RA of the target in decimal hours.')
-    parser.add_argument('dec', metavar='dec', type=float,
-                        help='Dec of the target in decimal hours degree.')
 
     args = parser.parse_args(remaining_argv)
 
@@ -381,6 +412,17 @@ def parseArgs(args):
     # args.remove_tmp = args.remove_tmp == "True"
 
     return args
+
+
+def save_data(d, filename):
+    # save data for later tasks
+    with open(filename, 'wb') as f:
+        pickle.dump(d, f, pickle.HIGHEST_PROTOCOL)
+
+
+def read_data(filename):
+    with open(filename, 'rb') as f:
+        return pickle.load(f)
 
 
 def run_command(cmd, input=None):
@@ -1033,6 +1075,75 @@ def run_fitem(bindir, wl, outname):
     shutil.move('lines.out', outname+'_2d.res')
 
 
+def run_getsdss(bindir, filename, sdss_file):
+    """
+    Run getsdss on filename. Equivalent to rsdss file.
+
+    Parameters
+    ----------
+    bindir : str
+        The path to the getsdssg binary
+    filename : str
+        Filename with spectral data
+    sdss_file : str
+        Full path and filename to the sdss g-band filter curve.
+
+    Returns
+    -------
+    The flux in the g-Band.
+
+    """
+    shutil.copy2(sdss_file, 'sdssg.dat')
+    shutil.copy2(filename, 's1')
+
+    run_command(bindir + '/getsdssg')
+
+    return float(np.loadtxt('out'))
+
+
+def run_biwt(bindir, data):
+    """
+    Calculate biweight of the supplied data.
+
+    Parameters
+    ----------
+    bindir : str
+        The path to the biwt binary
+    data : list
+        List of the data to be run through biwt.
+
+    Returns
+    -------
+    n, biwt, error
+    """
+    with open('tp.dat', 'w') as f:
+        for d in data:
+            f.write('%f\n', d)
+
+    run_command(bindir + '/biwt', 'tp.dat\n1\n')
+
+    return np.loadtxt('biwt.out')
+
+
+def copy_stardata(starname, starid):
+    """
+    Copies the result files from workdir results_dir as done by rspstar.
+
+    Parameters
+    ----------
+    starname : str
+        Star name to copy over.
+    starid : int
+        Star ID to use for the final filename.
+    results_dir : str
+        Final directory for results.
+
+    """
+
+    shutil.copy2(starname+'specf.dat', 'sp%d_2.dat' % starid)
+    shutil.copy2('sumspec.out', 'sp%d_100.dat' % starid)
+
+
 def run_shuffle_photometry(args):
     """
     Equivalent of the rsetstar script. Find all shuffle stars observed
@@ -1050,12 +1161,29 @@ def run_shuffle_photometry(args):
     stars = get_shuffle_stars(args.shuffle_ifustars_dir, nightshot,
                               args.shuffle_mag_limit)
 
+    worker = pproc.get_worker(name='VDRP', result_class=pproc.DeferredResult,
+                              multiprocessing=True, processes=4)
+    jobs = []
+
     for star in stars:
-        try:
-            run_star_photometry(star.ra, star.dec, star.starid, args)
-        except NoShotsException:
-            logging.info('No shots found for shuffle star at %f %f'
-                         % (star.ra,  star.dec))
+        job = worker(run_star_photometry, star.ra, star.dec, star.starid, args)
+        jobs.append(job)
+
+        # try:
+        #     run_star_photometry(star.ra, star.dec, star.starid, args)
+        # except NoShotsException:
+        #     logging.info('No shots found for shuffle star at %f %f'
+        #                  % (star.ra,  star.dec))
+
+    worker.wait()
+    ndone, nerror, _ = worker.jobs_stat()
+    print('Results %d %d' % (ndone, nerror))
+
+    save_data(stars, '%s.shstars' % nightshot)
+
+    # Finally save the results to the results_dir
+
+    shutil.copy2(nightshot+'shstars', args.results_dir)
 
 
 def run_star_photometry(ra, dec, starid, args):
@@ -1139,38 +1267,50 @@ def run_star_photometry(ra, dec, starid, args):
 
     logging.info('Closest fiber is %.5f arcseconds away' % mind)
 
-    cp_results(starname, starid, args.results_dir)
+    copy_stardata(starname, starid)
 
-    os.chdir(args.curdir)
+    save_data(starobs, 'sp%d.obsdata' % starid)
+
+    # Finally save the results to the results_dir
+
+    shutil.copy2(starname+'.ps' % args.results_dir)
+    shutil.copy2(starname+'_2d.res' % args.results_dir)
+    shutil.copy2(starname+'_2dn.ps' % args.results_dir)
+    shutil.copy2(starname+'spec.dat' % args.results_dir)
+    shutil.copy2(starname+'spec.res' % args.results_dir)
+    shutil.copy2(starname+'spece.dat' % args.results_dir)
+    shutil.copy2(starname+'specf.dat' % args.results_dir)
+    shutil.copy2(starname+'tot.ps' % args.results_dir)
+    shutil.copy2('sp%d_2.dat' % starid, args.results_dir)
+    shutil.copy2('sp%d_100.dat' % starid, args.results_dir)
+    shutil.copy2('sp%d.obsdata' % starid, args.results_dir)
 
 
-def cp_results(starname, starid, results_dir):
-    """
-    Copies the result files from workdir results_dir as done by rspstar.
+def get_g_band_throughput(args):
 
-    Parameters
-    ----------
-    starname : str
-        Star name to copy over.
-    starid : int
-        Star ID to use for the final filename.
-    results_dir : str
-        Final directory for results.
+    nightshot = args.night + 'v' + args.shotid
 
-    """
+    stars = read_data('%s.shstars' % nightshot)
 
-    if results_dir == '':
-        logging.info('No results dir specified, skipping copying.')
-        return
+    flxdata = []
 
-    if not os.path.exists:
-        os.path.mkdir(results_dir)
+    for s in stars:
+        starobs = read_data('sp%d.obsdata' % s.starid)
+        g_flx = run_getsdss(args.bindir, 'sp%d_100.dat' % s.starid,
+                            args.sdss_filter_file)
+        sdss_flx = 5.048e-9*(10**(-0.4*s.mag_g))/(6.626e-27) / \
+            (3.e18/4680.)*360.*5.e5*100
 
-    shutil.copy2(starname+'specf.dat',
-                 os.path.join(results_dir, 'sp%d_2.dat' % starid))
+        dflx = 0.
+        if sdss_flx > 0.:
+            dflx = g_flx / sdss_flx
 
-    shutil.copy2('sumspec.out',
-                 os.path.join(results_dir, 'sp%d_100.dat' % starid))
+        if len(starobs) > 15 and dflx > 0.02 and dflx < 0.21:
+            flxdata.append(dflx)
+
+    avg_flx = run_biwt(args.bin_dir, flxdata)
+
+    return avg_flx
 
 
 vdrp_info = None
@@ -1184,7 +1324,7 @@ def main(args):
 
     # Create results directory for given night and shot
     cwd = os.getcwd()
-    results_dir = os.path.join(cwd, args.night + 'v' + args.shotid + '_res')
+    results_dir = os.path.join(cwd, args.night + 'v' + args.shotid,  'res')
     utils.createDir(results_dir)
     args.results_dir = results_dir
 
@@ -1210,16 +1350,26 @@ def main(args):
     with open(os.path.join(results_dir, 'args.pickle'), 'wb') as f:
         pickle.dump(args, f, pickle.HIGHEST_PROTOCOL)
 
-    # tasks = args.task.split(",")
-    # if args.use_tmp and not tasks == ['all']:
-    #    logging.error("Step-by-step execution not possile when running "
-    #                  "in a tmp directory.")
-    #    logging.error("   Please either call without -t or set "
-    #                  "use_tmp to False.")
-    #    sys.exit(1)
+    tasks = args.task.split(",")
+    if args.use_tmp and tasks != ['all'] and tasks != ['extract_coord']:
+        logging.error("Step-by-step execution not possible when running "
+                      "in a tmp directory.")
+        logging.error("   Please either call without -t or set "
+                      "use_tmp to False.")
+        sys.exit(1)
+
+    logging.info("Executing tasks : {}".format(tasks))
 
     # default is to work in results_dir
     wdir = results_dir
+    if args.use_tmp:
+        # Create a temporary directory
+        tmp_dir = tempfile.mkdtemp()
+        logging.info("Tempdir is {}".format(tmp_dir))
+        logging.info("Copying over prior data (if any)...")
+        dir_util.copy_tree(results_dir, tmp_dir)
+        # set working directory to tmp_dir
+        wdir = tmp_dir
 
     logging.info("Configuration {}.".format(args.config_source))
 
@@ -1231,31 +1381,82 @@ def main(args):
 
     try:
         os.chdir(wdir)
-        if args.shuffle_stars:
-            logging.info('Running over all shuffle stars')
-            run_shuffle_photometry(args)
-        else:
-            logging.info('Running on a single RA/DEC position')
-            run_star_photometry(args.ra, args.dec, args.starid, args)
-        # for task in tasks:
-        #     os.chdir(wdir)
-        #     run_star_photometry(args)
-            # if task in ["cp_post_stamps", "all"]:
-            #    # Copy over collapsed IFU cubes, aka IFU postage stamps.
-            #    cp_post_stamps(wdir, args.reduction_dir, args.night,
-            #                   args.shotid)
+
+        for task in tasks:
+            if task in ['extract_coord']:
+                # Equivalent of rsp1
+                logging.info('Running on a single RA/DEC position')
+                if args.target_ra is None or args.target_dec is None:
+                    raise Exception('To run on a specific position, please '
+                                    'specify target_ra and target_dec of the'
+                                    ' position')
+                run_star_photometry(args.target_ra, args.target_dec,
+                                    args.starid, args)
+
+            if task in ['extract_stars', 'all']:
+                # Equivalent of rsetstar
+                logging.info('Extracting all shuffle stars')
+                run_shuffle_photometry(args)
+
+            if task in ['get_g_band_throughput', 'all']:
+                logging.info('Extracting all shuffle stars')
+                get_g_band_throughput(args)
+
+            if task in ['mk_sed_throughput_curve', 'all']:
+                pass
+
+            if task in ['fit_throughput_curve', 'all']:
+                pass
 
     finally:
+        os.chdir(args.curdir)
         vdrp_info.save(wdir)
         logging.info("Done.")
+
+
+def parse_for_loop(args):
+    '''
+    Loops
+    '''
 
 
 if __name__ == "__main__":
     argv = None
     if argv is None:
         argv = sys.argv
-    # Parse config file and command line paramters
-    # command line parameters overwrite config file.
-    args = parseArgs(argv)
 
-    sys.exit(main(args))
+    # First check if we should loop over an input file
+    parser = AP(description='Test', formatter_class=ap_RDHF, add_help=False)
+    # parser.add_argument('args', nargs=ap_remainder)
+    parser.add_argument('-M', '--multi', help='Input filename to loop over')
+
+    args, remaining_argv = parser.parse_known_args()
+
+    if args.multi and os.path.isfile(args.multi):
+        try:  # Try to read the file
+            indata = np.loadtxt(args.multi, dtype='U50')
+            for d in indata:
+                largs = copy.copy(remaining_argv)
+                largs.append('-c')
+                largs.append(d[0])
+                largs.append('-t')
+                largs.append(d[1])
+                largs.append(d[2])
+                largs.append(d[3])
+
+                main_args = parseArgs(largs)
+                main(main_args)
+
+                sys.exit(0)
+        except Exception as e:
+            print(e)
+            raise Exception('Failed to read input file %s!' % args.multi)
+    else:
+        # Parse config file and command line paramters
+        # command line parameters overwrite config file.
+
+        # The first positional argument wasn't an input list,
+        # so process normally
+        args = parseArgs(remaining_argv)
+
+        sys.exit(main(args))
