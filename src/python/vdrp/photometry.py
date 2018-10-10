@@ -1179,11 +1179,7 @@ def run_shuffle_photometry(args):
     ndone, nerror, _ = worker.jobs_stat()
     print('Results %d %d' % (ndone, nerror))
 
-    save_data(stars, '%s.shstars' % nightshot)
-
-    # Finally save the results to the results_dir
-
-    shutil.copy2(nightshot+'.shstars', args.results_dir)
+    save_data(stars, os.path.join(args.results_dir, '%s.shstars' % nightshot))
 
 
 def run_star_photometry(ra, dec, starid, args):
@@ -1287,6 +1283,7 @@ def run_star_photometry(ra, dec, starid, args):
     shutil.copy2('sp%d.obsdata' % starid, args.results_dir)
 
     os.chdir(curdir)
+
 
 def get_g_band_throughput(args):
 
