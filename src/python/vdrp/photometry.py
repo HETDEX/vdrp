@@ -1295,7 +1295,7 @@ def get_g_band_throughput(args):
 
     for s in stars:
         starobs = read_data('sp%d.obsdata' % s.starid)
-        g_flx = run_getsdss(args.bindir, 'sp%d_100.dat' % s.starid,
+        g_flx = run_getsdss(args.bin_dir, 'sp%d_100.dat' % s.starid,
                             args.sdss_filter_file)
         sdss_flx = 5.048e-9*(10**(-0.4*s.mag_g))/(6.626e-27) / \
             (3.e18/4680.)*360.*5.e5*100
