@@ -47,7 +47,7 @@ class Test_Cp_Post_Stamps(TestBase):
 class Test_Main(TestBase):
     dd = ["reductions", "config", "test_fiducial"]
     ff = []
-    delete_test_dir = True
+    delete_test_dir = False
 
     def test_main(self):
         with path.Path(self.test_dir):
@@ -73,6 +73,8 @@ class Test_Main(TestBase):
             args.dec=51.3479
             args.fluxnorm_mag_max=19.0
             args.fplane_txt='config/fplane.txt'
+            args.ixy_dir='config'
+            args.addin_dir='config'
             args.getoff2_radii=[11.0, 5.0, 3.0]
             args.logfile='20180611v017.log'
             args.mkmosaic_angoff=1.8
@@ -148,6 +150,9 @@ class Test_Main(TestBase):
 
             print("Checking xy*.dat ...")
             self.cmp_test_files("20180611v017", "xy*.dat")
+
+            print("Checking dithall.use ...")
+            self.cmp_test_files("20180611v017", "dithall.use")
 
 
 
