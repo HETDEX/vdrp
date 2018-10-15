@@ -1409,8 +1409,17 @@ def mk_match_matrix(wdir, ax, exp, image_files, fplane_file, shout_ifu_file,
             h = headers[f]
             xsize = h['NAXIS1']
             ysize = h['NAXIS2']
-            xcenter = h['CRVAL1']
-            ycenter = h['CRVAL2']
+            if not "CRVAL1" in h:
+                xcenter  =   -25.14999961853027
+                logging.warning("Found no CRVAL1 in {}.fits, using default value.".format(f))
+            else:
+                xcenter = h['CRVAL1']
+            if not "CRVAL2" in h:
+                ycenter  =   -25.14999961853027
+                logging.warning("Found no CRVAL2 in {}.fits, using default value.".format(f))
+            else:
+                ycenter = h['CRVAL2']
+
             extent = [0.+xcenter, xsize+xcenter,
                       0.+ycenter, ysize+ycenter]
 
@@ -1436,7 +1445,6 @@ def mk_match_matrix(wdir, ax, exp, image_files, fplane_file, shout_ifu_file,
                     color='white', ha='right', va='bottom')
         except Exception:
             pass
-
 
 def get_exposures_files(basedir):
     """
@@ -1741,9 +1749,10 @@ def mk_dithall(wdir, active_slots, reduction_dir, night, shotid, subdir="."):
         for e in ee:
             __, t = os.path.split(e)
             exposures.append(t)
+        exposures = np.sort(exposures)
         for exp in exposures:
             pattern = os.path.join(reduction_dir,
-                "{}/virus/virus0000{}/exp{}/virus/CoFeS*"
+                "{}/virus/virus0000{}/{}/virus/CoFeS*"
                       .format(night, shotid, exp))
             logging.info("    using CoFes*fits files {}..."
                          .format(pattern))
