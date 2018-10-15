@@ -122,7 +122,7 @@ def create_job_file(fname, commands, ncores, args):
     launcherdir = os.path.dirname(os.path.abspath(__file__))
     with open(fn + '.slurm', 'w') as sf:
         sf.write(slurm_txt.format(jobname=fn, ntasks=njobs, runtime=runtime,
-                                  workdir='./', ncores=args.cores,
+                                  workdir='./', ncores=20/args.cores,
                                   nnodes=args.nodes, launcherpath=launcherdir,
                                   runfile=fname))
 
