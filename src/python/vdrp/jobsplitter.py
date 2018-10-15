@@ -33,7 +33,7 @@ module unload xalt
 {launcherpath:s}/vdrprunner.py -c {ncores:d} {runfile}
 '''
 
-shslurm='''module laod launcher
+shslurm='''module load launcher
 module unload xalt
 export EXECUTABLE=$TACC_LAUNCHER_DIR/init_launcher
 export WORKDIR={workdir:s}
