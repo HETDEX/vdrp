@@ -75,12 +75,12 @@ def main(args):
             raise Exception('Found fewer commands than expected!')
 
         cmd_file = '%s_%d%s' % (fname, file_c, fext)
-        create_job_file(cmd_file, commands, ncores, nc/ncores/args.nodes, args)
+        create_job_file(cmd_file, commands, ncores, args)
 
         file_c += 1
 
 
-def create_job_file(fname, commands, ncores, nodetasks, args):
+def create_job_file(fname, commands, ncores, args):
 
     ntasks = args.tasks
     njobs = args.jobs*ncores*ntasks
@@ -119,7 +119,7 @@ def create_job_file(fname, commands, ncores, nodetasks, args):
 
     launcherdir = os.path.dirname(os.path.abspath(__file__))
     with open(fn + '.slurm', 'w') as sf:
-        sf.write(slurm_txt.format(jobname=fn, ntasks=nodetasks,
+        sf.write(slurm_txt.format(jobname=fn, ntasks=20/args.cores*args.nodes,
                                   runtime=runtime,
                                   workdir='./', ncores=args.cores,
                                   nnodes=args.nodes, launcherpath=launcherdir,
