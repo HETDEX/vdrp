@@ -9,11 +9,11 @@ import os
 import sys
 
 
-slurm_txt = '''
-#!/bin/bash
+slurm_txt = '''#!/bin/bash
 #
 #------------------Scheduler Options--------------------
 #SBATCH -J {jobname:s}         # Job name
+#SBATCH -N {nnodes:d}          # Number of nodes
 #SBATCH -n {ntasks:d}          # Total number of tasks
 #SBATCH -p vis                 # Queue name
 #SBATCH -o {jobname:s}.o%j     # Name of stdout output file
@@ -123,7 +123,7 @@ def create_job_file(fname, commands, ncores, args):
     with open(fn + '.slurm', 'w') as sf:
         sf.write(slurm_txt.format(jobname=fn, ntasks=njobs, runtime=runtime,
                                   workdir='./', ncores=args.cores,
-                                  launcherpath=launcherdir,
+                                  nnodes=args.nodes, launcherpath=launcherdir,
                                   runfile=fname))
 
 
