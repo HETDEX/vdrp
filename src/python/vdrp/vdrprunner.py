@@ -11,8 +11,9 @@ import sys
 
 
 def main(args):
-    pylauncher.ClassicLauncher(args.cmdfile, debug="job+host+task",
-                               cores=args.cores)
+    # pylauncher.ClassicLauncher(args.cmdfile, debug="job+host+task",
+    #                            cores=args.cores)
+    pylauncher.ClassicLauncher(args.cmdfile, cores=args.cores)
 
 
 def parse_args(argv):
