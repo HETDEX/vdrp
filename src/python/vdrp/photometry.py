@@ -1164,10 +1164,12 @@ def run_shuffle_photometry(args):
     stars = get_shuffle_stars(args.shuffle_ifustars_dir, nightshot,
                               args.shuffle_mag_limit)
     mproc = False
+    resclass = pproc.Result
     if args.shuffle_cores > 1:
         mproc = True
+        resclass = pproc.DeferredResult
 
-    worker = pproc.get_worker(name='VDRP', result_class=pproc.DeferredResult,
+    worker = pproc.get_worker(name='VDRP', result_class=resclass,
                               multiprocessing=mproc,
                               processes=args.shuffle_cores)
     jobs = []
@@ -1465,10 +1467,12 @@ if __name__ == "__main__":
             cmdlines = cmdlines[minl, maxl]
 
         mproc = False
+        resclass = pproc.Result
         if args.mcores > 1:
             mproc = True
+            resclass = pproc.DeferredResult
         worker = pproc.get_worker(name='VDRP',
-                                  result_class=pproc.DeferredResult,
+                                  result_class=resclass,
                                   multiprocessing=mproc,
                                   processes=args.mcores)
         jobs = []
