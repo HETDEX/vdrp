@@ -341,6 +341,9 @@ def parseArgs(argv):
     parser.add_argument("--photometry_logfile", type=str,
                         help="Filename for log file.")
 
+    parser.add_argument("--shuffle_cores", type=int,
+                        help="Number of multiprocessing cores to use for"
+                        "shuffle star extraction.")
     parser.add_argument("--starid", type=int,
                         help="Star ID to use, default is 1")
     parser.add_argument("--dithall_dir", type=str, help="Base directory "
@@ -1160,9 +1163,13 @@ def run_shuffle_photometry(args):
 
     stars = get_shuffle_stars(args.shuffle_ifustars_dir, nightshot,
                               args.shuffle_mag_limit)
+    mproc = False
+    if args.shuffle_cores > 1:
+        mproc = True
 
     worker = pproc.get_worker(name='VDRP', result_class=pproc.DeferredResult,
-                              multiprocessing=True, processes=4)
+                              multiprocessing=mproc,
+                              processes=args.shuffle_cores)
     jobs = []
 
     for star in stars:
@@ -1427,24 +1434,59 @@ if __name__ == "__main__":
     # First check if we should loop over an input file
     parser = AP(description='Test', formatter_class=ap_RDHF, add_help=False)
     # parser.add_argument('args', nargs=ap_remainder)
-    parser.add_argument('-M', '--multi', help='Input filename to loop over')
+    parser.add_argument('-M', '--multi', help='Input filename to loop over, '
+                        'append a range in the format [min:max] to select a '
+                        'subsection of the lines')
+    parser.add_argument('--mcores', help='Number of paralles process to '
+                        'execute.')
 
     args, remaining_argv = parser.parse_known_args()
 
-    if args.multi and os.path.isfile(args.multi):
+    if args.multi:
+        mfile = args.multi.split('[')[0]
+
+        if not os.path.isfile(mfile):
+            raise Exception('%s is not a file?' % mfile)
+
         try:  # Try to read the file
-            with open(args.multi) as f:
-                line = f.readline()
-                largs = copy.copy(remaining_argv)
-                largs += line.split()
-
-                main_args = parseArgs(largs)
-                main(main_args)
-
-                sys.exit(0)
+            with open(mfile) as f:
+                cmdlines = f.readline()
         except Exception as e:
             print(e)
             raise Exception('Failed to read input file %s!' % args.multi)
+
+        if args.multi.find('[') != -1:
+            if args.multi.find(']') != -1 or args.multi.find(':') != -1:
+                raise Exception('Failed to parse line range, should be of '
+                                'form [min:max]!')
+
+            minl, maxl = args.multi.split('[')[1].split(']')[0].split(':')
+
+            cmdlines = cmdlines[minl, maxl]
+
+        mproc = False
+        if args.mcores > 1:
+            mproc = True
+        worker = pproc.get_worker(name='VDRP',
+                                  result_class=pproc.DeferredResult,
+                                  multiprocessing=mproc,
+                                  processes=args.mcores)
+        jobs = []
+
+        for l in cmdlines:
+            largs = copy.copy(remaining_argv)
+            largs += l.split()
+
+            main_args = parseArgs(largs)
+
+            job = worker(main, main_args)
+            jobs.append(job)
+
+            worker.wait()
+            ndone, nerror, _ = worker.jobs_stat()
+            print('Results %d %d' % (ndone, nerror))
+
+            sys.exit(0)
     else:
         # Parse config file and command line paramters
         # command line parameters overwrite config file.
