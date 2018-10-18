@@ -812,12 +812,17 @@ def get_star_spectrum_data(ra, dec, args):
         _logger.info('Reading dithall file %s' % dithall_file)
 
         with _masterLock:
-            ra_ifu, dec_ifu, x_ifu, y_ifu = np.loadtxt(dithall_file,
-                                                       unpack=True,
-                                                       usecols=[0, 1, 3, 4])
-            fname_ifu, shotname_ifu, expname_ifu = \
-                np.loadtxt(dithall_file, unpack=True,
-                           dtype='U50', usecols=[7, 8, 9])
+            try:
+                ra_ifu, dec_ifu, x_ifu, y_ifu = np.loadtxt(dithall_file,
+                                                           unpack=True,
+                                                           usecols=[0, 1, 3, 4])
+                fname_ifu, shotname_ifu, expname_ifu = \
+                    np.loadtxt(dithall_file, unpack=True,
+                               dtype='U50', usecols=[7, 8, 9])
+            except Exception as e:
+                _logger.warn('Failed to read %s' % dithall_file)
+                _logger.exception(e)
+                continue
 
         w = np.where(((np.sqrt((np.cos(dec/57.3)*(ra_ifu-ra))**2
                                + (dec_ifu-dec)**2)*3600.)
@@ -854,7 +859,7 @@ def get_star_spectrum_data(ra, dec, args):
 
             if not os.path.exists(fpath):
                 _logger.warn('No fits data found for ifuslot %s in  %sv%s'
-                                 % (so.ifuslot, so.night, so.shot))
+                             % (so.ifuslot, so.night, so.shot))
                 continue
 
             starobs.append(so)
@@ -1365,6 +1370,9 @@ def get_g_band_throughput(args):
     flxdata = []
 
     for s in stars:
+        if not os.path.exits('sp%d.obsdata' % s.starid):
+            _logger.warn('No spectral data for %d found!' % s.starid)
+            continue
         starobs = read_data('sp%d.obsdata' % s.starid)
         g_flx = run_getsdss(args.bin_dir, 'sp%d_100.dat' % s.starid,
                             args.sdss_filter_file)
@@ -1447,11 +1455,13 @@ def main(args):
                                     args.starid, args)
 
             if task in ['extract_stars', 'all']:
+                os.chdir(wdir)
                 # Equivalent of rsetstar
                 _logger.info('Extracting all shuffle stars')
                 run_shuffle_photometry(args)
 
             if task in ['get_g_band_throughput', 'all']:
+                os.chdir(wdir)
                 _logger.info('Getting g-band photometry')
                 get_g_band_throughput(args)
 
