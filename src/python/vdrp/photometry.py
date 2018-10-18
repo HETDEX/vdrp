@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+ #!/usr/bin/env python
 """ Photometry routine
 
 Contains python translation of Karl Gebhardt
@@ -69,6 +69,8 @@ from threading import Thread
 
 _masterLock = RLock()
 _baseDir = os.getcwd()
+
+_logger = logging.getLogger(__name__)
 
 
 class Worker(Thread):
@@ -483,16 +485,13 @@ def run_command(cmd, input=None):
     input : str, optional
         Input to be sent to the command through stdin.
     """
-    logging.info('Running %s' % cmd)
+    _logger.info('Running %s' % cmd)
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     so, _ = proc.communicate(input=input)
     for l in so.split("\n"):
-        if logging is not None:
-            logging.info(l)
-        else:
-            print(l)
+        _logger.info(l)
     proc.wait()
 
 
@@ -776,14 +775,14 @@ def get_star_spectrum_data(ra, dec, args):
     """
 
     # First find matching shots
-    logging.info('Reading radec file %s' % args.radec_file)
+    _logger.info('Reading radec file %s' % args.radec_file)
     with _masterLock:
         night, shot = np.loadtxt(args.radec_file, unpack=True, dtype='U50',
                                  usecols=[0, 1])
         ra_shot, dec_shot = np.loadtxt(args.radec_file, unpack=True,
                                        usecols=[2, 3])
 
-    logging.info('Searching for shots within %f arcseconds of %f %f'
+    _logger.info('Searching for shots within %f arcseconds of %f %f'
                  % (args.shot_search_radius, ra, dec))
     # First find shots overlapping with the RA/DEC coordinates
     w_s = np.where(((np.sqrt((np.cos(dec/57.3)*(ra_shot-ra))**2
@@ -805,11 +804,11 @@ def get_star_spectrum_data(ra, dec, args):
     starobs = []
     c = 0
 
-    logging.info('Found %d shots' % len(shot))
+    _logger.info('Found %d shots' % len(shot))
 
     for n, s in zip(night, shot):
         dithall_file = args.dithall_dir+'/'+n+'v'+s+'/dithall.use'
-        logging.info('Reading dithall file %s' % dithall_file)
+        _logger.info('Reading dithall file %s' % dithall_file)
 
         with _masterLock:
             ra_ifu, dec_ifu, x_ifu, y_ifu = np.loadtxt(dithall_file,
@@ -823,7 +822,7 @@ def get_star_spectrum_data(ra, dec, args):
                                + (dec_ifu-dec)**2)*3600.)
                       < args.ifu_search_radius))[0]
 
-        logging.info('Found %d fibers' % len(w))
+        args.loggger.info('Found %d fibers' % len(w))
 
         for i in w:
 
@@ -853,8 +852,8 @@ def get_star_spectrum_data(ra, dec, args):
                    so.expname, so.fname) + '.fits'
 
             if not os.path.exists(fpath):
-                logging.warn('No fits data found for ifuslot %s in  %sv%s'
-                             % (so.ifuslot, so.night, so.shot))
+                _logger.warn('No fits data found for ifuslot %s in  %sv%s'
+                                 % (so.ifuslot, so.night, so.shot))
                 continue
 
             starobs.append(so)
@@ -924,7 +923,8 @@ def get_shuffle_stars(shuffledir, nightshot, maglim):
     c = 1
     try:
         with _masterLock:
-            indata = np.loadtxt(shuffledir + '/' + nightshot + '/shout.ifustars')
+            indata = np.loadtxt(shuffledir + '/' + nightshot
+                                + '/shout.ifustars')
         for d in indata:
             star = ShuffleStar(20000 + c, d[0], d[1], d[2], d[3], d[4], d[5],
                                d[6], d[7], d[8])
@@ -934,7 +934,7 @@ def get_shuffle_stars(shuffledir, nightshot, maglim):
 
         return stars
     except OSError:
-        logging.error('Failed to find shuffle stars for night %s, shot %s'
+        _logger.error('Failed to find shuffle stars for night %s, shot %s'
                       % (args.night, args.shotid))
 
 
@@ -1223,13 +1223,13 @@ def run_shuffle_photometry(args):
     jobs = []
 
     for star in stars:
-        job = worker(run_star_photometry, star.ra, star.dec, star.starid, args)
+        job = worker(run_star_photometry, star.ra, star.dec, star.starid, args, thread_id)
         jobs.append(job)
 
         # try:
         #     run_star_photometry(star.ra, star.dec, star.starid, args)
         # except NoShotsException:
-        #     logging.info('No shots found for shuffle star at %f %f'
+        #     _logger.info('No shots found for shuffle star at %f %f'
         #                  % (star.ra,  star.dec))
 
     worker.wait()
@@ -1239,7 +1239,7 @@ def run_shuffle_photometry(args):
     save_data(stars, os.path.join(args.results_dir, '%s.shstars' % nightshot))
 
 
-def run_star_photometry(ra, dec, starid, args):
+def run_star_photometry(ra, dec, starid, args, logid):
     """
     Equivalent of the rsp1a2b script.
 
@@ -1258,12 +1258,12 @@ def run_star_photometry(ra, dec, starid, args):
 
     """
     thread_id = threading.current_thread().ident
-    logging.info('%d Starting stare extraction' % thread_id)
+    _logger.info('%d Starting star extraction' % thread_id)
     nightshot = args.night + 'v' + args.shotid
 
     starname = '%s_%d' % (nightshot, starid)
 
-    logging.info('%d Extracting star %s' % (thread_id, starname))
+    _logger.info('%d Extracting star %s' % (thread_id, starname))
 
     # Create the workdirectory for this star
     # curdir = os.path.abspath(os.path.curdir)
@@ -1278,7 +1278,7 @@ def run_star_photometry(ra, dec, starid, args):
     starobs, nshots = get_star_spectrum_data(ra, dec, args)
 
     if not len(starobs):
-        logging.warn('No shots found, skipping!')
+        _logger.warn('No shots found, skipping!')
         os.chdir(curdir)
         return
 
@@ -1326,7 +1326,7 @@ def run_star_photometry(ra, dec, starid, args):
         if o.dist < mind:
             mind = o.dist
 
-    logging.info('Closest fiber is %.5f arcseconds away' % mind)
+    _logger.info('Closest fiber is %.5f arcseconds away' % mind)
 
     copy_stardata(starname, starid)
 
@@ -1391,23 +1391,33 @@ def main(args):
     utils.createDir(results_dir)
     args.results_dir = results_dir
 
-    fmt = '%(asctime)s %(levelname)-8s %(funcName)15s(): %(message)s'
+    # fmt = '%(asctime)s %(levelname)-8s %(funcName)15s(): %(message)s'
     # set up logging to file - see previous section for more details
-    logging.basicConfig(level=logging.DEBUG,
-                        format=fmt,
-                        datefmt='%m-%d %H:%M',
-                        filename=os.path.join(results_dir,
-                                              args.photometry_logfile),
-                        filemode='w')
-    # define a Handler which writes INFO messages or higher to the sys.stderr
-    console = logging.StreamHandler()
-    console.setLevel(logging.INFO)
-    # set a format which is simpler for console use
-    formatter = logging.Formatter(fmt)
-    # tell the handler to use this format
-    console.setFormatter(formatter)
-    # add the handler to the root logger
-    logging.getLogger('').addHandler(console)
+    thread_id = threading.current_thread().ident
+
+    # logger = logging.getLogger('VDRP_%d' % thread_id)
+    # logger.setLevel(logging.INFO)
+    # formatter = logging.Formatter(fmt, '%m-%d %H:%M')
+    # logger.setFormatter(formatter)
+
+    # logging.basicConfig(level=logging.DEBUG,
+    #                     format=fmt,
+    #                     datefmt='%m-%d %H:%M',
+    #                     filename=os.path.join(results_dir,
+    #                                           args.photometry_logfile),
+    #                     filemode='w')
+    # fHndlr = logging.FileHandler(os.path.join(results_dir,
+    #                                           args.photometry_logfile), 'w')
+    # fHndlr.setLevel(logging.INFO)
+    # fHndlr.setFormatter(formatter)
+    # logger.addHandler(fHndlr)
+    # # define a Handler which writes INFO messages or higher to the sys.stderr
+    # console = logging.StreamHandler()
+    # console.setLevel(logging.INFO)
+    # # tell the handler to use this format
+    # console.setFormatter(formatter)
+    # # add the handler to the root logger
+    # logger.addHandler(console)
 
     # save arguments for the execution
     with open(os.path.join(results_dir, 'args.pickle'), 'wb') as f:
@@ -1415,26 +1425,26 @@ def main(args):
 
     tasks = args.task.split(",")
     if args.use_tmp and tasks != ['all'] and tasks != ['extract_coord']:
-        logging.error("Step-by-step execution not possible when running "
+        _logger.error("Step-by-step execution not possible when running "
                       "in a tmp directory.")
-        logging.error("   Please either call without -t or set "
+        _logger.error("   Please either call without -t or set "
                       "use_tmp to False.")
         sys.exit(1)
 
-    logging.info("Executing tasks : {}".format(tasks))
+    _logger.info("Executing tasks : {}".format(tasks))
 
     # default is to work in results_dir
     wdir = results_dir
     if args.use_tmp:
         # Create a temporary directory
         tmp_dir = tempfile.mkdtemp()
-        logging.info("Tempdir is {}".format(tmp_dir))
-        logging.info("Copying over prior data (if any)...")
+        _logger.info("Tempdir is {}".format(tmp_dir))
+        _logger.info("Copying over prior data (if any)...")
         dir_util.copy_tree(results_dir, tmp_dir)
         # set working directory to tmp_dir
         wdir = tmp_dir
 
-    logging.info("Configuration {}.".format(args.config_source))
+    _logger.info("Configuration {}.".format(args.config_source))
 
     vdrp_info = VdrpInfo.read(wdir)
     vdrp_info.night = args.night
@@ -1449,7 +1459,7 @@ def main(args):
 
             if task in ['extract_coord']:
                 # Equivalent of rsp1
-                logging.info('Running on a single RA/DEC position')
+                _logger.info('Running on a single RA/DEC position')
                 if args.target_ra is None or args.target_dec is None:
                     raise Exception('To run on a specific position, please '
                                     'specify target_ra and target_dec of the'
@@ -1459,11 +1469,11 @@ def main(args):
 
             if task in ['extract_stars', 'all']:
                 # Equivalent of rsetstar
-                logging.info('Extracting all shuffle stars')
+                _logger.info('Extracting all shuffle stars')
                 run_shuffle_photometry(args)
 
             if task in ['get_g_band_throughput', 'all']:
-                logging.info('Getting g-band photometry')
+                _logger.info('Getting g-band photometry')
                 get_g_band_throughput(args)
 
             if task in ['mk_sed_throughput_curve', 'all']:
@@ -1472,12 +1482,12 @@ def main(args):
             if task in ['fit_throughput_curve', 'all']:
                 pass
     except Exception as e:
-        logging.exception(e)
+        _logger.exception(e)
 
     finally:
         os.chdir(args.curdir)
         vdrp_info.save(wdir)
-        logging.info("Done.")
+        _logger.info("Done.")
 
 
 def parse_for_loop(args):
@@ -1501,6 +1511,27 @@ if __name__ == "__main__":
                         help='Number of paralles process to execute.')
 
     args, remaining_argv = parser.parse_known_args()
+
+    # Setup the logging system
+    logDict = {'version': 1,
+               'formatters': {
+                   'simple': {
+                       'format': "%(name)-20s%(levelname)-8s%(message)s"}},
+               'handlers': {
+                   'console': {
+                       'class': 'logging.StreamHandler',
+                       'level': 'INFO',
+                       'formatter': 'simple',
+                       'stream': 'ext://sys.stdout'},
+                   'mplog': {'class': 'mplog.MultiProcessingLog',
+                             'formatter': 'simple',
+                             'level': 'INFO',
+                             'maxsize': 1024,
+                             'mode': 'w',
+                             'name': 'photom.log'}},
+               'root': {'handlers': ['console', 'mplog'], 'level': 'DEBUG'}}
+
+    logging.config.dictConfig(logDict)
 
     if args.multi:
         mfile = args.multi.split('[')[0]
