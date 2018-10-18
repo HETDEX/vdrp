@@ -23,6 +23,7 @@ import shutil
 import sys
 import ConfigParser
 import logging
+import logging.config
 import copy
 import multiprocessing.pool
 import subprocess
