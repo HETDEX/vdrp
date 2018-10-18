@@ -823,7 +823,7 @@ def get_star_spectrum_data(ra, dec, args):
                                + (dec_ifu-dec)**2)*3600.)
                       < args.ifu_search_radius))[0]
 
-        args.loggger.info('Found %d fibers' % len(w))
+        _logger.info('Found %d fibers' % len(w))
 
         for i in w:
 
@@ -1260,94 +1260,97 @@ def run_star_photometry(ra, dec, starid, args):
         The arguments structure
 
     """
-    _logger.info('Starting star extraction')
-    nightshot = args.night + 'v' + args.shotid
+    try:
+        _logger.info('Starting star extraction')
+        nightshot = args.night + 'v' + args.shotid
 
-    starname = '%s_%d' % (nightshot, starid)
+        starname = '%s_%d' % (nightshot, starid)
 
-    _logger.info('Extracting star %s' % starname)
+        _logger.info('Extracting star %s' % starname)
 
-    # Create the workdirectory for this star
-    # curdir = os.path.abspath(os.path.curdir)
-    curdir = args.wdir
-    stardir = curdir + '/' + starname
-    if not os.path.exists(stardir):
-        os.mkdir(stardir)
-    os.chdir(stardir)
+        # Create the workdirectory for this star
+        # curdir = os.path.abspath(os.path.curdir)
+        curdir = args.wdir
+        stardir = curdir + '/' + starname
+        if not os.path.exists(stardir):
+            os.mkdir(stardir)
+        os.chdir(stardir)
 
-    # Extract data like the data in l1
-    starobs, nshots = get_star_spectrum_data(ra, dec, args)
+        # Extract data like the data in l1
+        starobs, nshots = get_star_spectrum_data(ra, dec, args)
 
-    if not len(starobs):
-        _logger.warn('No shots found, skipping!')
+        if not len(starobs):
+            _logger.warn('No shots found, skipping!')
+            os.chdir(curdir)
+            return
+
+        # Call rspstar
+        specfiles = extract_star_spectrum(starobs, args)
+
+        call_sumsplines(args.bin_dir, len(starobs))
+
+        apply_factor_spline(len(nshots))
+
+        call_fitonevp(args.bin_dir, args.extraction_wl,
+                      nightshot+'_'+str(starid))
+
+        average_spectra(specfiles, starobs, args.extraction_wl,
+                        args.average_wlrange)
+
+        get_structaz(starobs, args.multifits_dir)
+
+        run_fit2d(args.bin_dir, ra, dec, starobs, args.seeing,
+                  starname + '.ps')
+
+        call_mkimage(args.bin_dir, ra, dec, starobs)
+
+        run_sumlineserr(args.bin_dir, specfiles)
+
+        run_fitem(args.bin_dir, args.extraction_wl, starname)
+
+        # Extract full spectrum
+
+        fspecfiles = extract_star_spectrum(starobs, args, prefix='f')
+
+        run_sumlineserr(args.bin_dir, fspecfiles)
+
+        indata = np.loadtxt('splines.out', dtype='U50',
+                            usecols=[0, 1, 2, 3, 4])
+
+        with open(starname + 'specf.dat', 'w') as f:
+            for d in indata:
+                f.write('%s %s %s %s %s\n' % (d[0], d[2], d[4], d[1], d[3]))
+
+        call_sumspec(args.bin_dir, starname)
+
+        mind = args.shot_search_radius
+        for o in starobs:
+            if o.dist < mind:
+                mind = o.dist
+
+        _logger.info('Closest fiber is %.5f arcseconds away' % mind)
+
+        copy_stardata(starname, starid)
+
+        save_data(starobs, 'sp%d.obsdata' % starid)
+
+        # Finally save the results to the results_dir
+
+        shutil.copy2(starname+'.ps', args.results_dir)
+        shutil.copy2(starname+'_2d.res', args.results_dir)
+        shutil.copy2(starname+'_2dn.ps', args.results_dir)
+        shutil.copy2(starname+'spec.dat', args.results_dir)
+        shutil.copy2(starname+'spec.res', args.results_dir)
+        shutil.copy2(starname+'spece.dat', args.results_dir)
+        shutil.copy2(starname+'specf.dat', args.results_dir)
+        shutil.copy2(starname+'tot.ps', args.results_dir)
+        shutil.copy2('sp%d_2.dat' % starid, args.results_dir)
+        shutil.copy2('sp%d_100.dat' % starid, args.results_dir)
+        shutil.copy2('sp%d.obsdata' % starid, args.results_dir)
+
         os.chdir(curdir)
-        return
-
-    # Call rspstar
-    specfiles = extract_star_spectrum(starobs, args)
-
-    call_sumsplines(args.bin_dir, len(starobs))
-
-    apply_factor_spline(len(nshots))
-
-    call_fitonevp(args.bin_dir, args.extraction_wl,
-                  nightshot+'_'+str(starid))
-
-    average_spectra(specfiles, starobs, args.extraction_wl,
-                    args.average_wlrange)
-
-    get_structaz(starobs, args.multifits_dir)
-
-    run_fit2d(args.bin_dir, ra, dec, starobs, args.seeing,
-              starname + '.ps')
-
-    call_mkimage(args.bin_dir, ra, dec, starobs)
-
-    run_sumlineserr(args.bin_dir, specfiles)
-
-    run_fitem(args.bin_dir, args.extraction_wl, starname)
-
-    # Extract full spectrum
-
-    fspecfiles = extract_star_spectrum(starobs, args, prefix='f')
-
-    run_sumlineserr(args.bin_dir, fspecfiles)
-
-    indata = np.loadtxt('splines.out', dtype='U50',
-                        usecols=[0, 1, 2, 3, 4])
-
-    with open(starname + 'specf.dat', 'w') as f:
-        for d in indata:
-            f.write('%s %s %s %s %s\n' % (d[0], d[2], d[4], d[1], d[3]))
-
-    call_sumspec(args.bin_dir, starname)
-
-    mind = args.shot_search_radius
-    for o in starobs:
-        if o.dist < mind:
-            mind = o.dist
-
-    _logger.info('Closest fiber is %.5f arcseconds away' % mind)
-
-    copy_stardata(starname, starid)
-
-    save_data(starobs, 'sp%d.obsdata' % starid)
-
-    # Finally save the results to the results_dir
-
-    shutil.copy2(starname+'.ps', args.results_dir)
-    shutil.copy2(starname+'_2d.res', args.results_dir)
-    shutil.copy2(starname+'_2dn.ps', args.results_dir)
-    shutil.copy2(starname+'spec.dat', args.results_dir)
-    shutil.copy2(starname+'spec.res', args.results_dir)
-    shutil.copy2(starname+'spece.dat', args.results_dir)
-    shutil.copy2(starname+'specf.dat', args.results_dir)
-    shutil.copy2(starname+'tot.ps', args.results_dir)
-    shutil.copy2('sp%d_2.dat' % starid, args.results_dir)
-    shutil.copy2('sp%d_100.dat' % starid, args.results_dir)
-    shutil.copy2('sp%d.obsdata' % starid, args.results_dir)
-
-    os.chdir(curdir)
+    except Exception as e:
+        _logger.exception(e)
 
 
 def get_g_band_throughput(args):
