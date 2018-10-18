@@ -16,12 +16,15 @@ from argparse import ArgumentParser as AP
 
 import pyhetdex.tools.processes as pproc
 
+from multiprocessing import RLock
+import threading
 import os
 import shutil
 import sys
 import ConfigParser
 import logging
 import copy
+import multiprocessing.pool
 import subprocess
 from astropy.io import fits
 # from astropy.io import ascii
@@ -60,6 +63,9 @@ import utils
 # from vdrp.utils import read_radec, write_radec
 
 # matplotlib.use("agg")
+
+_masterLock = RLock()
+_baseDir = os.getcwd()
 
 
 class VdrpInfo(OrderedDict):
@@ -733,10 +739,11 @@ def get_star_spectrum_data(ra, dec, args):
 
     # First find matching shots
     logging.info('Reading radec file %s' % args.radec_file)
-    night, shot = np.loadtxt(args.radec_file, unpack=True, dtype='U50',
-                             usecols=[0, 1])
-    ra_shot, dec_shot = np.loadtxt(args.radec_file, unpack=True,
-                                   usecols=[2, 3])
+    with _masterLock:
+        night, shot = np.loadtxt(args.radec_file, unpack=True, dtype='U50',
+                                 usecols=[0, 1])
+        ra_shot, dec_shot = np.loadtxt(args.radec_file, unpack=True,
+                                       usecols=[2, 3])
 
     logging.info('Searching for shots within %f arcseconds of %f %f'
                  % (args.shot_search_radius, ra, dec))
@@ -766,13 +773,13 @@ def get_star_spectrum_data(ra, dec, args):
         dithall_file = args.dithall_dir+'/'+n+'v'+s+'/dithall.use'
         logging.info('Reading dithall file %s' % dithall_file)
 
-        ra_ifu, dec_ifu, x_ifu, y_ifu = np.loadtxt(dithall_file,
-                                                   unpack=True,
-                                                   usecols=[0, 1, 3, 4])
-        fname_ifu, shotname_ifu, expname_ifu = np.loadtxt(dithall_file,
-                                                          unpack=True,
-                                                          dtype='U50',
-                                                          usecols=[7, 8, 9])
+        with _masterLock:
+            ra_ifu, dec_ifu, x_ifu, y_ifu = np.loadtxt(dithall_file,
+                                                       unpack=True,
+                                                       usecols=[0, 1, 3, 4])
+            fname_ifu, shotname_ifu, expname_ifu = \
+                np.loadtxt(dithall_file, unpack=True,
+                           dtype='U50', usecols=[7, 8, 9])
 
         w = np.where(((np.sqrt((np.cos(dec/57.3)*(ra_ifu-ra))**2
                                + (dec_ifu-dec)**2)*3600.)
@@ -878,7 +885,8 @@ def get_shuffle_stars(shuffledir, nightshot, maglim):
 
     c = 1
     try:
-        indata = np.loadtxt(shuffledir + '/' + nightshot + '/shout.ifustars')
+        with _masterLock:
+            indata = np.loadtxt(shuffledir + '/' + nightshot + '/shout.ifustars')
         for d in indata:
             star = ShuffleStar(20000 + c, d[0], d[1], d[2], d[3], d[4], d[5],
                                d[6], d[7], d[8])
@@ -1169,7 +1177,9 @@ def run_shuffle_photometry(args):
         mproc = True
         resclass = pproc.DeferredResult
 
-    worker = pproc.get_worker(name='VDRP', result_class=resclass,
+    thread_id = threading.current_thread().ident
+    worker = pproc.get_worker(name='VDRP_%d' % thread_id,
+                              result_class=resclass,
                               multiprocessing=mproc,
                               processes=args.shuffle_cores)
     jobs = []
@@ -1209,12 +1219,18 @@ def run_star_photometry(ra, dec, starid, args):
         The arguments structure
 
     """
+    thread_id = threading.current_thread().ident
+    logging.info('%d Starting stare extraction' % thread_id)
     nightshot = args.night + 'v' + args.shotid
 
     starname = '%s_%d' % (nightshot, starid)
 
+    logging.info('%d Extracting star %s' % (thread_id, starname))
+
     # Create the workdirectory for this star
-    curdir = os.path.abspath(os.path.curdir)
+    # curdir = os.path.abspath(os.path.curdir)
+    curdir = args.wdir
+    print(thread_id, 'Working in curdir')
     stardir = curdir + '/' + starname
     if not os.path.exists(stardir):
         os.mkdir(stardir)
@@ -1225,6 +1241,7 @@ def run_star_photometry(ra, dec, starid, args):
 
     if not len(starobs):
         logging.warn('No shots found, skipping!')
+        os.chdir(curdir)
         return
 
     # Call rspstar
@@ -1331,7 +1348,7 @@ def main(args):
     global vdrp_info
 
     # Create results directory for given night and shot
-    cwd = os.getcwd()
+    cwd = _baseDir
     results_dir = os.path.join(cwd, args.night + 'v' + args.shotid,  'res')
     utils.createDir(results_dir)
     args.results_dir = results_dir
@@ -1386,11 +1403,12 @@ def main(args):
     vdrp_info.shotid = args.shotid
 
     args.curdir = os.path.abspath(os.path.curdir)
+    args.wdir = wdir
 
     try:
-        os.chdir(wdir)
-
         for task in tasks:
+            os.chdir(wdir)
+
             if task in ['extract_coord']:
                 # Equivalent of rsp1
                 logging.info('Running on a single RA/DEC position')
@@ -1407,7 +1425,7 @@ def main(args):
                 run_shuffle_photometry(args)
 
             if task in ['get_g_band_throughput', 'all']:
-                logging.info('Extracting all shuffle stars')
+                logging.info('Getting g-band photometry')
                 get_g_band_throughput(args)
 
             if task in ['mk_sed_throughput_curve', 'all']:
@@ -1415,6 +1433,8 @@ def main(args):
 
             if task in ['fit_throughput_curve', 'all']:
                 pass
+    except Exception as e:
+        logging.exception(e)
 
     finally:
         os.chdir(args.curdir)
@@ -1439,8 +1459,8 @@ if __name__ == "__main__":
     parser.add_argument('-M', '--multi', help='Input filename to loop over, '
                         'append a range in the format [min:max] to select a '
                         'subsection of the lines')
-    parser.add_argument('--mcores', help='Number of paralles process to '
-                        'execute.')
+    parser.add_argument('--mcores', type=int, default=1,
+                        help='Number of paralles process to execute.')
 
     args, remaining_argv = parser.parse_known_args()
 
@@ -1452,19 +1472,19 @@ if __name__ == "__main__":
 
         try:  # Try to read the file
             with open(mfile) as f:
-                cmdlines = f.readline()
+                cmdlines = f.readlines()
         except Exception as e:
             print(e)
             raise Exception('Failed to read input file %s!' % args.multi)
 
         if args.multi.find('[') != -1:
-            if args.multi.find(']') != -1 or args.multi.find(':') != -1:
+            try:
+                minl, maxl = args.multi.split('[')[1].split(']')[0].split(':')
+            except ValueError:
                 raise Exception('Failed to parse line range, should be of '
                                 'form [min:max]!')
 
-            minl, maxl = args.multi.split('[')[1].split(']')[0].split(':')
-
-            cmdlines = cmdlines[minl, maxl]
+            cmdlines = cmdlines[int(minl):int(maxl)]
 
         mproc = False
         resclass = pproc.Result
@@ -1474,7 +1494,8 @@ if __name__ == "__main__":
         worker = pproc.get_worker(name='VDRP',
                                   result_class=resclass,
                                   multiprocessing=mproc,
-                                  processes=args.mcores)
+                                  processes=args.mcores,
+                                  poolclass=multiprocessing.pool.ThreadPool)
         jobs = []
 
         for l in cmdlines:
@@ -1483,14 +1504,14 @@ if __name__ == "__main__":
 
             main_args = parseArgs(largs)
 
-            job = worker(main, main_args)
+            job = worker(main, copy.copy(main_args))
             jobs.append(job)
 
-            worker.wait()
-            ndone, nerror, _ = worker.jobs_stat()
-            print('Results %d %d' % (ndone, nerror))
+        worker.wait()
+        ndone, nerror, _ = worker.jobs_stat()
+        print('Results %d %d' % (ndone, nerror))
 
-            sys.exit(0)
+        sys.exit(0)
     else:
         # Parse config file and command line paramters
         # command line parameters overwrite config file.
