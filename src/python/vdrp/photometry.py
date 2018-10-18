@@ -889,6 +889,8 @@ def extract_star_spectrum(starobs, args, prefix=''):
 
     specfiles = []
 
+    _logger.info('Extracting star spectrum')
+
     for s in starobs:
         fpath = '%s/%s/virus/virus%07d/%s/virus/%s' \
             % (args.multifits_dir, s.night, int(s.shot),
