@@ -23,7 +23,7 @@ import shutil
 import sys
 import ConfigParser
 import logging
-import logging.
+import logging.config
 import copy
 import multiprocessing.pool
 import subprocess
@@ -71,7 +71,7 @@ from threading import Thread
 _masterLock = RLock()
 _baseDir = os.getcwd()
 
-_logger = logging.getLogger(__name__)
+_logger = logging.getLogger()
 
 
 class Worker(Thread):
