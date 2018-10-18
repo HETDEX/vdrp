@@ -1,4 +1,4 @@
- #!/usr/bin/env python
+#!/usr/bin/env python
 """ Photometry routine
 
 Contains python translation of Karl Gebhardt
@@ -1223,7 +1223,7 @@ def run_shuffle_photometry(args):
     jobs = []
 
     for star in stars:
-        job = worker(run_star_photometry, star.ra, star.dec, star.starid, args, thread_id)
+        job = worker(run_star_photometry, star.ra, star.dec, star.starid, args)
         jobs.append(job)
 
         # try:
@@ -1239,7 +1239,7 @@ def run_shuffle_photometry(args):
     save_data(stars, os.path.join(args.results_dir, '%s.shstars' % nightshot))
 
 
-def run_star_photometry(ra, dec, starid, args, logid):
+def run_star_photometry(ra, dec, starid, args):
     """
     Equivalent of the rsp1a2b script.
 
@@ -1257,18 +1257,16 @@ def run_star_photometry(ra, dec, starid, args, logid):
         The arguments structure
 
     """
-    thread_id = threading.current_thread().ident
-    _logger.info('%d Starting star extraction' % thread_id)
+    _logger.info('Starting star extraction')
     nightshot = args.night + 'v' + args.shotid
 
     starname = '%s_%d' % (nightshot, starid)
 
-    _logger.info('%d Extracting star %s' % (thread_id, starname))
+    _logger.info('Extracting star %s' % starname)
 
     # Create the workdirectory for this star
     # curdir = os.path.abspath(os.path.curdir)
     curdir = args.wdir
-    print(thread_id, 'Working in curdir')
     stardir = curdir + '/' + starname
     if not os.path.exists(stardir):
         os.mkdir(stardir)
@@ -1353,6 +1351,9 @@ def get_g_band_throughput(args):
 
     nightshot = args.night + 'v' + args.shotid
 
+    _logger.info('Reading %s.shstars in %s'
+                 % (nightshot, os.path.abspath(os.path.curdir)))
+
     stars = read_data('%s.shstars' % nightshot)
 
     flxdata = []
@@ -1390,34 +1391,6 @@ def main(args):
     results_dir = os.path.join(cwd, args.night + 'v' + args.shotid,  'res')
     utils.createDir(results_dir)
     args.results_dir = results_dir
-
-    # fmt = '%(asctime)s %(levelname)-8s %(funcName)15s(): %(message)s'
-    # set up logging to file - see previous section for more details
-    thread_id = threading.current_thread().ident
-
-    # logger = logging.getLogger('VDRP_%d' % thread_id)
-    # logger.setLevel(logging.INFO)
-    # formatter = logging.Formatter(fmt, '%m-%d %H:%M')
-    # logger.setFormatter(formatter)
-
-    # logging.basicConfig(level=logging.DEBUG,
-    #                     format=fmt,
-    #                     datefmt='%m-%d %H:%M',
-    #                     filename=os.path.join(results_dir,
-    #                                           args.photometry_logfile),
-    #                     filemode='w')
-    # fHndlr = logging.FileHandler(os.path.join(results_dir,
-    #                                           args.photometry_logfile), 'w')
-    # fHndlr.setLevel(logging.INFO)
-    # fHndlr.setFormatter(formatter)
-    # logger.addHandler(fHndlr)
-    # # define a Handler which writes INFO messages or higher to the sys.stderr
-    # console = logging.StreamHandler()
-    # console.setLevel(logging.INFO)
-    # # tell the handler to use this format
-    # console.setFormatter(formatter)
-    # # add the handler to the root logger
-    # logger.addHandler(console)
 
     # save arguments for the execution
     with open(os.path.join(results_dir, 'args.pickle'), 'wb') as f:
@@ -1516,7 +1489,9 @@ if __name__ == "__main__":
     logDict = {'version': 1,
                'formatters': {
                    'simple': {
-                       'format': "%(name)-20s%(levelname)-8s%(message)s"}},
+                       'format': '%(asctime)s %(levelname)-8s '
+                       '%(funcName)15s(): %(message)s',
+                       'datefmt': '%m-%d %H:%M'}},
                'handlers': {
                    'console': {
                        'class': 'logging.StreamHandler',

@@ -1,4 +1,4 @@
-from logging.handlers import FileHandler
+from logging.handlers import RotatingFileHandler
 import multiprocessing
 import threading
 import logging
@@ -11,7 +11,7 @@ class MultiProcessingLog(logging.Handler):
     def __init__(self, name, mode, maxsize, rotate):
         logging.Handler.__init__(self)
 
-        self._handler = FileHandler(name, mode, maxsize, rotate)
+        self._handler = RotatingFileHandler(name, mode, maxsize, rotate)
         self.queue = multiprocessing.Queue(-1)
 
         t = threading.Thread(target=self.receive)
