@@ -15,11 +15,13 @@ import sys
 def main(args):
     # pylauncher.ClassicLauncher(args.cmdfile, debug="job+host+task",
     #                            cores=args.cores)
-    tmp_dir = tempfile.mkdtemp()
-    pylauncher.ClassicLauncher(args.cmdfile, cores=args.cores, workdir=tmp_dir)
+    workdir = 'pylauncher_vdrp'
+    if os.path.exists(workdir):
+        os.rmdir(workdir)
+    pylauncher.ClassicLauncher(args.cmdfile, cores=args.cores, workdir=workdir)
 
     if not args.debug:
-        os.rmdir(tmp_dir)
+        os.rmdir(workdir)
 
 
 def parse_args(argv):

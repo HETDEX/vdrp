@@ -70,7 +70,10 @@ def main(args):
 
     nc = len(commands)
 
-    nfiles = nc / args.jobs / args.hosts
+    nfiles = nc / args.jobs / args.nodes + 1
+
+    if nc < args.jobs * args.nodes * args.threads:
+        args.jpbs = nc / args.nodes / args.threads + 1
 
     print('Found %d commands' % nc)
     print('Splitting them onto %d nodes' % args.nodes)
@@ -114,11 +117,12 @@ def create_job_file(fname, commands, args):
                 cmd = commands.pop(0)
                 jf.write('%s\n' % cmd.split(' ', 1)[1])
 
-                if (job_c+1) % nthreads == 0 or job_c+2 == njobs \
+                if (job_c+1) % njobs == 0 or job_c+2 == njobs \
                    or len(commands) == 0:
                     taskname = cmd.split()[0]
-                    fout.write('%s -M %s[%d:%d]\n' % (taskname, subname,
-                                                      min_t, job_c))
+                    fout.write('%s --mcores %d -M %s[%d:%d]\n'
+                               % (taskname, args.threads, subname,
+                                  min_t, job_c))
                     min_t = job_c+1
                 job_c += 1
 
@@ -128,7 +132,7 @@ def create_job_file(fname, commands, args):
     with open(fn + '.slurm', 'w') as sf:
         sf.write(slurm_header.format(jobname=fn,
                                      nnodes=args.nodes,
-                                     ntasks=20/args.cores*args.nodes,
+                                     ntasks=20*args.nodes,
                                      runtime=runtime,
                                      workdir='./'))
         debug = ''
@@ -136,7 +140,7 @@ def create_job_file(fname, commands, args):
             debug = '-d'
         sf.write(pyslurm.format(workdir='./',
                                 launcherpath=launcherdir,
-                                ncores=args.cores,
+                                ncores=args.threads,
                                 debug=debug,
                                 runfile=fname))
 #        else:
