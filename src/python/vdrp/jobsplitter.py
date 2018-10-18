@@ -28,12 +28,12 @@ echo " WORKING DIR: {workdir:s}/"
 
 '''
 
-pyslurm='''module load pylauncher
+pyslurm = '''module load pylauncher
 module unload xalt
-{launcherpath:s}/vdrprunner.py -c {ncores:d} {runfile}
+{launcherpath:s}/vdrprunner.py -c {ncores:d} {debug:s} {runfile}
 '''
 
-shslurm='''module load launcher
+shslurm = '''module load launcher
 module unload xalt
 export EXECUTABLE=$TACC_LAUNCHER_DIR/init_launcher
 export WORKDIR={workdir:s}
@@ -46,7 +46,7 @@ export TACC_LAUNCHER_SCHED=dynamic
 
 $TACC_LAUNCHER_DIR/paramrun SLURM $EXECUTABLE $WORKDIR $CONTROL_FILE $PHI_WORKDIR $PHI_CONTROL_FILE'''
 
-slurm_footer='''
+slurm_footer = '''
 echo " "
 echo " Parameteric VDRP Job Complete"
 echo " "
@@ -70,20 +70,15 @@ def main(args):
 
     nc = len(commands)
 
-    ncores = int(args.nodes * 20 / args.cores)
-    nfiles = nc / args.jobs / ncores / args.tasks + 1
+    nfiles = nc / args.jobs / args.hosts
 
     print('Found %d commands' % nc)
     print('Splitting them onto %d nodes' % args.nodes)
-    print('Running %d tasks per python instance' % args.tasks)
-    print('Using %d cores per instance' % args.cores)
-    print('Scheduling %d jobs per available core' % args.jobs)
-    print('Scheduling %d jobs per node' % (nc/ncores*args.nodes+1))
-    print('Resulting in %d jobfiles with up to %d instances'
-          % (nfiles, args.jobs*ncores))
+    print('Running %d jobs per python instance in %d threads'
+          % (args.jobs, args.threads))
+    print('Resulting in %d jobfiles' % nfiles)
 
     file_c = 1
-    cmd_c = 1
 
     while file_c <= nfiles:
 
@@ -91,15 +86,15 @@ def main(args):
             raise Exception('Found fewer commands than expected!')
 
         cmd_file = '%s_%d%s' % (fname, file_c, fext)
-        create_job_file(cmd_file, commands, ncores, args)
+        create_job_file(cmd_file, commands, args)
 
         file_c += 1
 
 
-def create_job_file(fname, commands, ncores, args):
+def create_job_file(fname, commands, args):
 
-    ntasks = args.tasks
-    njobs = args.jobs*ncores*ntasks
+    nthreads = args.threads
+    njobs = args.jobs*nthreads
     runtime = args.runtime
 
     job_c = 0
@@ -116,18 +111,15 @@ def create_job_file(fname, commands, ncores, args):
             while job_c < njobs:
                 if not len(commands):
                     break
-                if ntasks == 1:
-                    # Only one task per instance, no need to run in multi mode
-                    fout.write('%s\n' % commands.pop(0))
-                else:
-                    cmd = commands.pop(0)
-                    jf.write('%s\n' % cmd.split(' ', 1)[1])
+                cmd = commands.pop(0)
+                jf.write('%s\n' % cmd.split(' ', 1)[1])
 
-                    if (job_c+1) % ntasks == 0 or job_c+2 == njobs:
-                        taskname = cmd.split()[0]
-                        fout.write('%s -M %s[%d:%d]\n' % (taskname, subname,
-                                                          min_t, job_c))
-                        min_t = job_c+1
+                if (job_c+1) % nthreads == 0 or job_c+2 == njobs \
+                   or len(commands) == 0:
+                    taskname = cmd.split()[0]
+                    fout.write('%s -M %s[%d:%d]\n' % (taskname, subname,
+                                                      min_t, job_c))
+                    min_t = job_c+1
                 job_c += 1
 
     # Now write the corresponding slurm file
@@ -139,15 +131,18 @@ def create_job_file(fname, commands, ncores, args):
                                      ntasks=20/args.cores*args.nodes,
                                      runtime=runtime,
                                      workdir='./'))
-        if args.pyrunner:
-            sf.write(pyslurm.format(workdir='./',
-                                    launcherpath=launcherdir,
-                                    ncores=args.cores,
-                                    runfile=fname))
-        else:
-            sf.write(shslurm.format(launcherpath=launcherdir,
-                                    runfile=fname,
-                                    workdir='./'))
+        debug = ''
+        if args.debug:
+            debug = '-d'
+        sf.write(pyslurm.format(workdir='./',
+                                launcherpath=launcherdir,
+                                ncores=args.cores,
+                                debug=debug,
+                                runfile=fname))
+#        else:
+#            sf.write(shslurm.format(launcherpath=launcherdir,
+#                                    runfile=fname,
+#                                    workdir='./'))
 
         sf.write(slurm_footer)
 
@@ -169,20 +164,18 @@ def parse_args(argv):
 
     p = AP(formatter_class=AHF)
 
-    p.add_argument('--jobs', '-j', type=int, default=100,
-                   help='Maximum number of job to run per core')
     p.add_argument('--nodes', '-n', type=int, default=1,
                    help='Number of nodes to use per job')
-    p.add_argument('--tasks', '-t', type=int, default=1,
-                   help='Number of tasks per python process')
-    p.add_argument('--cores', '-c', type=int, default=1,
-                   help='Number of cores for multiprocessing')
+    p.add_argument('--jobs', '-j', type=int, default=20,
+                   help='Number of jobs to schedule per node')
+    p.add_argument('--threads', '-t', type=int, default=1,
+                   help='Number of threads to use per python process')
     p.add_argument('--runtime', '-r', type=str, default='00:30:00',
                    help='Expected runtime of slurm job')
     p.add_argument('--queue', '-q', type=str, default='vis',
                    help='Slurm queue to use.')
-    p.add_argument('--pyrunner', '-p', action="store_true",
-                   help='Use pyrunner instead of paramrun.')
+    p.add_argument('--debug', '-d', action="store_true",
+                   help='Keep pylauncher workdir after completion')
     p.add_argument('cmdfile', type=str, help="""Input commands file""")
 
     return p.parse_args(args=argv)

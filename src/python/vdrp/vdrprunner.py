@@ -6,14 +6,20 @@ from __future__ import print_function
 from argparse import ArgumentParser as AP
 from argparse import ArgumentDefaultsHelpFormatter as AHF
 
+import tempfile
 import pylauncher
+import os
 import sys
 
 
 def main(args):
     # pylauncher.ClassicLauncher(args.cmdfile, debug="job+host+task",
     #                            cores=args.cores)
-    pylauncher.ClassicLauncher(args.cmdfile, cores=args.cores)
+    tmp_dir = tempfile.mkdtemp()
+    pylauncher.ClassicLauncher(args.cmdfile, cores=args.cores, workdir=tmp_dir)
+
+    if not args.debug:
+        os.rmdir(tmp_dir)
 
 
 def parse_args(argv):
@@ -35,6 +41,8 @@ def parse_args(argv):
 
     p.add_argument('--cores', '-c', type=int, default=1,
                    help='Number of cores for multiprocessing')
+    p.add_argument('--debug', '-d', action="store_true",
+                   help='Keep pylauncher workdir after completion')
     p.add_argument('cmdfile', type=str, help="""Input commands file""")
 
     return p.parse_args(args=argv)
