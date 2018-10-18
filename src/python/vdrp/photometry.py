@@ -23,7 +23,7 @@ import shutil
 import sys
 import ConfigParser
 import logging
-import logging.config
+import logging.
 import copy
 import multiprocessing.pool
 import subprocess
@@ -1504,7 +1504,8 @@ if __name__ == "__main__":
                              'level': 'INFO',
                              'maxsize': 1024,
                              'mode': 'w',
-                             'name': 'photom.log'}},
+                             'name': 'photom.log',
+                             'rotate': 0}},
                'root': {'handlers': ['console', 'mplog'], 'level': 'DEBUG'}}
 
     logging.config.dictConfig(logDict)
