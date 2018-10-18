@@ -64,8 +64,46 @@ import utils
 
 # matplotlib.use("agg")
 
+from Queue import Queue
+from threading import Thread
+
 _masterLock = RLock()
 _baseDir = os.getcwd()
+
+
+class Worker(Thread):
+    """Thread executing tasks from a given tasks queue"""
+    def __init__(self, tasks):
+        Thread.__init__(self)
+        self.tasks = tasks
+        self.daemon = True
+        self.start()
+
+    def run(self):
+        while True:
+            func, args, kargs = self.tasks.get()
+            try:
+                func(*args, **kargs)
+            except Exception as e:
+                print(e)
+            finally:
+                self.tasks.task_done()
+
+
+class ThreadPool:
+    """Pool of threads consuming tasks from a queue"""
+    def __init__(self, num_threads):
+        self.tasks = Queue(num_threads)
+        for _ in range(num_threads):
+            Worker(self.tasks)
+
+    def add_task(self, func, *args, **kargs):
+        """Add a task to the queue"""
+        self.tasks.put((func, args, kargs))
+
+    def wait_completion(self):
+        """Wait for completion of all the tasks in the queue"""
+        self.tasks.join()
 
 
 class VdrpInfo(OrderedDict):
@@ -1487,16 +1525,19 @@ if __name__ == "__main__":
             cmdlines = cmdlines[int(minl):int(maxl)]
 
         mproc = False
-        resclass = pproc.Result
+        # resclass = pproc.Result
         if args.mcores > 1:
             mproc = True
-            resclass = pproc.DeferredResult
-        worker = pproc.get_worker(name='VDRP',
-                                  result_class=resclass,
-                                  multiprocessing=mproc,
-                                  processes=args.mcores,
-                                  poolclass=multiprocessing.pool.ThreadPool)
-        jobs = []
+            # resclass = pproc.DeferredResult
+        # worker = pproc.get_worker(name='VDRP',
+        #                           result_class=resclass,
+        #                           multiprocessing=mproc,
+        #                           processes=args.mcores,
+        #                           poolclass=multiprocessing.pool.ThreadPool)
+
+        pool = ThreadPool(args.mcores)
+
+        # jobs = []
 
         for l in cmdlines:
             largs = copy.copy(remaining_argv)
@@ -1504,12 +1545,14 @@ if __name__ == "__main__":
 
             main_args = parseArgs(largs)
 
-            job = worker(main, copy.copy(main_args))
-            jobs.append(job)
+            # job = worker(main, copy.copy(main_args))
+            # jobs.append(job)
+            pool.add_task(main, copy.copy(main_args))
 
-        worker.wait()
-        ndone, nerror, _ = worker.jobs_stat()
-        print('Results %d %d' % (ndone, nerror))
+        # worker.wait()
+        pool.wait_completion()
+        # ndone, nerror, _ = worker.jobs_stat()
+        # print('Results %d %d' % (ndone, nerror))
 
         sys.exit(0)
     else:
