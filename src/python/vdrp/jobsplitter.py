@@ -71,14 +71,13 @@ def main(args):
     nc = len(commands)
 
     nfiles = nc / args.jobs / args.nodes + 1
-
-    if nc < args.jobs * args.nodes * args.threads:
-        args.jpbs = nc / args.nodes / args.threads + 1
+    jobsperfile = nc / nfiles + 1
+    jobspernode = nc / nfiles / args.nodes + 1
 
     print('Found %d commands' % nc)
     print('Splitting them onto %d nodes' % args.nodes)
     print('Running %d jobs per python instance in %d threads'
-          % (args.jobs, args.threads))
+          % (jobspernode, args.threads))
     print('Resulting in %d jobfiles' % nfiles)
 
     file_c = 1
@@ -89,15 +88,13 @@ def main(args):
             raise Exception('Found fewer commands than expected!')
 
         cmd_file = '%s_%d%s' % (fname, file_c, fext)
-        create_job_file(cmd_file, commands, args)
+        create_job_file(cmd_file, commands, jobsperfile, jobspernode, args)
 
         file_c += 1
 
 
-def create_job_file(fname, commands, args):
+def create_job_file(fname, commands, maxjobs, jobspernode, args):
 
-    nthreads = args.threads
-    njobs = args.jobs*nthreads
     runtime = args.runtime
 
     job_c = 0
@@ -111,13 +108,13 @@ def create_job_file(fname, commands, args):
 
         with open(subname, 'w') as jf:
 
-            while job_c < njobs:
+            while job_c < maxjobs:
                 if not len(commands):
                     break
                 cmd = commands.pop(0)
                 jf.write('%s\n' % cmd.split(' ', 1)[1])
 
-                if (job_c+1) % njobs == 0 or job_c+2 == njobs \
+                if (job_c+1) % jobspernode == 0 or job_c+1 == maxjobs \
                    or len(commands) == 0:
                     taskname = cmd.split()[0]
                     fout.write('%s --mcores %d -M %s[%d:%d]\n'
