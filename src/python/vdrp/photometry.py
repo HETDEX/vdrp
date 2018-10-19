@@ -1240,9 +1240,13 @@ def run_shuffle_photometry(args):
         #     _logger.info('No shots found for shuffle star at %f %f'
         #                  % (star.ra,  star.dec))
 
-    worker.wait()
-    ndone, nerror, _ = worker.jobs_stat()
-    print('Results %d %d' % (ndone, nerror))
+    finished = False
+
+    while not finished:
+        worker.wait(timeout=60)
+        _logger.info('Ran into timeout.')
+        ndone, nerror, ntot = worker.jobs_stat()
+        _logger.info('Current results %d %d %d' % (ntot, ndone, nerror))
 
     save_data(stars, os.path.join(args.results_dir, '%s.shstars' % nightshot))
 
