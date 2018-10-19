@@ -17,7 +17,7 @@ from argparse import ArgumentParser as AP
 import pyhetdex.tools.processes as pproc
 
 import time
-from multiprocessing import RLock
+from multiprocessing import RLock, Pool
 import threading
 import os
 import shutil
@@ -1224,16 +1224,19 @@ def run_shuffle_photometry(args):
         mproc = True
         resclass = pproc.DeferredResult
 
-    thread_id = threading.current_thread().ident
-    worker = pproc.get_worker(name='VDRP_%d' % thread_id,
-                              result_class=resclass,
-                              multiprocessing=mproc,
-                              processes=args.shuffle_cores)
-    jobs = []
+    # thread_id = threading.current_thread().ident
+    # worker = pproc.get_worker(name='VDRP_%d' % thread_id,
+    #                           result_class=resclass,
+    #                           multiprocessing=mproc,
+    #                           processes=args.shuffle_cores)
+    # jobs = []
+    pool = Pool(args.shuffle_cores)
 
     for star in stars:
-        job = worker(run_star_photometry, star.ra, star.dec, star.starid, args)
-        jobs.append(job)
+        pool.apply_async(run_star_photometry, star.ra, star.dec,
+                         star.starid, args)
+        # job = worker(run_star_photometry, star.ra, star.dec, star.starid, args)
+        # jobs.append(job)
 
         # try:
         #     run_star_photometry(star.ra, star.dec, star.starid, args)
@@ -1241,16 +1244,19 @@ def run_shuffle_photometry(args):
         #     _logger.info('No shots found for shuffle star at %f %f'
         #                  % (star.ra,  star.dec))
 
-    finished = False
+    # finished = False
 
-    while not finished:
-        time.sleep(60)
-        # worker.wait(timeout=60)
-        _logger.info('Ran into timeout.')
-        ndone, nerror, ntot = worker.jobs_stat()
-        _logger.info('Current results %d %d %d' % (ntot, ndone, nerror))
-        if (ndone + nerror) == ntot:
-            break
+    # while not finished:
+    #     time.sleep(60)
+    #     # worker.wait(timeout=60)
+    #     _logger.info('Ran into timeout.')
+    #     ndone, nerror, ntot = worker.jobs_stat()
+    #     _logger.info('Current results %d %d %d' % (ntot, ndone, nerror))
+    #     if (ndone + nerror) == ntot:
+    #         break
+
+    pool.close()
+    pool.join()
 
     save_data(stars, os.path.join(args.results_dir, '%s.shstars' % nightshot))
 

@@ -41,6 +41,7 @@ class MultiProcessingLog(logging.Handler):
         # ensure that exc_info and args have been stringified. Removes any
         # chance of unpickleable things inside and possibly reduces message
         # size sent over the pipe
+        record.msg = "%d %s" % (threading.current_thread().ident, record.msg)
         if record.args:
             record.msg = record.msg % record.args
             record.args = None
