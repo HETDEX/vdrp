@@ -26,15 +26,15 @@ slurm_header = '''#!/bin/bash
 cd {workdir:s}
 echo " WORKING DIR: {workdir:s}/"
 
+module load gcc
+module unload xalt
 '''
 
 pyslurm = '''module load pylauncher
-module unload xalt
 {launcherpath:s}/vdrprunner.py -c {ncores:d} {debug:s} {runfile}
 '''
 
 shslurm = '''module load launcher
-module unload xalt
 export EXECUTABLE=$TACC_LAUNCHER_DIR/init_launcher
 export WORKDIR={workdir:s}
 export CONTROL_FILE={runfile:s}
@@ -137,7 +137,7 @@ def create_job_file(fname, commands, maxjobs, jobspernode, args):
             debug = '-d'
         sf.write(pyslurm.format(workdir='./',
                                 launcherpath=launcherdir,
-                                ncores=args.threads,
+                                ncores=args.threads*args.cores,
                                 debug=debug,
                                 runfile=fname))
 #        else:
@@ -171,6 +171,8 @@ def parse_args(argv):
                    help='Number of jobs to schedule per node')
     p.add_argument('--threads', '-t', type=int, default=1,
                    help='Number of threads to use per python process')
+    p.add_argument('--cores', '-c', type=int, default=20,
+                   help='Number of jobs to schedule per node')
     p.add_argument('--runtime', '-r', type=str, default='00:30:00',
                    help='Expected runtime of slurm job')
     p.add_argument('--queue', '-q', type=str, default='vis',

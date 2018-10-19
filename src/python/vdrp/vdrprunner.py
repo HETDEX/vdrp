@@ -12,6 +12,47 @@ import os
 import sys
 
 
+def VDRPLauncher(commandfile, **kwargs):
+    """A LauncherJob for a file of single or multi-threaded commands.
+
+    The following values are specified for your convenience:
+
+    * hostpool : based on HostListByName
+    * commandexecutor : SSHExecutor
+    * taskgenerator : based on the ``commandfile`` argument
+    * completion : based on a directory ``pylauncher_tmp`` with
+      jobid environment variables attached
+
+    :param commandfile: name of file with commandlines (required)
+    :param cores: number of cores (keyword, optional, default=1)
+    :param workdir: directory for output and temporary files
+        (optional, keyword, default uses the job number); the launcher
+         refuses to reuse an already existing directory
+    :param debug: debug types string (optional, keyword)
+    """
+    jobid = pylauncher.JobId()
+    debug = kwargs.pop("debug", "")
+    workdir = kwargs.pop("workdir", "pylauncher_tmp"+str(jobid))
+    cores = kwargs.pop("cores", 1)
+    job = pylauncher.LauncherJob(
+        hostpool=pylauncher.HostPool(
+            hostlist=pylauncher.SLURMHostList(
+                tag=".maverick.tacc.utexas.edu"),
+            commandexecutor=pylauncher.SSHExecutor(
+                workdir=workdir, debug=debug),
+            debug=debug),
+        taskgenerator=pylauncher.TaskGenerator(
+            pylauncher.FileCommandlineGenerator(commandfile, cores=cores,
+                                                debug=debug),
+            completion=lambda x: pylauncher.FileCompletion(taskid=x,
+                                                           stamproot="expire",
+                                                           stampdir=workdir),
+            debug=debug),
+        debug=debug, **kwargs)
+    job.run()
+    print(job.final_report())
+
+    
 def main(args):
     # pylauncher.ClassicLauncher(args.cmdfile, debug="job+host+task",
     #                            cores=args.cores)
