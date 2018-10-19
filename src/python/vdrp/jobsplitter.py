@@ -31,7 +31,7 @@ module unload xalt
 '''
 
 pyslurm = '''module load pylauncher
-{launcherpath:s}/vdrprunner.py -c {ncores:d} {debug:s} {runfile}
+{launcherpath:s}/vdrprunner.py -c {ncores:d} -l {logname:s} {debug:s} {runfile}
 '''
 
 shslurm = '''module load launcher
@@ -88,12 +88,12 @@ def main(args):
             raise Exception('Found fewer commands than expected!')
 
         cmd_file = '%s_%d%s' % (fname, file_c, fext)
-        create_job_file(cmd_file, commands, jobsperfile, jobspernode, args)
+        create_job_file(cmd_file, file_c, commands, jobsperfile, jobspernode, args)
 
         file_c += 1
 
 
-def create_job_file(fname, commands, maxjobs, jobspernode, args):
+def create_job_file(fname, counter, commands, maxjobs, jobspernode, args):
 
     runtime = args.runtime
 
@@ -138,6 +138,7 @@ def create_job_file(fname, commands, maxjobs, jobspernode, args):
         sf.write(pyslurm.format(workdir='./',
                                 launcherpath=launcherdir,
                                 ncores=args.threads*args.cores,
+                                logname='vdrp_%d.log' % counter,
                                 debug=debug,
                                 runfile=fname))
 #        else:

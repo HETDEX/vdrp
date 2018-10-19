@@ -1498,6 +1498,8 @@ if __name__ == "__main__":
                         'subsection of the lines')
     parser.add_argument('--mcores', type=int, default=1,
                         help='Number of paralles process to execute.')
+    parser.add_argument('-l', '--logfile', type=str, default='vdrp.log',
+                        help='Logfile to write to.')
 
     args, remaining_argv = parser.parse_known_args()
 
@@ -1519,7 +1521,7 @@ if __name__ == "__main__":
                              'level': 'INFO',
                              'maxsize': 1024,
                              'mode': 'w',
-                             'name': 'photom.log',
+                             'name': args.logfile,
                              'rotate': 0}},
                'root': {'handlers': ['console', 'mplog'], 'level': 'DEBUG'}}
 
