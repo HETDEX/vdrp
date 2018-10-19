@@ -31,7 +31,7 @@ module unload xalt
 '''
 
 pyslurm = '''module load pylauncher
-{launcherpath:s}/vdrprunner.py -c {ncores:d} -l {logname:s} {debug:s} {runfile}
+{launcherpath:s}/vdrprunner.py -c {ncores:d} {debug:s} {runfile}
 '''
 
 shslurm = '''module load launcher
@@ -120,8 +120,9 @@ def create_job_file(fname, counter, commands, maxjobs, jobspernode, args):
                 if (job_c+1) % jobspernode == 0 or job_c+1 == maxjobs \
                    or len(commands) == 0:
                     taskname = cmd.split()[0]
-                    fout.write('%s --mcores %d -M %s[%d:%d]\n'
-                               % (taskname, args.threads, subname,
+                    fout.write('%s --mcores %d -M -l %s %s[%d:%d]\n'
+                               % (taskname, args.threads,
+                                  'vdrp_%d.log' % counter, subname,
                                   min_t, job_c))
                     min_t = job_c+1
                 job_c += 1
@@ -141,7 +142,6 @@ def create_job_file(fname, counter, commands, maxjobs, jobspernode, args):
         sf.write(pyslurm.format(workdir='./',
                                 launcherpath=launcherdir,
                                 ncores=args.threads*args.cores,
-                                logname='vdrp_%d.log' % counter,
                                 debug=debug,
                                 runfile=fname))
 #        else:
