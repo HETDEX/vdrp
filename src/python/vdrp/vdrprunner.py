@@ -6,8 +6,8 @@ from __future__ import print_function
 from argparse import ArgumentParser as AP
 from argparse import ArgumentDefaultsHelpFormatter as AHF
 
-import tempfile
 import pylauncher
+import shutil
 import os
 import sys
 
@@ -58,12 +58,12 @@ def main(args):
     #                            cores=args.cores)
     workdir = 'pylauncher_vdrp'
     if os.path.exists(workdir):
-        os.rmdir(workdir)
+        shutil.rmtree(workdir)
 
-        if args.debug:
-            debug = 'job+host+task+execute'
-        VDRPLauncher(args.cmdfile, cores=args.cores,
-                     workdir=workdir, debug=debug)
+    if args.debug:
+        debug = 'job+host+task+exec+command'
+    VDRPLauncher(args.cmdfile, cores=args.cores,
+                 workdir=workdir, debug=debug)
 
     if not args.debug:
         os.rmdir(workdir)

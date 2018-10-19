@@ -1370,7 +1370,7 @@ def get_g_band_throughput(args):
     flxdata = []
 
     for s in stars:
-        if not os.path.exits('sp%d.obsdata' % s.starid):
+        if not os.path.exists('sp%d.obsdata' % s.starid):
             _logger.warn('No spectral data for %d found!' % s.starid)
             continue
         starobs = read_data('sp%d.obsdata' % s.starid)
@@ -1509,7 +1509,7 @@ if __name__ == "__main__":
                    'simple': {
                        'format': '%(asctime)s %(levelname)-8s '
                        '%(funcName)15s(): %(message)s',
-                       'datefmt': '%m-%d %H:%M'}},
+                       'datefmt': '%m-%d %H:%M:%S'}},
                'handlers': {
                    'console': {
                        'class': 'logging.StreamHandler',

@@ -88,12 +88,12 @@ def main(args):
             raise Exception('Found fewer commands than expected!')
 
         cmd_file = '%s_%d%s' % (fname, file_c, fext)
-        create_job_file(cmd_file, file_c, commands, jobsperfile, jobspernode, args)
+        create_job_file(cmd_file, commands, jobsperfile, jobspernode, args)
 
         file_c += 1
 
 
-def create_job_file(fname, counter, commands, maxjobs, jobspernode, args):
+def create_job_file(fname, commands, maxjobs, jobspernode, args):
 
     runtime = args.runtime
     ncores = args.threads * args.cores
@@ -101,6 +101,7 @@ def create_job_file(fname, counter, commands, maxjobs, jobspernode, args):
         print('Would require %d cores, oversubscribing node!')
         ncores = 20
     job_c = 0
+    batch_c = 1
 
     fn, _ = os.path.splitext(fname)
 
@@ -122,8 +123,9 @@ def create_job_file(fname, counter, commands, maxjobs, jobspernode, args):
                     taskname = cmd.split()[0]
                     fout.write('%s --mcores %d -M -l %s %s[%d:%d]\n'
                                % (taskname, args.threads,
-                                  'vdrp_%d.log' % counter, subname,
+                                  '%s_%d.log' % (fn, batch_c), subname,
                                   min_t, job_c))
+                    batch_c += 1
                     min_t = job_c+1
                 job_c += 1
 
