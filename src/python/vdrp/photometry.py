@@ -1337,10 +1337,12 @@ def run_star_photometry(ra, dec, starid, args):
 
         copy_stardata(starname, starid)
 
+        _logger.info('Saving star data for %d' % starid)
         save_data(starobs, 'sp%d.obsdata' % starid)
 
         # Finally save the results to the results_dir
 
+        _logger.info('Saving data for %s' % starname)
         shutil.copy2(starname+'.ps', args.results_dir)
         shutil.copy2(starname+'_2d.res', args.results_dir)
         shutil.copy2(starname+'_2dn.ps', args.results_dir)
@@ -1354,6 +1356,8 @@ def run_star_photometry(ra, dec, starid, args):
         shutil.copy2('sp%d.obsdata' % starid, args.results_dir)
 
         os.chdir(curdir)
+
+        _logger.info('Finished star extraction for %s' % starname)
     except Exception as e:
         _logger.exception(e)
 
@@ -1459,7 +1463,7 @@ def main(args):
                 # Equivalent of rsetstar
                 _logger.info('Extracting all shuffle stars')
                 run_shuffle_photometry(args)
-
+                _logger.info('Finished star extraction')
             if task in ['get_g_band_throughput', 'all']:
                 os.chdir(wdir)
                 _logger.info('Getting g-band photometry')
