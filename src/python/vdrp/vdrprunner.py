@@ -52,14 +52,18 @@ def VDRPLauncher(commandfile, **kwargs):
     job.run()
     print(job.final_report())
 
-    
+
 def main(args):
     # pylauncher.ClassicLauncher(args.cmdfile, debug="job+host+task",
     #                            cores=args.cores)
     workdir = 'pylauncher_vdrp'
     if os.path.exists(workdir):
         os.rmdir(workdir)
-    pylauncher.ClassicLauncher(args.cmdfile, cores=args.cores, workdir=workdir)
+
+        if args.debug:
+            debug = 'job+host+task+execute'
+        VDRPLauncher(args.cmdfile, cores=args.cores,
+                     workdir=workdir, debug=debug)
 
     if not args.debug:
         os.rmdir(workdir)
