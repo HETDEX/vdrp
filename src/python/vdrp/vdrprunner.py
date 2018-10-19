@@ -60,14 +60,14 @@ def main(args):
     if os.path.exists(workdir):
         shutil.rmtree(workdir)
 
-    debug=''
+    debug = ''
     if args.debug:
         debug = 'job+host+task+exec+command'
     VDRPLauncher(args.cmdfile, cores=args.cores,
                  workdir=workdir, debug=debug)
 
     if not args.debug:
-        os.rmdir(workdir)
+        shutil.rmtree(workdir)
 
 
 def parse_args(argv):

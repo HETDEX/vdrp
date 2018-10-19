@@ -121,10 +121,9 @@ def create_job_file(fname, commands, maxjobs, jobspernode, args):
                 if (job_c+1) % jobspernode == 0 or job_c+1 == maxjobs \
                    or len(commands) == 0:
                     taskname = cmd.split()[0]
-                    fout.write('%s --mcores %d -M -l %s %s[%d:%d]\n'
-                               % (taskname, args.threads,
-                                  '%s_%d.log' % (fn, batch_c), subname,
-                                  min_t, job_c))
+                    fout.write('%s -l %s --mcores %d -M %s[%d:%d]\n'
+                               % (taskname, '%s_%d.log' % (fn, batch_c),
+                                  args.threads, subname, min_t, job_c))
                     batch_c += 1
                     min_t = job_c+1
                 job_c += 1
