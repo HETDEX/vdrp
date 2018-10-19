@@ -16,6 +16,7 @@ from argparse import ArgumentParser as AP
 
 import pyhetdex.tools.processes as pproc
 
+import time
 from multiprocessing import RLock
 import threading
 import os
@@ -1243,10 +1244,13 @@ def run_shuffle_photometry(args):
     finished = False
 
     while not finished:
-        worker.wait(timeout=60)
+        time.sleep(60)
+        # worker.wait(timeout=60)
         _logger.info('Ran into timeout.')
         ndone, nerror, ntot = worker.jobs_stat()
         _logger.info('Current results %d %d %d' % (ntot, ndone, nerror))
+        if (ndone + nerror) == ntot:
+            break
 
     save_data(stars, os.path.join(args.results_dir, '%s.shstars' % nightshot))
 
