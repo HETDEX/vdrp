@@ -96,7 +96,10 @@ def main(args):
 def create_job_file(fname, counter, commands, maxjobs, jobspernode, args):
 
     runtime = args.runtime
-
+    ncores = args.threads * args.cores
+    if ncores > 20:
+        print('Would require %d cores, oversubscribing node!')
+        ncores = 20
     job_c = 0
 
     fn, _ = os.path.splitext(fname)
@@ -170,9 +173,9 @@ def parse_args(argv):
                    help='Number of nodes to use per job')
     p.add_argument('--jobs', '-j', type=int, default=20,
                    help='Number of jobs to schedule per node')
-    p.add_argument('--threads', '-t', type=int, default=1,
+    p.add_argument('--threads', '-t', type=int, default=5,
                    help='Number of threads to use per python process')
-    p.add_argument('--cores', '-c', type=int, default=20,
+    p.add_argument('--cores', '-c', type=int, default=4,
                    help='Number of jobs to schedule per node')
     p.add_argument('--runtime', '-r', type=str, default='00:30:00',
                    help='Expected runtime of slurm job')
