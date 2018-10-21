@@ -17,8 +17,10 @@ from argparse import ArgumentParser as AP
 import pyhetdex.tools.processes as pproc
 
 import time
-from multiprocessing import RLock, Pool
+import multiprocessing
 import threading
+import Queue
+
 import os
 import shutil
 import sys
@@ -66,21 +68,36 @@ import utils
 
 # matplotlib.use("agg")
 
-from Queue import Queue
-from threading import Thread
-
-_masterLock = RLock()
+_masterLock = threading.RLock()
 _baseDir = os.getcwd()
 
 _logger = logging.getLogger()
 
 
-class Worker(Thread):
+class ThreadWorker(threading.Thread):
     """Thread executing tasks from a given tasks queue"""
     def __init__(self, tasks):
-        Thread.__init__(self)
+        threading.Thread.__init__(self)
         self.tasks = tasks
         self.daemon = True
+        self.start()
+
+    def run(self):
+        while True:
+            func, args, kargs = self.tasks.get()
+            try:
+                func(*args, **kargs)
+            except Exception as e:
+                print(e)
+            finally:
+                self.tasks.task_done()
+
+
+class MPorker(multiprocessing.Process):
+    """Thread executing tasks from a given tasks queue"""
+    def __init__(self, tasks):
+        multiprocessing.Process.__init__(self)
+        self.tasks = tasks
         self.start()
 
     def run(self):
@@ -97,12 +114,29 @@ class Worker(Thread):
 class ThreadPool:
     """Pool of threads consuming tasks from a queue"""
     def __init__(self, num_threads):
-        self.tasks = Queue(num_threads)
+        self.tasks = Queue.Queue(num_threads)
         for _ in range(num_threads):
-            Worker(self.tasks)
+            ThreadWorker(self.tasks)
 
     def add_task(self, func, *args, **kargs):
         """Add a task to the queue"""
+        self.tasks.put((func, args, kargs))
+
+    def wait_completion(self):
+        """Wait for completion of all the tasks in the queue"""
+        self.tasks.join()
+
+
+class MPPool:
+    """Pool of threads consuming tasks from a queue"""
+    def __init__(self, num_proc):
+        self.tasks = multiprocessing.JoinableQueue(num_proc)
+        for _ in range(num_proc):
+            ThreadWorker(self.tasks)
+
+    def add_task(self, func, *args, **kargs):
+        """Add a task to the queue"""
+        print('Starting mp task %s(%s)' % (func, args))
         self.tasks.put((func, args, kargs))
 
     def wait_completion(self):
@@ -1230,11 +1264,19 @@ def run_shuffle_photometry(args):
     #                           multiprocessing=mproc,
     #                           processes=args.shuffle_cores)
     # jobs = []
-    pool = Pool(args.shuffle_cores)
+    # pool = Pool(args.shuffle_cores)
+    pool = MPPool(args.shuffle_cores)
+
+    # jobs = []
 
     for star in stars:
-        pool.apply_async(run_star_photometry, star.ra, star.dec,
-                         star.starid, args)
+
+        pool.add_task(run_star_photometry, (nightshot, star.ra, star.dec,
+                                            star.starid, args))
+        # result = pool.apply_async(run_star_photometry, (nightshot, star.ra, star.dec,
+        #                                                star.starid, args))
+
+        # jobs.append(star.starid, result)
         # job = worker(run_star_photometry, star.ra, star.dec, star.starid, args)
         # jobs.append(job)
 
@@ -1244,10 +1286,24 @@ def run_shuffle_photometry(args):
         #     _logger.info('No shots found for shuffle star at %f %f'
         #                  % (star.ra,  star.dec))
 
+    pool.join()
     # finished = False
-
+    #
+    # njobs = len(jobs)
+    #
     # while not finished:
     #     time.sleep(60)
+    #     nfinished = 0
+    #     for i, j in jobs:
+    #         if j.ready():
+    #             print('%d finished %s' % (i, j.successful()))
+    #             nfinished += 1
+    #         else:
+    #             print('%d is not yet finished' % i)
+    #
+    #     if nfinished == njobs:
+    #         print('All done')
+    #         finished = True
     #     # worker.wait(timeout=60)
     #     _logger.info('Ran into timeout.')
     #     ndone, nerror, ntot = worker.jobs_stat()
@@ -1255,13 +1311,15 @@ def run_shuffle_photometry(args):
     #     if (ndone + nerror) == ntot:
     #         break
 
-    pool.close()
-    pool.join()
+    # pool.close()
+    # pool.join()
+
+    _logger.info('Saving star data for %s' % nightshot)
 
     save_data(stars, os.path.join(args.results_dir, '%s.shstars' % nightshot))
 
 
-def run_star_photometry(ra, dec, starid, args):
+def run_star_photometry(nightshot, ra, dec, starid, args):
     """
     Equivalent of the rsp1a2b script.
 
