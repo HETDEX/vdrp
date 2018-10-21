@@ -1271,8 +1271,8 @@ def run_shuffle_photometry(args):
 
     for star in stars:
 
-        pool.add_task(run_star_photometry, (nightshot, star.ra, star.dec,
-                                            star.starid, args))
+        pool.add_task(run_star_photometry, nightshot, star.ra, star.dec,
+                      star.starid, args)
         # result = pool.apply_async(run_star_photometry, (nightshot, star.ra, star.dec,
         #                                                star.starid, args))
 
@@ -1286,7 +1286,7 @@ def run_shuffle_photometry(args):
         #     _logger.info('No shots found for shuffle star at %f %f'
         #                  % (star.ra,  star.dec))
 
-    pool.join()
+    pool.wait_completion()
     # finished = False
     #
     # njobs = len(jobs)
