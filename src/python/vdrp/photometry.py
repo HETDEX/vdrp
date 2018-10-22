@@ -1550,8 +1550,13 @@ if __name__ == "__main__":
 
     _logger.addHandler(fHndlr)
 
+    # Wrap the log handlers with the MPHandler, this is essential for the use
+    # of multiprocessing, otherwise, tasks will hang.
     mplog.install_mp_handler(_logger)
 
+    # We found a -M flag with a command file, now loop over it, we parse
+    # the command line parameters for each call, and intialize the args
+    # namespace for this call.
     if args.multi:
         mfile = args.multi.split('[')[0]
 
@@ -1565,6 +1570,7 @@ if __name__ == "__main__":
             print(e)
             raise Exception('Failed to read input file %s!' % args.multi)
 
+        # Parse the line numbers to evaluate, if any given.
         if args.multi.find('[') != -1:
             try:
                 minl, maxl = args.multi.split('[')[1].split(']')[0].split(':')
@@ -1574,9 +1580,11 @@ if __name__ == "__main__":
 
             cmdlines = cmdlines[int(minl):int(maxl)]
 
+        # Create the ThreadPool.
         pool = ThreadPool(args.mcores)
         c = 1
 
+        # For each command line add an entry to the ThreadPool.
         for l in cmdlines:
             largs = copy.copy(remaining_argv)
             largs += l.split()
@@ -1585,6 +1593,7 @@ if __name__ == "__main__":
 
             pool.add_task(main, c, copy.copy(main_args))
 
+        # Wait for all tasks to complete
         pool.wait_completion()
 
         sys.exit(0)
