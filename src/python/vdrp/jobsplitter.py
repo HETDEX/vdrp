@@ -71,7 +71,7 @@ def main(args):
     nc = len(commands)
 
     nfiles = nc / args.jobs / args.nodes + 1
-    jobsperfile = nc / nfiles + 1
+    jobsperfile = nc / nfiles
     jobspernode = nc / nfiles / args.nodes + 1
 
     print('Found %d commands' % nc)
@@ -123,7 +123,7 @@ def create_job_file(fname, commands, maxjobs, jobspernode, args):
                     taskname = cmd.split()[0]
                     fout.write('%s -l %s --mcores %d -M %s[%d:%d]\n'
                                % (taskname, '%s_%d.log' % (fn, batch_c),
-                                  args.threads, subname, min_t, job_c))
+                                  args.threads, subname, min_t, job_c+1))
                     batch_c += 1
                     min_t = job_c+1
                 job_c += 1

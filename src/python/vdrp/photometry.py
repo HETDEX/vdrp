@@ -14,8 +14,6 @@ from __future__ import print_function
 from argparse import RawDescriptionHelpFormatter as ap_RDHF
 from argparse import ArgumentParser as AP
 
-import pyhetdex.tools.processes as pproc
-
 import time
 import multiprocessing
 import threading
@@ -39,34 +37,12 @@ try:
     import cPickle as pickle
 except ImportError:
     import pickle
-# import ast
 
-# import scipy
-# from scipy.interpolate import UnivariateSpline
+import mplog
 
 from distutils import dir_util
 
-# from astropy import table
-# from astropy.table import Table
-
-# from astropy.stats import biweight_location as biwgt_loc
-# from astropy.table import vstack
-
-# from pyhetdex.het import fplane
-# from pyhetdex.coordinates.tangent_projection import TangentPlane
-# import pyhetdex.tools.read_catalogues as rc
-# from pyhetdex import coordinates
-# from pyhetdex.coordinates import astrometry as phastrom
-
-# from vdrp.cofes_vis import cofes_4x4_plots
-# from vdrp import daophot
-# from vdrp import cltools
-# from vdrp import utils
 import utils
-# from vdrp.daophot import DAOPHOT_ALS
-# from vdrp.utils import read_radec, write_radec
-
-# matplotlib.use("agg")
 
 _masterLock = threading.RLock()
 _baseDir = os.getcwd()
@@ -76,37 +52,48 @@ _logger = logging.getLogger()
 
 class ThreadWorker(threading.Thread):
     """Thread executing tasks from a given tasks queue"""
-    def __init__(self, tasks):
+    def __init__(self, name, tasks):
         threading.Thread.__init__(self)
+        self.name = name
         self.tasks = tasks
         self.daemon = True
         self.start()
 
     def run(self):
+        threading.current_thread().name = self.name
         while True:
-            func, args, kargs = self.tasks.get()
             try:
+                func, args, kargs = self.tasks.get(True, 2.0)
                 func(*args, **kargs)
             except Exception as e:
                 print(e)
+            except Queue.Empty:
+                print('%s %s queue is empty, shutting down!'
+                      % (time.strftime('%H:%M:%S'), self.name))
+                return
             finally:
                 self.tasks.task_done()
 
 
-class MPorker(multiprocessing.Process):
+class MPWorker(multiprocessing.Process):
     """Thread executing tasks from a given tasks queue"""
-    def __init__(self, tasks):
+    def __init__(self, name, tasks):
         multiprocessing.Process.__init__(self)
+        self.name = name
         self.tasks = tasks
         self.start()
 
     def run(self):
         while True:
-            func, args, kargs = self.tasks.get()
             try:
+                func, args, kargs = self.tasks.get(True, 2.0)
                 func(*args, **kargs)
             except Exception as e:
                 print(e)
+            except Queue.Empty:
+                print('%s %s queue is empty, shutting down!'
+                      % (time.strftime('%H:%M:%S'), self.name))
+                return
             finally:
                 self.tasks.task_done()
 
@@ -115,8 +102,8 @@ class ThreadPool:
     """Pool of threads consuming tasks from a queue"""
     def __init__(self, num_threads):
         self.tasks = Queue.Queue(num_threads)
-        for _ in range(num_threads):
-            ThreadWorker(self.tasks)
+        for i in range(num_threads):
+            ThreadWorker('ThreadWorker%d' % i, self.tasks)
 
     def add_task(self, func, *args, **kargs):
         """Add a task to the queue"""
@@ -129,10 +116,10 @@ class ThreadPool:
 
 class MPPool:
     """Pool of threads consuming tasks from a queue"""
-    def __init__(self, num_proc):
+    def __init__(self, jobnum, num_proc):
         self.tasks = multiprocessing.JoinableQueue(num_proc)
-        for _ in range(num_proc):
-            ThreadWorker(self.tasks)
+        for i in range(num_proc):
+            MPWorker('MPWorker%d_%d' % (jobnum, i), self.tasks)
 
     def add_task(self, func, *args, **kargs):
         """Add a task to the queue"""
@@ -567,7 +554,7 @@ def call_imextsp(bindir, filename, ifuslot, wl, wlw, tpavg, norm, outfile):
         pass
 
     try:
-        os.remove('outfile')
+        os.remove(outfile)
     except OSError:
         pass
 
@@ -812,11 +799,11 @@ def get_star_spectrum_data(ra, dec, args):
 
     # First find matching shots
     _logger.info('Reading radec file %s' % args.radec_file)
-    with _masterLock:
-        night, shot = np.loadtxt(args.radec_file, unpack=True, dtype='U50',
-                                 usecols=[0, 1])
-        ra_shot, dec_shot = np.loadtxt(args.radec_file, unpack=True,
-                                       usecols=[2, 3])
+
+    night, shot = np.loadtxt(args.radec_file, unpack=True, dtype='U50',
+                             usecols=[0, 1])
+    ra_shot, dec_shot = np.loadtxt(args.radec_file, unpack=True,
+                                   usecols=[2, 3])
 
     _logger.info('Searching for shots within %f arcseconds of %f %f'
                  % (args.shot_search_radius, ra, dec))
@@ -846,18 +833,17 @@ def get_star_spectrum_data(ra, dec, args):
         dithall_file = args.dithall_dir+'/'+n+'v'+s+'/dithall.use'
         _logger.info('Reading dithall file %s' % dithall_file)
 
-        with _masterLock:
-            try:
-                ra_ifu, dec_ifu, x_ifu, y_ifu = np.loadtxt(dithall_file,
-                                                           unpack=True,
-                                                           usecols=[0, 1, 3, 4])
-                fname_ifu, shotname_ifu, expname_ifu = \
-                    np.loadtxt(dithall_file, unpack=True,
-                               dtype='U50', usecols=[7, 8, 9])
-            except Exception as e:
-                _logger.warn('Failed to read %s' % dithall_file)
-                _logger.exception(e)
-                continue
+        try:
+            ra_ifu, dec_ifu, x_ifu, y_ifu = np.loadtxt(dithall_file,
+                                                       unpack=True,
+                                                       usecols=[0, 1, 3, 4])
+            fname_ifu, shotname_ifu, expname_ifu = \
+                np.loadtxt(dithall_file, unpack=True,
+                           dtype='U50', usecols=[7, 8, 9])
+        except Exception as e:
+            _logger.warn('Failed to read %s' % dithall_file)
+            _logger.exception(e)
+            continue
 
         w = np.where(((np.sqrt((np.cos(dec/57.3)*(ra_ifu-ra))**2
                                + (dec_ifu-dec)**2)*3600.)
@@ -1252,67 +1238,15 @@ def run_shuffle_photometry(args):
 
     stars = get_shuffle_stars(args.shuffle_ifustars_dir, nightshot,
                               args.shuffle_mag_limit)
-    mproc = False
-    resclass = pproc.Result
-    if args.shuffle_cores > 1:
-        mproc = True
-        resclass = pproc.DeferredResult
 
-    # thread_id = threading.current_thread().ident
-    # worker = pproc.get_worker(name='VDRP_%d' % thread_id,
-    #                           result_class=resclass,
-    #                           multiprocessing=mproc,
-    #                           processes=args.shuffle_cores)
-    # jobs = []
-    # pool = Pool(args.shuffle_cores)
-    pool = MPPool(args.shuffle_cores)
-
-    # jobs = []
+    pool = MPPool(args.jobnum, args.shuffle_cores)
 
     for star in stars:
 
         pool.add_task(run_star_photometry, nightshot, star.ra, star.dec,
-                      star.starid, args)
-        # result = pool.apply_async(run_star_photometry, (nightshot, star.ra, star.dec,
-        #                                                star.starid, args))
-
-        # jobs.append(star.starid, result)
-        # job = worker(run_star_photometry, star.ra, star.dec, star.starid, args)
-        # jobs.append(job)
-
-        # try:
-        #     run_star_photometry(star.ra, star.dec, star.starid, args)
-        # except NoShotsException:
-        #     _logger.info('No shots found for shuffle star at %f %f'
-        #                  % (star.ra,  star.dec))
+                      star.starid, copy.copy(args))
 
     pool.wait_completion()
-    # finished = False
-    #
-    # njobs = len(jobs)
-    #
-    # while not finished:
-    #     time.sleep(60)
-    #     nfinished = 0
-    #     for i, j in jobs:
-    #         if j.ready():
-    #             print('%d finished %s' % (i, j.successful()))
-    #             nfinished += 1
-    #         else:
-    #             print('%d is not yet finished' % i)
-    #
-    #     if nfinished == njobs:
-    #         print('All done')
-    #         finished = True
-    #     # worker.wait(timeout=60)
-    #     _logger.info('Ran into timeout.')
-    #     ndone, nerror, ntot = worker.jobs_stat()
-    #     _logger.info('Current results %d %d %d' % (ntot, ndone, nerror))
-    #     if (ndone + nerror) == ntot:
-    #         break
-
-    # pool.close()
-    # pool.join()
 
     _logger.info('Saving star data for %s' % nightshot)
 
@@ -1470,7 +1404,7 @@ def get_g_band_throughput(args):
 vdrp_info = None
 
 
-def main(args):
+def main(jobnum, args):
     """
     Main function.
     """
@@ -1515,6 +1449,7 @@ def main(args):
 
     args.curdir = os.path.abspath(os.path.curdir)
     args.wdir = wdir
+    args.jobnum = jobnum
 
     try:
         for task in tasks:
@@ -1555,12 +1490,6 @@ def main(args):
         _logger.info("Done.")
 
 
-def parse_for_loop(args):
-    '''
-    Loops
-    '''
-
-
 if __name__ == "__main__":
     argv = None
     if argv is None:
@@ -1580,28 +1509,48 @@ if __name__ == "__main__":
     args, remaining_argv = parser.parse_known_args()
 
     # Setup the logging system
-    logDict = {'version': 1,
-               'formatters': {
-                   'simple': {
-                       'format': '%(asctime)s %(levelname)-8s '
-                       '%(funcName)15s(): %(message)s',
-                       'datefmt': '%m-%d %H:%M:%S'}},
-               'handlers': {
-                   'console': {
-                       'class': 'logging.StreamHandler',
-                       'level': 'INFO',
-                       'formatter': 'simple',
-                       'stream': 'ext://sys.stdout'},
-                   'mplog': {'class': 'mplog.MultiProcessingLog',
-                             'formatter': 'simple',
-                             'level': 'INFO',
-                             'maxsize': 1024,
-                             'mode': 'w',
-                             'name': args.logfile,
-                             'rotate': 0}},
-               'root': {'handlers': ['console', 'mplog'], 'level': 'DEBUG'}}
+    # logDict = {'version': 1,
+    #            'formatters': {
+    #                'simple': {
+    #                    'format': '%(asctime)s %(levelname)-8s '
+    #                    '%(threadname)-12s %(funcName)15s(): %(message)s',
+    #                    'datefmt': '%m-%d %H:%M:%S'}},
+    #            'handlers': {
+    #                'console': {
+    #                    'class': 'logging.StreamHandler',
+    #                    'level': 'INFO',
+    #                    'formatter': 'simple',
+    #                    'stream': 'ext://sys.stdout'},
+    #                'mplog': {'class': 'mplog.MultiProcessingLog',
+    #                          'formatter': 'simple',
+    #                          'level': 'INFO',
+    #                          'maxsize': 1024,
+    #                          'mode': 'w',
+    #                          'name': args.logfile,
+    #                          'rotate': 0}},
+    #           'root': {'handlers': ['console', 'mplog'], 'level': 'DEBUG'}}
 
-    logging.config.dictConfig(logDict)
+    # logging.config.dictConfig(logDict)
+
+    fmt = '%(asctime)s %(levelname)-8s %(threadname)-12s %(funcName)15s(): ' \
+        '%(message)s',
+    formatter = logging.Formatter(fmt, '%m-%d %H:%M:%S')
+    _logger.setLevel = logging.DEBUG
+    _logger.setFormatter(formatter)
+
+    cHndlr = logging.StreamHandler()
+    cHndlr.setLevel(logging.INFO)
+    cHndlr.setFormatter(formatter)
+
+    _logger.addHandler(cHndlr)
+
+    fHndlr = logging.FileHandler(args.logfile, mode='w')
+    fHndlr.setLevel(logging.INFO)
+    fHndlr.setFormatter(formatter)
+
+    _logger.addHandler(fHndlr)
+
+    mplog.install_mp_handler(_logger)
 
     if args.multi:
         mfile = args.multi.split('[')[0]
@@ -1625,20 +1574,8 @@ if __name__ == "__main__":
 
             cmdlines = cmdlines[int(minl):int(maxl)]
 
-        mproc = False
-        # resclass = pproc.Result
-        if args.mcores > 1:
-            mproc = True
-            # resclass = pproc.DeferredResult
-        # worker = pproc.get_worker(name='VDRP',
-        #                           result_class=resclass,
-        #                           multiprocessing=mproc,
-        #                           processes=args.mcores,
-        #                           poolclass=multiprocessing.pool.ThreadPool)
-
         pool = ThreadPool(args.mcores)
-
-        # jobs = []
+        c = 1
 
         for l in cmdlines:
             largs = copy.copy(remaining_argv)
@@ -1646,14 +1583,9 @@ if __name__ == "__main__":
 
             main_args = parseArgs(largs)
 
-            # job = worker(main, copy.copy(main_args))
-            # jobs.append(job)
-            pool.add_task(main, copy.copy(main_args))
+            pool.add_task(main, c, copy.copy(main_args))
 
-        # worker.wait()
         pool.wait_completion()
-        # ndone, nerror, _ = worker.jobs_stat()
-        # print('Results %d %d' % (ndone, nerror))
 
         sys.exit(0)
     else:
