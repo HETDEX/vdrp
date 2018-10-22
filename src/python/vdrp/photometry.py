@@ -64,15 +64,18 @@ class ThreadWorker(threading.Thread):
         while True:
             try:
                 func, args, kargs = self.tasks.get(True, 2.0)
-                func(*args, **kargs)
-            except Exception as e:
-                print(e)
+                try:
+                    func(*args, **kargs)
+                except Exception as e:
+                    print(e)
+                finally:
+                    self.tasks.task_done()
             except Queue.Empty:
                 print('%s %s queue is empty, shutting down!'
                       % (time.strftime('%H:%M:%S'), self.name))
                 return
-            finally:
-                self.tasks.task_done()
+            except Exception as e:
+                print(e)
 
 
 class MPWorker(multiprocessing.Process):
@@ -87,15 +90,18 @@ class MPWorker(multiprocessing.Process):
         while True:
             try:
                 func, args, kargs = self.tasks.get(True, 2.0)
-                func(*args, **kargs)
-            except Exception as e:
-                print(e)
+                try:
+                    func(*args, **kargs)
+                except Exception as e:
+                    print(e)
+                finally:
+                    self.tasks.task_done()
             except Queue.Empty:
                 print('%s %s queue is empty, shutting down!'
                       % (time.strftime('%H:%M:%S'), self.name))
                 return
-            finally:
-                self.tasks.task_done()
+            except Exception as e:
+                print(e)
 
 
 class ThreadPool:
@@ -1529,11 +1535,11 @@ if __name__ == "__main__":
 
     # logging.config.dictConfig(logDict)
 
-    fmt = '%(asctime)s %(levelname)-8s %(threadname)-12s %(funcName)15s(): ' \
+    fmt = '%(asctime)s %(levelname)-8s %(threadname)12s %(funcName)15s(): ' \
         '%(message)s',
     formatter = logging.Formatter(fmt, datefmt='%m-%d %H:%M:%S')
     _logger.setLevel = logging.DEBUG
-    _logger.setFormatter(formatter)
+    # _logger.setFormatter(formatter)
 
     cHndlr = logging.StreamHandler()
     cHndlr.setLevel(logging.INFO)
