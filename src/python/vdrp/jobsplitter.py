@@ -118,7 +118,7 @@ def create_job_file(fname, commands, maxjobs, jobspernode, args):
                 cmd = commands.pop(0)
                 jf.write('%s\n' % cmd.split(' ', 1)[1])
 
-                if (job_c+1) % jobspernode == 0 or (job_c+1) == maxjobs \
+                if (job_c+1) % jobspernode == 0 or (job_c+2) == maxjobs \
                    or len(commands) == 0:
                     taskname = cmd.split()[0]
                     fout.write('%s -l %s --mcores %d -M %s[%d:%d]\n'

@@ -44,10 +44,24 @@ from distutils import dir_util
 
 import utils
 
-_masterLock = threading.RLock()
 _baseDir = os.getcwd()
 
 _logger = logging.getLogger()
+
+# Parallelization code, we supply both a ThreadPool as well as a
+# multiprocessing pool. Both start a given numer of threads/processes,
+# that will work through the supplied tasks, till all are finished.
+#
+# The ThreadPool does not need to start subprocesses, but is limited by
+# the Python Global Interpreter Lock (only one thread can access complex data
+# types at one time). This can potentially slow things down.
+#
+# The MPPool needs to start up the processes, but this is only done once at
+# the initializtion of the pool.
+#
+# The MPPool processes cannot start multiprocessing jobs themselves, so if
+# you need nested parallelization, use the either ThreadPools for all, or
+# Use one and the other.
 
 
 class ThreadWorker(threading.Thread):
@@ -954,8 +968,7 @@ def get_shuffle_stars(shuffledir, nightshot, maglim):
 
     c = 1
     try:
-        with _masterLock:
-            indata = np.loadtxt(shuffledir + '/' + nightshot
+        indata = np.loadtxt(shuffledir + '/' + nightshot
                                 + '/shout.ifustars')
         for d in indata:
             star = ShuffleStar(20000 + c, d[0], d[1], d[2], d[3], d[4], d[5],
@@ -1242,13 +1255,18 @@ def run_shuffle_photometry(args):
     stars = get_shuffle_stars(args.shuffle_ifustars_dir, nightshot,
                               args.shuffle_mag_limit)
 
+    # Parallelize the star extraction. Create a MPPool with
+    # shuffle_cores processes
+
     pool = MPPool(args.jobnum, args.shuffle_cores)
 
     for star in stars:
 
+        # Add all the tasks, they will start right away.
         pool.add_task(run_star_photometry, nightshot, star.ra, star.dec,
                       star.starid, copy.copy(args))
 
+    # Now wait for all tasks to finish.
     pool.wait_completion()
 
     _logger.info('Saving star data for %s' % nightshot)
@@ -1498,6 +1516,9 @@ if __name__ == "__main__":
     if argv is None:
         argv = sys.argv
 
+    # Here we create another external argument parser, this checks if we
+    # are supposed to run in multi-threaded mode.
+
     # First check if we should loop over an input file
     parser = AP(description='Test', formatter_class=ap_RDHF, add_help=False)
     # parser.add_argument('args', nargs=ap_remainder)
@@ -1511,30 +1532,7 @@ if __name__ == "__main__":
 
     args, remaining_argv = parser.parse_known_args()
 
-    # Setup the logging system
-    # logDict = {'version': 1,
-    #            'formatters': {
-    #                'simple': {
-    #                    'format': '%(asctime)s %(levelname)-8s '
-    #                    '%(threadname)-12s %(funcName)15s(): %(message)s',
-    #                    'datefmt': '%m-%d %H:%M:%S'}},
-    #            'handlers': {
-    #                'console': {
-    #                    'class': 'logging.StreamHandler',
-    #                    'level': 'INFO',
-    #                    'formatter': 'simple',
-    #                    'stream': 'ext://sys.stdout'},
-    #                'mplog': {'class': 'mplog.MultiProcessingLog',
-    #                          'formatter': 'simple',
-    #                          'level': 'INFO',
-    #                          'maxsize': 1024,
-    #                          'mode': 'w',
-    #                          'name': args.logfile,
-    #                          'rotate': 0}},
-    #           'root': {'handlers': ['console', 'mplog'], 'level': 'DEBUG'}}
-
-    # logging.config.dictConfig(logDict)
-
+    # Setup the logging
     fmt = '%(asctime)s %(levelname)-8s %(threadName)12s %(funcName)15s(): ' \
         '%(message)s'
     formatter = logging.Formatter(fmt, datefmt='%m-%d %H:%M:%S')
