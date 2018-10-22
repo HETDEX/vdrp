@@ -123,7 +123,6 @@ class MPPool:
 
     def add_task(self, func, *args, **kargs):
         """Add a task to the queue"""
-        print('Starting mp task %s(%s)' % (func, args))
         self.tasks.put((func, args, kargs))
 
     def wait_completion(self):
@@ -348,7 +347,6 @@ def parseArgs(argv):
                      add_help=False)
     conf_parser.add_argument("-c", "--conf_file",
                              help="Specify config file", metavar="FILE")
-    print('ARGV', argv)
     args, remaining_argv = conf_parser.parse_known_args(argv)
 
     defaults = {}
@@ -389,7 +387,6 @@ def parseArgs(argv):
 
     config_source = "Default"
     if args.conf_file:
-        print('Reading')
         config_source = args.conf_file
         config = ConfigParser.SafeConfigParser()
         config.read([args.conf_file])
@@ -1534,7 +1531,7 @@ if __name__ == "__main__":
 
     fmt = '%(asctime)s %(levelname)-8s %(threadname)-12s %(funcName)15s(): ' \
         '%(message)s',
-    formatter = logging.Formatter(fmt, '%m-%d %H:%M:%S')
+    formatter = logging.Formatter(fmt, datefmt='%m-%d %H:%M:%S')
     _logger.setLevel = logging.DEBUG
     _logger.setFormatter(formatter)
 
