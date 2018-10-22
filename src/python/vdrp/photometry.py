@@ -1535,11 +1535,10 @@ if __name__ == "__main__":
 
     # logging.config.dictConfig(logDict)
 
-    fmt = '%(asctime)s %(levelname)-8s %(threadname)12s %(funcName)15s(): ' \
-        '%(message)s',
+    fmt = '%(asctime)s %(levelname)-8s %(threadName)12s %(funcName)15s(): ' \
+        '%(message)s'
     formatter = logging.Formatter(fmt, datefmt='%m-%d %H:%M:%S')
     _logger.setLevel = logging.DEBUG
-    # _logger.setFormatter(formatter)
 
     cHndlr = logging.StreamHandler()
     cHndlr.setLevel(logging.INFO)

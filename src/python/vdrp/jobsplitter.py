@@ -70,9 +70,9 @@ def main(args):
 
     nc = len(commands)
 
-    nfiles = nc / args.jobs / args.nodes + 1
-    jobsperfile = nc / nfiles
-    jobspernode = nc / nfiles / args.nodes + 1
+    nfiles = int(nc / args.jobs / args.nodes + 1)
+    jobsperfile = int(nc / nfiles + 1)
+    jobspernode = int(nc / nfiles / args.nodes + 1)
 
     print('Found %d commands' % nc)
     print('Splitting them onto %d nodes' % args.nodes)
@@ -118,7 +118,7 @@ def create_job_file(fname, commands, maxjobs, jobspernode, args):
                 cmd = commands.pop(0)
                 jf.write('%s\n' % cmd.split(' ', 1)[1])
 
-                if (job_c+1) % jobspernode == 0 or job_c+1 == maxjobs \
+                if (job_c+1) % jobspernode == 0 or (job_c+1) == maxjobs \
                    or len(commands) == 0:
                     taskname = cmd.split()[0]
                     fout.write('%s -l %s --mcores %d -M %s[%d:%d]\n'
