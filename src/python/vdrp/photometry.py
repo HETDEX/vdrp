@@ -1605,4 +1605,4 @@ if __name__ == "__main__":
         # so process normally
         args = parseArgs(remaining_argv)
 
-        sys.exit(main(args))
+        sys.exit(main(1, args))
