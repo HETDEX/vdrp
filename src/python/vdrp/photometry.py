@@ -1195,7 +1195,7 @@ def run_getsdss(bindir, filename, sdss_file):
     return float(np.loadtxt('out'))
 
 
-def run_biwt(bindir, data):
+def run_biwt(bindir, data, outfile):
     """
     Calculate biweight of the supplied data.
 
@@ -1212,11 +1212,11 @@ def run_biwt(bindir, data):
     """
     with open('tp.dat', 'w') as f:
         for d in data:
-            f.write('%f\n', d)
+            f.write('%f\n' % d)
 
     run_command(bindir + '/biwt', 'tp.dat\n1\n')
 
-    return np.loadtxt('biwt.out')
+    shutil.move('biwt.out', outfile)
 
 
 def copy_stardata(starname, starid):
@@ -1417,9 +1417,7 @@ def get_g_band_throughput(args):
         if len(starobs) > 15 and dflx > 0.02 and dflx < 0.21:
             flxdata.append(dflx)
 
-    avg_flx = run_biwt(args.bin_dir, flxdata)
-
-    return avg_flx
+    run_biwt(args.bin_dir, flxdata, 'tp.biwt')
 
 
 vdrp_info = None
