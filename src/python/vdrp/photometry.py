@@ -1536,7 +1536,7 @@ if __name__ == "__main__":
     fmt = '%(asctime)s %(levelname)-8s %(threadName)12s %(funcName)15s(): ' \
         '%(message)s'
     formatter = logging.Formatter(fmt, datefmt='%m-%d %H:%M:%S')
-    _logger.setLevel = logging.DEBUG
+    _logger.setLevel(logging.DEBUG)
 
     cHndlr = logging.StreamHandler()
     cHndlr.setLevel(logging.INFO)
