@@ -976,9 +976,13 @@ def get_shuffle_stars(shuffledir, nightshot, maglim):
 
     c = 1
     try:
-        indata = np.loadtxt(shuffledir + '/' + nightshot
-                            + '/shout.ifustars')
-        for d in indata:
+        indata_str = np.loadtxt(shuffledir + '/' + nightshot
+                                + '/shout.ifustars', dtype='U50',
+                                usecols=[0, 1])
+        indata_flt = np.loadtxt(shuffledir + '/' + nightshot
+                                + '/shout.ifustars', dtype=float,
+                                usecols=[2, 3, 4, 5, 6, 7, 8])
+        for d in zip(indata_str, indata_flt):
             star = ShuffleStar(20000 + c, d[0], d[1], d[2], d[3], d[4], d[5],
                                d[6], d[7], d[8])
             if star.mag_g < maglim:
@@ -1531,7 +1535,7 @@ def mk_sed_throughput_curve(args):
 
         sedlist.append(sedname)
 
-    run_combsed(args.bindir, sedlist, args.sed_sigma_cut, args.sed_rms_cut,
+    run_combsed(args.bin_dir, sedlist, args.sed_sigma_cut, args.sed_rms_cut,
                 '%ssedtp.dat' % nightshot, '%ssedtpa.ps' % nightshot)
 
     data = np.loadtxt('%ssedtp.dat' % nightshot)
