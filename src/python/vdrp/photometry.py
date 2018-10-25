@@ -252,7 +252,7 @@ class ShuffleStar():
         Z-Band magnitude from the shuffle catalog
     """
 
-    def __init__(self, starid=-1, shotid=-1, shuffleid=-1, ra=-1.0, dec=-1.0,
+    def __init__(self, starid='', shotid='', shuffleid=-1, ra=-1.0, dec=-1.0,
                  u=99., g=99., r=99., i=99., z=99.):
         self.starid = starid
         self.shotid = shotid
@@ -982,9 +982,9 @@ def get_shuffle_stars(shuffledir, nightshot, maglim):
         indata_flt = np.loadtxt(shuffledir + '/' + nightshot
                                 + '/shout.ifustars', dtype=float,
                                 usecols=[2, 3, 4, 5, 6, 7, 8])
-        for d in zip(indata_str, indata_flt):
-            star = ShuffleStar(20000 + c, d[0], d[1], d[2], d[3], d[4], d[5],
-                               d[6], d[7], d[8])
+        for ds, df in zip(indata_str, indata_flt):
+            star = ShuffleStar(20000 + c, ds[0], ds[1], df[0], df[1], df[2],
+                               df[3], df[4], df[5], df[6])
             if star.mag_g < maglim:
                 stars.append(star)
                 c += 1
