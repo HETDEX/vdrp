@@ -403,6 +403,11 @@ def parseArgs(argv):
     defaults['sdss_filter_file'] = \
         '/work/00115/gebhardt/maverick/detect/cal_script/sdssg.dat'
 
+    defaults['sed_fit_dir'] = \
+        '/work/00115/gebhardt/maverick/detect/sed/output/'
+    defaults['sed_sigma_cut'] = 0.15
+    defaults['sed_rms_cut'] = 0.01
+
     defaults["task"] = "all"
 
     config_source = "Default"
@@ -473,6 +478,9 @@ def parseArgs(argv):
 
     parser.add_argument("--sdss_filter_file", type=str, help="Filter cureve "
                         "for SDSS g-Band filter.")
+
+    parser.add_argument("--sed_fit_dir", type=str, help="Directory with SED  "
+                        "fit results.")
 
     parser.add_argument("-t", "--task", type=str, help="Task to execute.")
 
@@ -969,7 +977,7 @@ def get_shuffle_stars(shuffledir, nightshot, maglim):
     c = 1
     try:
         indata = np.loadtxt(shuffledir + '/' + nightshot
-                                + '/shout.ifustars')
+                            + '/shout.ifustars')
         for d in indata:
             star = ShuffleStar(20000 + c, d[0], d[1], d[2], d[3], d[4], d[5],
                                d[6], d[7], d[8])
@@ -1216,7 +1224,60 @@ def run_biwt(bindir, data, outfile):
 
     run_command(bindir + '/biwt', 'tp.dat\n1\n')
 
+    os.remove('tp.dat')
+
     shutil.move('biwt.out', outfile)
+
+
+def run_combsed(bindir, sedlist, sigmacut, rmscut, outfile, plotfile=None):
+    """
+
+
+    Parameters
+    ----------
+    bindir : str
+        The path to the biwt binary
+    sedlist : list
+        List of filenames of SED fits
+    sigmacut : float
+        Cut value for sigma
+    rmscut : float
+        Cut value for rms
+    outfile : str
+        Output filename
+    plotfile : str (optional)
+        Optional plot output filename
+
+    Returns
+    -------
+    n, biwt, error
+    """
+    with open('list', 'w') as f:
+        for l in sedlist:
+            f.write('%s\n' % l)
+
+    input = '$f $f\n'
+    run_command(bindir + '/combsed', input.forma(sigmacut, rmscut))
+
+    shutil.move('comb.out', outfile)
+
+    if plotfile is not None:
+
+        fdata = np.loadtxt('out', dtype=float,
+                           usecols=[1, 2, 4, 5])
+        idata = np.loadtxt('out', dtype=int, usecols=[0, 3])
+
+        with open('in', 'w') as f:
+            for di, df, sf in zip(idata, fdata, sedlist):
+                if di[1] == 0:
+                    f.write('%s %d %f %f %d %f %f\n'
+                            % (sf, di[0], df[0], df[1],
+                               di[1], df[2], df[3]))
+            f.write('%s\n' % outfile)
+
+        run_command(bindir + '/plotseda', '/xwin\n')
+
+        shutil.move('pgplot.ps', plotfile)
 
 
 def copy_stardata(starname, starid):
@@ -1334,6 +1395,9 @@ def run_star_photometry(nightshot, ra, dec, starid, args):
         run_fit2d(args.bin_dir, ra, dec, starobs, args.seeing,
                   starname + '.ps')
 
+        # Save the out2 file created by fit2d
+        shutil.copy2('out2', 'sp%d_out2.dat' % starid)
+
         call_mkimage(args.bin_dir, ra, dec, starobs)
 
         run_sumlineserr(args.bin_dir, specfiles)
@@ -1381,6 +1445,7 @@ def run_star_photometry(nightshot, ra, dec, starid, args):
         shutil.copy2('sp%d_2.dat' % starid, args.results_dir)
         shutil.copy2('sp%d_100.dat' % starid, args.results_dir)
         shutil.copy2('sp%d.obsdata' % starid, args.results_dir)
+        shutil.copy2('sp%d_out2.dat' % starid, args.results_dir)
 
         os.chdir(curdir)
 
@@ -1390,6 +1455,16 @@ def run_star_photometry(nightshot, ra, dec, starid, args):
 
 
 def get_g_band_throughput(args):
+    '''
+    Measure the throughput in the SDSS g-Band
+    Equivalent of the rgettp0 script
+
+    Parameters
+    ----------
+    args : struct
+        The arguments structure
+
+    '''
 
     nightshot = args.night + 'v' + args.shotid
 
@@ -1418,6 +1493,68 @@ def get_g_band_throughput(args):
             flxdata.append(dflx)
 
     run_biwt(args.bin_dir, flxdata, 'tp.biwt')
+
+
+def mk_sed_throughput_curve(args):
+    '''
+    Equivalent of the rgett0b script.
+
+    Parameters
+    ----------
+    args : struct
+        The arguments structure
+
+    '''
+
+    nightshot = args.night + 'v' + args.shotid
+
+    _logger.info('Reading %s.shstars in %s'
+                 % (nightshot, os.path.abspath(os.path.curdir)))
+
+    stars = read_data('%s.shstars' % nightshot)
+
+    sedlist = []
+
+    for s in stars:
+        fitsedname = '%s_%s.txt' % (s.shotid, s.shuffleid)
+        sedname = 'sp%d_fitsed.dat' % s.starid
+        if not os.path.exists(os.path.join(args.sed_fit_dir, fitsedname)):
+            _logger.warn('No sed fit found for star %d' % s.starid)
+            continue
+
+        shutil.copy2(os.path.join(args.sed_fit_dir, fitsedname), sedname)
+        seddata = np.loadtxt(sedname, ndmin=1)
+
+        sedcgs = seddata[1]/6.626e-27/3.e18/seddata[0]*360.*5.e5*100.
+
+        np.savetxt('%sed.dat' % s.starid, (seddata[0], sedcgs))
+
+        sedlist.append(sedname)
+
+    run_combsed(args.bindir, sedlist, args.sed_sigma_cut, args.sed_rms_cut,
+                '%ssedtp.dat' % nightshot, '%ssedtpa.ps' % nightshot)
+
+    data = np.loadtxt('%ssedtp.dat' % nightshot)
+
+    with open('%sfl.dat' % nightshot, 'w') as f:
+        for d in data:
+            f.write('%f %f\n' % (d[0], 6.626e-27*(3.e18/d[0])/360.
+                                 / 5.e5/d[1]*250.))
+
+    with open('offsets.dat', 'w') as off:
+        for star in stars:
+            use_star = False
+            with open('sp%s_100.dat' % star.starid, 'r') as f:
+                for l in f.readline():
+                    w, v = l.split()
+                    if w.startswith('4540') and float(v) > 10000.:
+                        use_star = True
+                        break
+            if use_star:
+                with open('sp%d_out2.dat' % star.starid, 'r') as f:
+                    line = f.readline()
+
+                    off.write('%d %s\n' % (star.starid, line))
 
 
 vdrp_info = None
@@ -1496,7 +1633,9 @@ def main(jobnum, args):
                 get_g_band_throughput(args)
 
             if task in ['mk_sed_throughput_curve', 'all']:
-                pass
+                os.chdir(wdir)
+                _logger.info('Creating SED throughput curve')
+                mk_sed_throughput_curve(args)
 
             if task in ['fit_throughput_curve', 'all']:
                 pass
