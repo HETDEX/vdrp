@@ -179,8 +179,8 @@ c - get noise from the errors
          endif
          ston2=0.95*amp/xnoise2
          print *,'Noise_emp, Noise_anal = ',xnoise,xnoise2
-         print *,'RMS, dAMP, S/N = ',rms,ampe,ston,ston2
-c         ston=ston2
+         print *,'RMS, dAMP, S/N(e,a) = ',rms,ampe,ston,ston2
+         ston=ston2
 
          write(11,1101) wl0(il),wfit,amp,
      $        a(8),sqrt(covar(8,8)),ston,con,chi

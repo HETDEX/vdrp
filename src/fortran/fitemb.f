@@ -37,7 +37,8 @@ c      call pgbegin(0,'?',5,4)
 
       call pgsls(1)
       call pgslw(1)
-      f2=f1(1:nf)//"/fitghsp.in"
+c      f2=f1(1:nf)//"/fitghsp.in"
+      f2="fitres/"//f1
 
       open(unit=1,file=f2,status='old',err=966)
 
@@ -146,7 +147,7 @@ c      wave0=wave(n/2)
          write(c1,1001) sn
          call pgmtxt('T',-1.5,0.9,1.,c1)
          call pgsch(2.2)
-         call pgmtxt('B',-1.1,0.5,0.5,f1(1:nf))
+         call pgmtxt('B',-1.1,0.5,0.5,f1(1:nf-5))
          call pgsch(1.5)
  1001    format(f6.1)
 
@@ -158,6 +159,8 @@ c      wave0=wave(n/2)
          sigg=sqrt(sigg*sigg)
          xnp=4.*sigg
          xnp=xnp/pixsize
+         if((wfit-x(1)).lt.6) goto 766
+         if((x(nt)-wfit).lt.6) goto 766
          if(abs(wfit-wl0(il)).gt.20.or.amp.le.0.) goto 766
 c - get noise from the rms                                                                                                                      
          xnoise=rms*sqrt(xnp)

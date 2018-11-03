@@ -4,7 +4,7 @@
       real xb(nmax),yb(nmax)
       character file1*80,file2*80,c1*18
 
-      ibin=13
+      ibin=1
       ib1=(ibin-1)/2
       xib=float(ibin)
 
@@ -15,9 +15,9 @@
       call pgslw(3)
 
       xmin=3500.
-      xmax=5450.
-      xmin=1.
-      xmax=112.
+      xmax=5500.
+c      xmin=1.
+c      xmax=112.
 c      ymin=-0.03
 c      ymax=0.03
       ymin=0.
@@ -26,6 +26,8 @@ c      ymax=0.03
       ymax=1150.
       ymin=-0.4
       ymax=0.4
+      ymin=0.
+      ymax=30.
       call pgsls(1)
       call pgslw(2)
       call pgsci(1)

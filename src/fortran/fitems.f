@@ -12,6 +12,7 @@
       wavec=50.
       signsl=2.2
       fluxerr=0.6
+      pixsize=2.
 
       nadd=5
 
@@ -136,13 +137,18 @@ c         call pgsls(4)
          call pgsch(1.1)
          call pgsci(1)
          call pgsls(1)
+         wfit=a(6)+a(5)
+         wfit0=wfit
+         nfit=0
          open(unit=1,file='out',status='unknown')
          do ii=1,nt
             write(1,*) x(ii),ydata(ii),rms,y(ii)
+            if(x(ii).gt.(wfit0-6).and.x(ii).lt.(wfit0+6)) nfit=nfit+1
          enddo
          close(1)
-
-         wfit=a(6)+a(5)
+         if(nfit.le.5) goto 766
+         print *,nfit
+         
          znew=(a(6)+a(5))/wl0(il)-1
          zerr=(a(6)+a(5)+sqrt(covar(5,5)))/wl0(il)-1
          zerr=zerr-znew
@@ -152,15 +158,19 @@ c         call pgsls(4)
          ampe=sqrt(covar(7,7))
          sigg=sqrt(sigg*sigg)
          xnp=4.*sigg
+         xnp=xnp/pixsize
          if(abs(wfit-wl0(il)).gt.20.or.amp.le.0.) goto 766
+
+         if((wfit-x(1)).lt.6) goto 766
+         if((x(nt)-wfit).lt.6) goto 766
 
 c - get noise from the rms
          xnoise=rms*sqrt(xnp)
-         ston=0.95*amp/xnoise
+         ston=0.95*amp/xnoise/pixsize
 
 c - get noise from the errors
-         w1=wfit-4.*sigg
-         w2=wfit+4.*sigg
+         w1=wfit-xnp
+         w2=wfit+xnp
          nerr=0
          xnoise2=0.
          xmaxn=0.
@@ -171,18 +181,21 @@ c - get noise from the errors
                xmaxn=max(xmaxn,ye(i))
             endif
          enddo
+         print *,'Npix, wave1, wave2, wfit = ',nerr,w1,w2,wfit
          if(nerr.gt.0) then
             xnoise2=sqrt(xnoise2)
-            xnoise2=xmaxn*sqrt(float(nerr))
+c            xnoise2=xmaxn*sqrt(float(nerr))
          else
             xnoise2=0.
          endif
-         ston2=0.95*amp/xnoise2
-         print *,'Noise_emp, Noise_anal = ',xnoise,xnoise2
-         print *,'RMS, dAMP, S/N = ',rms,ampe,ston,ston2
-c         ston=ston2
+         ston1=ston
+         ston2=0.95*amp/xnoise2/pixsize
+         print *,'Noise_res, Noise_rms = ',xnoise2,xnoise
+         print *,'RMS, dAMP, S/N(res,rms) = ',rms,ampe/pixsize,
+     $        ston2,ston1
+         ston=ston2
 
-         write(11,1101) wl0(il),wfit,amp,
+         write(11,1101) wl0(il),wfit,amp/pixsize,
      $        a(8),sqrt(covar(8,8)),ston,con,chi
          goto 7661
  766     continue

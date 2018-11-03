@@ -1,6 +1,6 @@
 
       parameter(nmax=10000)
-      real x(nmax),y(nmax),z(nmax),arr(100,100,1000)
+      real x(nmax),y(nmax),z(nmax),arr(100,100,1036)
       integer naxes(3)
       character file1*40
       parameter(pi=3.14159)
@@ -13,7 +13,7 @@
 
       do i=1,100
          do j=1,100
-            do k=1,1000
+            do k=1,1036
                arr(i,j,k)=0.
             enddo
          enddo
@@ -25,7 +25,7 @@
       ntot=0
 
       open(unit=2,file='list',status='old')
-      do iz=1,1000
+      do iz=1,1036
          read(2,*,end=667) file1
          ntot=ntot+1
          
@@ -37,7 +37,11 @@
             n=n+1
             x(n)=x1+nh
             y(n)=x2+nh
-            if(abs(x3).eq.666) x3=0.
+            if(x3.gt.0.) then
+               x3=1./x3
+            else
+               x3=0.
+            endif
             z(n)=x3
          enddo
  666     continue
@@ -50,16 +54,24 @@ c            xp=float(i-1)*dx
 c               yp=float(j-1)*dx
                yp=float(j)*dx
                diff=3.0
+               radmin=1e10
                do k=1,n
                   rad=sqrt((xp-x(k))**2+(yp-y(k))**2)
-                  if(rad.lt.diff) then
-                     diff=rad
+                  if(rad.lt.radmin) then
+                     radmin=rad
                      w=rad/rsig
                      gaus=(exp(-w*w/2.))/gaus0
                      if(rad.lt.1.) gaus=1.
                      arr(i,j,iz)=z(k)*gaus
                   endif
+c                  if(rad.lt.diff) then
+c                     diff=rad
+c                     w=rad/rsig
+c                     gaus=(exp(-w*w/2.))/gaus0
+c                     if(rad.lt.1.) gaus=1.
+c                  endif
                enddo
+c               arr(i,j,iz)=z(k)*gaus
             enddo
          enddo
       enddo

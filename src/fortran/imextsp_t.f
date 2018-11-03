@@ -6,10 +6,9 @@
       real xtrace(narrm,narrm),trace(narrm),xspab(narrm,narrm)
       real xflag(narrm,narrm),flag(narrm),x2dsub(narrm, narrm)
       real wa(narrm),fa(narrm),f2f(narrm),xerr(narrm),xin(100000)
-      real wbadl(narrm),wbadu(narrm)
       integer naxes(2),iwave(narrm)
       integer ixbs(1000),ixbe(1000),iybs(1000),iybe(1000)
-      character file1*130,file2*130,file3*130,amp*14,a1*14,ae*5
+      character file1*130,file2*130,file3*130,amp*14,a1*14
       logical simple,extend,anyf
 
       convfac=(6.626e-27)*(3.e18)/360./5.e5
@@ -19,35 +18,17 @@
       read *,file3
       amp=file3(52:65)
 
-c - get the relative frame normalization
-      xrelnorm=1.0
-      open(unit=1,file='normexp.out',status='old',err=365)
-      do i=1,3
-         read(1,*,end=366) ae,x2,x3
-         if(ae.eq.file1(73:77)) xrelnorm=x3
-      enddo
- 366  continue
-      close(1)
- 365  continue
-
 c - get the bad pixel list
       open(unit=1,file='/home/00115/gebhardt/badpix.new',status='old')
       nbad=0
-      nbadw=0
       do i=1,1000
          read(1,*,end=444) a1,i2,i3,i4,i5
          if(a1.eq.amp) then
-            if(i4.eq.0.and.i5.eq.0) then
-               nbadw=nbadw+1
-               wbadl(nbadw)=float(i2)
-               wbadu(nbadw)=float(i3)
-            else
-               nbad=nbad+1
-               ixbs(nbad)=i2
-               ixbe(nbad)=i3
-               iybs(nbad)=i4
-               iybe(nbad)=i5
-            endif
+            nbad=nbad+1
+            ixbs(nbad)=i2
+            ixbe(nbad)=i3
+            iybs(nbad)=i4
+            iybe(nbad)=i5
          endif
       enddo
  444  continue
@@ -310,23 +291,6 @@ c               print *,j,i,nr,wave(i),diff,xspab(j,i)
          enddo
       enddo
 
-c - now get the flagged region by wavelength
-      if(nbadw.gt.0) then
-         do i=1,nbadw
-            do j=1,n
-               if(waved(j).gt.wbadl(i).and.waved(j).lt.wbadu(i)) then
-                  ibad=iwave(j)
-                  jbad=nint(xtrace(ibad,ifib))
-                  nbad=nbad+1
-                  ixbs(nbad)=ibad
-                  ixbe(nbad)=ibad
-                  iybs(nbad)=jbad
-                  iybe(nbad)=jbad
-               endif
-            enddo
-         enddo
-      endif
-
       im1=0
       ier=0
       call ftgiou(im1,ier)
@@ -340,7 +304,7 @@ c - this is the flagged frame
       call ftg2de(im1,igc,0.,narrm,ncol,nrow,xflag,anyf,ier)
       call ftclos(im1,ier)
 
-c - now add the extra bad pixel list
+c - now add the the extra bad pixel list
       if(nbad.gt.0) then
          do ibad=1,nbad
             do ix=ixbs(ibad),ixbe(ibad)
@@ -397,11 +361,8 @@ c - flag if anything nearby is below 0
          call xlinint(wave(i),n,waved,flag,yflag)
          call xlinint(wave(i),ntp,wtp,tp,ytp)
          call xlinint(wave(i),na,wa,fa,yfp)
-         ytp=ytp*xrelnorm
          yf2f=max(yf2f,0.)
          yfrac=yfp*ytp
-         if(yerr2.gt.1000.or.yerr.gt.1000) yflag=0
-         if(wave(i).lt.waved(3).or.wave(i).gt.waved(n-3)) yflag=0
          if(yfp.gt.0.and.yflag.gt.0.and.yp.gt.-1e5.and.
      $        yp.lt.1e5.and.yp.gt.-1e3) then
 c - yerr2 is propagation of error

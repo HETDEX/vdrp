@@ -2,14 +2,12 @@
       parameter (narrm=5048)
       real xd(narrm,narrm),wave(narrm),xp(narrm),xerr2(narrm)
       real xsp(narrm),waved(narrm),wtp(narrm),tp(narrm)
-      real xsky(narrm,narrm),sky(narrm),xspa(narrm,narrm)
-      real xtrace(narrm,narrm),trace(narrm),xspab(narrm,narrm)
-      real xflag(narrm,narrm),flag(narrm),x2dsub(narrm, narrm)
+      real xsky(narrm,narrm),sky(narrm)
+      real xtrace(narrm,narrm),trace(narrm)
+      real xflag(narrm,narrm),flag(narrm)
       real wa(narrm),fa(narrm),f2f(narrm),xerr(narrm),xin(100000)
-      real wbadl(narrm),wbadu(narrm)
       integer naxes(2),iwave(narrm)
-      integer ixbs(1000),ixbe(1000),iybs(1000),iybe(1000)
-      character file1*130,file2*130,file3*130,amp*14,a1*14,ae*5
+      character file1*130,file2*130,file3*130
       logical simple,extend,anyf
 
       convfac=(6.626e-27)*(3.e18)/360./5.e5
@@ -17,46 +15,10 @@
       read *,ifib,w0,ww
       read *,file2
       read *,file3
-      amp=file3(52:65)
-
-c - get the relative frame normalization
-      xrelnorm=1.0
-      open(unit=1,file='normexp.out',status='old',err=365)
-      do i=1,3
-         read(1,*,end=366) ae,x2,x3
-         if(ae.eq.file1(73:77)) xrelnorm=x3
-      enddo
- 366  continue
-      close(1)
- 365  continue
-
-c - get the bad pixel list
-      open(unit=1,file='/home/00115/gebhardt/badpix.new',status='old')
-      nbad=0
-      nbadw=0
-      do i=1,1000
-         read(1,*,end=444) a1,i2,i3,i4,i5
-         if(a1.eq.amp) then
-            if(i4.eq.0.and.i5.eq.0) then
-               nbadw=nbadw+1
-               wbadl(nbadw)=float(i2)
-               wbadu(nbadw)=float(i3)
-            else
-               nbad=nbad+1
-               ixbs(nbad)=i2
-               ixbe(nbad)=i3
-               iybs(nbad)=i4
-               iybe(nbad)=i5
-            endif
-         endif
-      enddo
- 444  continue
-      close(1)
-
       wmin=w0-ww
       wmax=w0+ww
       wsp=2.
-      nw=nint((wmax-wmin)/wsp)+1
+      nw=nint((wmax-wmin)/wsp)
       do i=1,nw
          wave(i)=wmin+float(i-1)*wsp
       enddo
@@ -176,6 +138,7 @@ c - across fibers:
          call moment(xin,nin,ave,adev,sdevf,var,skew,curt)
 c         xerr(i)=max(xerrsp,xerrf)
          xerr(i)=max(sdevs,sdevf)
+c         print *,xerrsp/sdevs,xerrf/sdevf
       enddo
 
 c - now get the error from the error frame, if it exists
@@ -205,7 +168,7 @@ c - this is the error frame
          ier=0
          ierr2=0
          xerr2(i)=0.
-c         print *,"Using local error estimate"
+         print *,"Using local error estimate"
       endif   
       call ftclos(im1,ier)
 
@@ -252,85 +215,6 @@ c - this is the trace
       ier=0
       call ftgiou(im1,ier)
       call ftopen(im1,file1,iread,iblock,ier)
-c - this is the 2d sky-subtracted frame
-      iext=3
-      call ftmahd(im1,iext,ihd,ier)
-      call ftghpr(im1,2,simple,ibit,naxis,naxes,ipc,igc,extend,ier)
-      ncol=naxes(1)
-      nrow=max(1,naxes(2))
-      call ftg2de(im1,igc,0.,narrm,ncol,nrow,x2dsub,anyf,ier)
-      call ftclos(im1,ier)
-
-c - get rid of the horizontal streaks
-      nrowe=3
-      nrt=nrowe*2+1
-      nbin=11
-      nhalf=(nbin-1)/2
-      diffmax=10.
-      xsmin=11.
-      do i=1,n
-         trace(i)=xtrace(iwave(i),ifib)
-         ixtr=nint(trace(i))
-         do j=1,nrt
-            nr=ixtr-nrowe-1+j
-            xspa(j,i)=x2dsub(iwave(i),nr)
-         enddo
-      enddo      
-      do j=1,nrt
-         do i=1,n
-            is=max(1,i-nhalf)
-            ie=min(n,i+nhalf)
-            xsum=0.
-            do ip=is,ie
-               xsum=xsum+xspa(j,ip)
-            enddo
-            xspab(j,i)=xsum
-         enddo
-      enddo
-      do i=1,n
-         ixtr=nint(trace(i))
-         nin=0
-         do j=1,nrt
-            nin=nin+1
-            xin(nin)=xspab(j,i)
-         enddo
-         call biwgt(xin,nin,xbcol,xscol)
-         xscol=max(xsmin,xscol)
-         do j=1,nrt
-            diff=(xspab(j,i)-xbcol)/xscol
-            if(diff.gt.diffmax) then
-               nr=nint(trace(i)-nrowe-1+j)
-               nbad=nbad+1
-               ixbs(nbad)=i
-               ixbe(nbad)=i
-               iybs(nbad)=nr
-               iybe(nbad)=nr
-c               print *,j,i,nr,wave(i),diff,xspab(j,i)
-            endif
-         enddo
-      enddo
-
-c - now get the flagged region by wavelength
-      if(nbadw.gt.0) then
-         do i=1,nbadw
-            do j=1,n
-               if(waved(j).gt.wbadl(i).and.waved(j).lt.wbadu(i)) then
-                  ibad=iwave(j)
-                  jbad=nint(xtrace(ibad,ifib))
-                  nbad=nbad+1
-                  ixbs(nbad)=ibad
-                  ixbe(nbad)=ibad
-                  iybs(nbad)=jbad
-                  iybe(nbad)=jbad
-               endif
-            enddo
-         enddo
-      endif
-
-      im1=0
-      ier=0
-      call ftgiou(im1,ier)
-      call ftopen(im1,file1,iread,iblock,ier)
 c - this is the flagged frame
       iext=2
       call ftmahd(im1,iext,ihd,ier)
@@ -340,20 +224,7 @@ c - this is the flagged frame
       call ftg2de(im1,igc,0.,narrm,ncol,nrow,xflag,anyf,ier)
       call ftclos(im1,ier)
 
-c - now add the extra bad pixel list
-      if(nbad.gt.0) then
-         do ibad=1,nbad
-            do ix=ixbs(ibad),ixbe(ibad)
-               do iy=iybs(ibad),iybe(ibad)
-                  xflag(ix,iy)=0.
-               enddo
-            enddo
-         enddo
-      endif
-
-c      radflag=2.0
-      radflagx=3.0
-      radflagy=4.0
+      radflag=2.0
       do i=1,n
          xftf=xd(iwave(i),ifib)
          if(xftf.gt.0.1) then
@@ -362,14 +233,14 @@ c      radflag=2.0
             f2f(i)=xd(iwave(i),ifib)
             sky(i)=xsky(iwave(i),ifib)
 
-c - flag if anything nearby is below 0
+c - flag is anything nearby is below 0
             trace(i)=xtrace(iwave(i),ifib)
             xfpos=float(iwave(i))
             yfpos=trace(i)
-            ixmin=max(1,nint(xfpos-radflagx))
-            ixmax=min(n,nint(xfpos+radflagx))
-            iymin=max(1,nint(yfpos-radflagy))
-            iymax=min(n,nint(yfpos+radflagy))
+            ixmin=max(1,nint(xfpos-radflag))
+            ixmax=min(n,nint(xfpos+radflag))
+            iymin=max(1,nint(yfpos-radflag))
+            iymax=min(n,nint(yfpos+radflag))
             flag(i)=xflag(iwave(i),nint(trace(i)))
             do ix=ixmin,ixmax
                do iy=iymin,iymax
@@ -397,26 +268,20 @@ c - flag if anything nearby is below 0
          call xlinint(wave(i),n,waved,flag,yflag)
          call xlinint(wave(i),ntp,wtp,tp,ytp)
          call xlinint(wave(i),na,wa,fa,yfp)
-         ytp=ytp*xrelnorm
          yf2f=max(yf2f,0.)
          yfrac=yfp*ytp
-         if(yerr2.gt.1000.or.yerr.gt.1000) yflag=0
-         if(wave(i).lt.waved(3).or.wave(i).gt.waved(n-3)) yflag=0
-         if(yfp.gt.0.and.yflag.gt.0.and.yp.gt.-1e5.and.
-     $        yp.lt.1e5.and.yp.gt.-1e3) then
+         if(yfp.gt.0.and.yflag.gt.0.and.yp.gt.-1e5.and.yp.lt.1e5) then
 c - yerr2 is propagation of error
 c   ysky is the sky value
 c   xrs is 5% of the sky value
 c   yerrn is the max of yerr2 or (yerr2+0.05*sky)/1.3
-c   or yerrn is the quad sum
 c   yerr is the empirical local estimate
             xph=yerr2
             xct=ysky
 c            xrs=0.05*xct
-c            yerrn=max(xph,(xph+xrs)/1.3)
             xrs=0.04*xct
+            yerrn=max(xph,(xph+xrs)/1.3)
             yerrn=sqrt(xph*xph+xrs*xrs)
-c            yerr2=yerrn
             yerrm=yerr
             if(xph.gt.1) then
                yerr=yerrn
@@ -446,8 +311,6 @@ c            yerr2=yerrn
       enddo
       if(xp.lt.x(1)) yp=y(1)
       if(xp.gt.x(n)) yp=y(n)
-c      if(xp.lt.x(1)) yp=0.
-c      if(xp.gt.x(n)) yp=0.
       return
       end
 

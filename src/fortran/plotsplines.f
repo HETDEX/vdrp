@@ -4,6 +4,15 @@
       real yel(nmax),yeu(nmax),ydiff(nmax),ydiffn(nmax),ysum(nmax)
       character file1*80,file2*80,c1*8
 
+      irange=0
+      open(unit=1,file='sprange.dat',status='old',err=555)
+      read(1,*) x1,x2
+      xw1=x1-x2
+      xw2=x1+x2
+      irange=1
+ 555  continue
+      close(1)
+
       call pgbegin(0,'?',1,1)
       call pgpap(0.,1.)
       call pgsch(1.5)
@@ -48,7 +57,13 @@
          close(2)
          if(il.eq.1) then
             call pgsci(1)
-            call pgenv(x(1),x(n),ymin,ymax,0,0)
+            xmin=x(1)
+            xmax=x(n)
+            if(irange.eq.1) then
+               xmin=xw1
+               xmax=xw2
+            endif
+            call pgenv(xmin,xmax,ymin,ymax,0,0)
             call pglabel('Wavelength','Counts','')
          endif
          ic=ic+1

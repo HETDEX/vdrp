@@ -1,75 +1,56 @@
 
       parameter(nmax=10000,nlmax=1000,nca=17)
       real wave(nmax),flux(nmax),x(nmax),y(nmax),alpha(nca,nca)
-      real wl(nmax),a(nca),wl0(nlmax),yin(nmax),covar(nca,nca)
+      real a(nca),yin(nmax),covar(nca,nca)
       real fluxe(nmax),ye(nmax),wsky(nmax),fsky(nmax),fskye(nmax)
-      real ydata(nmax)
-      character file1*80,title*60,f1*50,f2*50,c1*6
+      character file1*80,title*60
       parameter(pi=3.141592e0,cee=2.99792458e5)
       data big/1.e20/
       common/aval/ np
 
-      
-      call pgbegin(0,'?',3,3)
-c      call pgbegin(0,'?',5,4)
-      call pgpap(0.,1.)
-      call pgscf(2)
-      call pgsch(1.5)
-      call pgslw(2)
+c      sncut=3.
+c      sncuthi=100.
+      sncut=0.
+      sncuthi=1e10
+      ampcut=1.e30
+      sigcut=50.
+      wavecut=5.
 
       wavec=50.
       signsl=2.2
-      fluxerr=0.6
-      pixsize=2.
+
+      ws=3504.
+      we=5496.
+      nw=600
 
       nadd=5
 
-      open(unit=3,file='inlist',status='old')
-      open(unit=11,file='lines.out',status='unknown')
-      do iall=1,10000
-         read(3,*,end=866) f1,sn,wave0
-         nf=0
-         do j=1,50
-            if(f1(j:j).ne." ") then
-               nf=nf+1
-            endif
-         enddo
-
-      call pgsls(1)
-      call pgslw(1)
-      f2=f1(1:nf)//"/fitghsp.in"
-
-      open(unit=1,file=f2,status='old',err=966)
+      open(unit=1,file='fitghsp.in',status='old',err=966)
 
       n=0
       do i=1,nmax
-c         read(1,*,end=666) x1,x2,x3
-         read(1,*,end=666) x1,x2,x3,x4,x5
+         read(1,*,end=666) x1,x2,x3
          n=n+1
          wave(n)=x1
          flux(n)=x2
          fluxe(n)=x3
-         if(flux(n).eq.0) flux(n)=-666
-c         flux(n)=x4
-c         fluxe(n)=x5
-c         fluxe(n)=fluxerr
       enddo
  666  continue
       close(1)
-c      wave0=wave(n/2)
 
-      nl=1
-      wl0(1)=wave0
-      wl(1)=wave0
-
-      ititle=0
-
-      do il=1,nl
-         wlo=wl(il)-wavec
-         wup=wl(il)+wavec
-         nt=0
-         ymin=big
+      open(unit=11,file='lines.out',status='unknown')
+      do iall=1,nw
+         wave0=ws+float(iall-1)*(we-ws)/float(nw-1)
+         wlo=wave0-wavec
+         wup=wave0+wavec
          ymax=-big
+         nt=0
+         do i=1,nca
+            do j=1,nca
+               covar(i,j)=0.
+               alpha(i,j)=0.
+            enddo
+         enddo
          do i=1,n
             if(wave(i).gt.wlo.and.wave(i).lt.wup.and.
      $           nint(flux(i)).ne.-666) then
@@ -77,29 +58,20 @@ c      wave0=wave(n/2)
                x(nt)=wave(i)
                y(nt)=flux(i)
                yin(nt)=y(nt)
-               ydata(nt)=y(nt)
                ye(nt)=fluxe(i)
-               ymin=min(ymin,y(nt))
                ymax=max(ymax,y(nt))
             endif
          enddo
          call biwgt(yin,nt,xb,xs)
          call biwgt(yin,12,xb,xs)
-         ybit=(ymax-ymin)/8.
-         ymin=ymin-1.5*ybit
-         ymax=ymax+ybit
 
-         call pgenv(wlo,wup,ymin,ymax,0,0)
-         call pgline(nt,x,y)
-         call pgsch(1.5)
-         call pglabel('Wavelength','1e-17 ergs/cm\U2\D/s','')
          amp=(ymax-xb)*3.5
          a(1)=signsl
          a(2)=0.0
          a(3)=0.
          a(4)=xb
          a(5)=0.
-         a(6)=wl(il)
+         a(6)=wave0
          a(7)=amp
          a(8)=a(1)
          a(9)=0.
@@ -114,7 +86,6 @@ c      wave0=wave(n/2)
          xoff=a(5)
          rms=0.
          chi=0.
-         open(unit=12,file='fitone.out',status='unknown')
          do ia=1,nt
             yfit=con
             do i=1,np
@@ -127,45 +98,37 @@ c      wave0=wave(n/2)
             enddo
             rms=rms+(y(ia)-yfit)**2
             chi=chi+((y(ia)-yfit)/ye(ia))**2
-            write(12,*) x(ia),y(ia),yfit
             y(ia)=yfit
          enddo
-         close(12)
          rms=sqrt(rms/float(nt))
          chi=chi/float(nt)
-         call pgsls(4)
-         call pgsci(2)
-         call pgslw(6)
-         call pgline(nt,x,y)
-         call pgslw(2)
-         call pgsci(1)
-         call pgsls(1)
-
-         call pgsch(1.7)
-         call pgslw(2)
-         write(c1,1001) sn
-         call pgmtxt('T',-1.5,0.9,1.,c1)
-         call pgsch(2.2)
-         call pgmtxt('B',-1.1,0.5,0.5,f1(1:nf))
-         call pgsch(1.5)
- 1001    format(f6.1)
 
          wfit=a(6)+a(5)
-         znew=(a(6)+a(5))/wl0(il)-1
-         zerr=(a(6)+a(5)+sqrt(covar(5,5)))/wl0(il)-1
+         znew=(a(6)+a(5))/wave0-1
+         zerr=(a(6)+a(5)+sqrt(covar(5,5)))/wave0-1
          zerr=zerr-znew
-         ampe=sqrt(covar(7,7))
+         ampe=covar(7,7)
+c         if(sigg.gt.sigcut) goto 766
+c         if(chi.gt.99) goto 766
+c         if(con.gt.1000) goto 766
+c         if(amp.le.0) goto 766
+c         if(abs(wfit-wave0).gt.wavecut) goto 766
+         igood=0
+         if(ampe.gt.0.and.ampe.lt.ampcut) then
+            igood=1
+         endif
+c         if(igood.eq.0) goto 766
+         ampe=sqrt(ampe)
          sigg=sqrt(sigg*sigg)
          xnp=4.*sigg
-         xnp=xnp/pixsize
-         if(abs(wfit-wl0(il)).gt.20.or.amp.le.0.) goto 766
-c - get noise from the rms                                                                                                                      
+
+c - get noise from the rms
          xnoise=rms*sqrt(xnp)
-         ston=0.95*amp/xnoise/pixsize
+         ston=0.95*amp/xnoise
 
 c - get noise from the errors
-         w1=wfit-xnp
-         w2=wfit+xnp
+         w1=wfit-4.*sigg
+         w2=wfit+4.*sigg
          nerr=0
          xnoise2=0.
          xmaxn=0.
@@ -178,40 +141,31 @@ c - get noise from the errors
          enddo
          if(nerr.gt.0) then
             xnoise2=sqrt(xnoise2)
-c            xnoise2=xmaxn*sqrt(float(nerr))
-            ston2=0.95*amp/xnoise2/pixsize
+            xnoise2=xmaxn*sqrt(float(nerr))
          else
             xnoise2=0.
-            ston2=0.
          endif
+         ston2=0.95*amp/xnoise2
+         print *,wave0,xnoise,xnoise2
 
-c - ston1 is the S/N as measured from the rms of the fit
-c   ston2 is the S/N as measured from photon counting with residual correction
-         ston1=ston
-         ston=ston2
+         if(ston.lt.sncut) goto 766
+         if(ston.gt.sncuthi) goto 766
 
-         write(*,1002) rms,ston2,ston1,chi,xnoise2,xnoise
-c         print *,'RMS, S/N, chi = ',rms,ston,chi
-         write(11,1101) wl0(il),wfit,amp/pixsize,
+         write(11,1101) wave0,wfit,amp,
      $        a(8),sqrt(covar(8,8)),ston,con,chi
          goto 7661
  766     continue
-         write(11,1101) 0.,0.,0.,0.,0.,0.,0.,0.
+         write(11,1101) wave0,0.,0.,0.,0.,0.,0.,0.
  7661    continue
       enddo
+      close(11)
       goto 977
  966  continue
+      open(unit=11,file='lines.out',status='unknown')
       write(11,1101) 0.,0.,0.,0.,0.,0.,0.,0.
- 977  continue
-      enddo
- 866  continue
       close(11)
-      close(3)
-
-
- 1101 format(f8.2,1x,f8.2,1x,f11.3,3(1x,f7.2),2(1x,f9.2))
- 1002 format("rms, sn_ph, sn_rms, chi, ns_ph, ns_rms: ",6(1x,f7.2))
-      call pgend
+ 977  continue
+ 1101 format(f8.2,1x,f8.2,1x,f10.2,3(1x,f7.2),2(1x,f9.2))
       end
 
       subroutine xlinint(xp,n,x,y,yp)
@@ -249,8 +203,8 @@ c         print *,'RMS, S/N, chi = ',rms,ston,chi
       ia(2)=0
       ia(3)=0
       ia(4)=1
-c     this is the sigma:
-      ia(8)=1
+c     this is the sigma: 0 fix, 1 fit
+      ia(8)=0
 
       alamda=-1
       alamo=1.e10

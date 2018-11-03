@@ -6,17 +6,21 @@
 
       nf=18
       ibin=13
+      ibin=1
       ib1=(ibin-1)/2
       xib=float(ibin)
 
-      call pgbegin(0,'?',3,3)
+c      call pgbegin(0,'?',3,3)
+      call pgbegin(0,'?',1,1)
       call pgpap(0.,1.)
       call pgsch(1.5)
       call pgscf(2)
       call pgslw(3)
 
+      xmin=3810.
+      xmax=3870.
       xmin=3500.
-      xmax=5450.
+      xmax=5500.
 
       open(unit=1,file='splist',status='old')
 
@@ -30,7 +34,7 @@
          n=0
          do i=1,nmax
             read(2,*,end=667) x1,x2
-            if(x2.gt.0) then
+            if(x2.ne.0) then
                n=n+1
                x(n)=x1
                y(n)=x2
@@ -68,11 +72,17 @@
          call pgslw(2)
          call pgsci(1)
          call pgsch(1.8)
+         ybit=(ymax-ymin)/10.
+         ymin=ymin-ybit
+         ymax=ymax+ybit
          call pgenv(xmin,xmax,ymin,ymax,0,0)
+c         call pgenv(xmin,xmax,0.,20.,0,0)
+c         if(il.eq.1) call pgenv(xmin,xmax,0.,ymax,0,0)
          call pgline(n,x,y)
 c         call pgline(nbb,xn,yn)
-         call pgsch(2.2)
+         call pgsch(1.8)
 c         call pgsci(2)
+         call pglabel('Wavelength','1e-17 ergs/cm\U2\D/s','')
          call pgmtxt('T',0.9,0.5,0.5,file1(1:nf))
          call pgsch(1.5)
          call pgsci(1)

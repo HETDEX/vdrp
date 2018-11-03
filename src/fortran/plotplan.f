@@ -16,10 +16,9 @@ c - diff from Jan 1 to Sept 1 is 122 days
 c      x0=0
 
       xmin=0.
-      xmax=400.-x0
+      xmax=420.-x0
       ymin=0.
-      ymax=1100.
-      ymax=800
+      ymax=900.
       call pgenv(xmin,xmax,ymin,ymax,0,0)
       call pglabel('Days since Jan 1','Cumulative Number','')
 
@@ -40,7 +39,7 @@ c         xcount=float(n)
       do i=1,n
          y(i)=y(i)-xn0
       enddo
-      call pgslw(3)
+      call pgslw(4)
       call pgline(n,x,y)
 
       open(unit=1,file='dex.dat',status='old')
@@ -61,11 +60,11 @@ c      x0=57997.1453929939
          y(i)=y(i)-xn0
       enddo
       call pgsci(2)
-      call pgline(n,x,y)
+c      call pgline(n,x,y)
       do i=1,n
          y(i)=y(i)+80.
       enddo
-      call pgsls(4)
+c      call pgsls(4)
       call pgline(n,x,y)
 
       call pgend

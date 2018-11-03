@@ -3,16 +3,19 @@
       real wave(nmax),flux(nmax),x(nmax),y(nmax),alpha(nca,nca)
       real wl(nmax),a(nca),wl0(nlmax),yin(nmax),covar(nca,nca)
       real fluxe(nmax),ye(nmax),yo(nmax),yeo(nmax),yfito(nmax)
-      real ao(nca),aout(10,nsim),xin(nmax)
+      real ao(nca),aout(10,nsim),xin(nmax),xoutv(nca),xouts(nca)
       character file1*80,alist(10)*10
       parameter(pi=3.141592e0,cee=2.99792458e5)
       data big/1.e20/
       common/aval/ np
 
+      read *,wave0
+
       nmc=100.
       wavec=50.
       signsl=2.2
       fluxerr=0.6
+      pixsize=2.
 
       nadd=5
 
@@ -28,7 +31,7 @@
       enddo
  666  continue
       close(1)
-      wave0=wave(nint(float(n)/2.))
+c      wave0=wave(nint(float(n)/2.))
 
       nl=1
       wl0(1)=wave0
@@ -41,7 +44,8 @@
       ymax=-big
       do i=1,n
          if(wave(i).gt.wlo.and.wave(i).lt.wup.and.
-     $        nint(flux(i)).ne.-666) then
+     $        nint(flux(i)).ne.-666.and.
+     $        fluxe(i).gt.0) then
             nt=nt+1
             x(nt)=wave(i)
             yo(nt)=flux(i)
@@ -91,6 +95,7 @@
          xoff=a(5)
          rms=0.
          chi=0.
+         ntchi=0
          do ia=1,nt
             yfit=con
             do i=1,np
@@ -102,10 +107,14 @@
                yfit=yfit+amp*gaus*(1.+h3*fh3(w)+h4*fh4(w))
             enddo
             rms=rms+(y(ia)-yfit)**2
-            chi=chi+((y(ia)-yfit)/ye(ia))**2
+c            if(ye(ia).gt.0) then
+            if(ye(ia).gt.0) chi=chi+((y(ia)-yfit)/ye(ia))**2
+c               ntchi=ntchi+1
+c            endif
             if(isim.eq.1) yfito(ia)=yfit
          enddo
          rms=sqrt(rms/float(nt))
+c         chi=chi/float(ntchi)
          chi=chi/float(nt)
       
          wfit=a(6)+a(5)
@@ -115,15 +124,17 @@
          ampe=sqrt(covar(7,7))
          sigg=sqrt(sigg*sigg)
          xnp=4.*sigg
+         xnp=xnp/pixsize
          if(abs(wfit-wl0(1)).gt.20.or.amp.le.0.) goto 766
+         if((wfit-x(1)).lt.8) goto 766
 
 c - get noise from the rms
          xnoise=rms*sqrt(xnp)
-         ston=0.95*amp/xnoise
+         ston=0.95*amp/xnoise/pixsize
 
 c - get noise from the errors
-         w1=wfit-3.*sigg
-         w2=wfit+3.*sigg
+         w1=wfit-xnp
+         w2=wfit+xnp
          nerr=0
          xnoise2=0.
          do i=1,nt
@@ -134,7 +145,7 @@ c - get noise from the errors
          enddo
          if(nerr.gt.0) then
             xnoise2=sqrt(xnoise2)
-            ston2=0.95*amp/xnoise2
+            ston2=0.95*amp/xnoise2/pixsize
          else
             xnoise2=0.
             ston2=0.
@@ -143,7 +154,7 @@ c - get noise from the errors
 c         print *,'RMS, dAMP, S/N = ',rms,ampe,ston
          ngood=ngood+1
          aout(1,ngood)=wfit
-         aout(2,ngood)=amp
+         aout(2,ngood)=amp/pixsize
          aout(3,ngood)=sigg
          aout(4,ngood)=con
          aout(5,ngood)=ston
@@ -176,10 +187,18 @@ c         write(*,1001) alist(ia),xb,xs,xin(n16),xin(n84)
      $        xin(n16)+bias,xin(n84)+bias
          write(11,1001) alist(ia),aout(ia,1),xs,
      $        xin(n16)+bias,xin(n84)+bias
+         xoutv(ia)=aout(ia,1)
+         xouts(ia)=xs
       enddo
+      close(11)
+      open(unit=11,file='mc2.out',status='unknown')
+      write(11,1102) xoutv(1),xouts(1),xoutv(2),xouts(2),
+     $     xoutv(3),xouts(3),xoutv(4),xouts(4),
+     $     xoutv(5),xouts(5),xoutv(6),xouts(6)
       close(11)
 
  1001 format(1x,a6,4(1x,f8.2))
+ 1102 format(12(1x,f8.2))
       end
 
       subroutine xlinint(xp,n,x,y,yp)

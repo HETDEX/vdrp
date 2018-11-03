@@ -8,6 +8,7 @@
 
       ylocut=-100.
       yhicut=1000.
+      fcut=0.05
 
       open(unit=1,file='list2',status='old',err=866)
 
@@ -20,11 +21,14 @@
          gsum(i)=0.
       enddo
       sumg=0.
+      ng=0
       do ig=1,1000
          read(1,*,end=777) file1,iflag,gn
-         ng=ig
-         gna(ng)=gn
-         sumg=sumg+gn
+         if(iflag.eq.0) then
+            ng=ig
+            gna(ng)=gn
+            sumg=sumg+gn
+         endif
       enddo
  777  continue
       if(ng.eq.0) goto 866
@@ -33,7 +37,8 @@
          gna(i)=gna(i)/sumg
       enddo
       sumgall=sumg
-
+      fcut=fcut/float(ng)*7.
+      
       ic=0
       nl=0
       nsum=0
@@ -52,7 +57,7 @@ c - get the weighted sum
 c         read(1,*,end=666) file1,iflag,gn
          read(1,*,end=666) file1,iflag,gn,wn(1),wn(2),wn(3),wn(4),wn(5)
          gn0=gn
-         if(gna(il).lt.0.1) iflag=1
+         if(gna(il).lt.fcut) iflag=1
          if(iflag.eq.0) then
             nsum=nsum+1
             sumg=sumg+gn
@@ -89,17 +94,18 @@ c - get the straight sum
       do il=1,1000
          read(1,*,end=676) file1,iflag,gn
 c         read(1,*,end=676) file1,iflag,gn,wn(1),wn(2),wn(3),wn(4),wn(5)
-         open(unit=2,file=file1,status='old')
-         n=0
-         do i=1,2000
-            read(2,*,end=677) x1,x2,x3,x4,x5,x6,x7,x8,x9
-c            call xlinint(x1,nw,wv,wn,fadc)
-            n=n+1
-            ysum3(n)=ysum3(n)+x2
-            ysum3e(n)=ysum3e(n)+x8*x8
-         enddo
- 677     continue
-         close(2)
+         if(iflag.eq.0) then
+            open(unit=2,file=file1,status='old')
+            n=0
+            do i=1,2000
+               read(2,*,end=677) x1,x2,x3,x4,x5,x6,x7,x8,x9
+               n=n+1
+               ysum3(n)=ysum3(n)+x2
+               ysum3e(n)=ysum3e(n)+x8*x8
+            enddo
+ 677        continue
+            close(2)
+         endif
       enddo
  676  continue
       close(1)

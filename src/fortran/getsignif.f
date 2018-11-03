@@ -6,16 +6,23 @@
       character file1*80,title*60
       parameter(pi=3.141592e0,cee=2.99792458e5)
       data big/1.e20/
-      common/aval/ np
+      common/aval/ np,ifitsig
 
       sncut=0.
       sncuthi=100.
-      ampcut=1.e30
+      ampcut=1.e5
       sigcut=50.
       wavecut=5.
 
       wavec=50.
-      signsl=2.2
+c      read *,signsl
+      signsl=-2.6
+      if(signsl.lt.0) then
+         signsl=-signsl
+         ifitsig=0
+      else
+         ifitsig=1
+      endif
 
       ws=3504.
       we=5496.
@@ -112,7 +119,7 @@ c         if(sigg.gt.sigcut) goto 766
 c         if(amp.le.0) goto 766
 c         if(abs(wfit-wave0).gt.wavecut) goto 766
          igood=0
-         if(ampe.gt.0.and.ampe.lt.ampcut) then
+         if(ampe.ge.0.and.ampe.lt.ampcut) then
             igood=1
          endif
          if(igood.eq.0) goto 766
@@ -134,28 +141,22 @@ c - get noise from the errors
             if(x(i).ge.w1.and.x(i).le.w2) then
                nerr=nerr+1
                xnoise2=xnoise2+ye(i)*ye(i)
-               xmaxn=max(xmaxn,ye(i))
             endif
          enddo
-         if(nerr.gt.0) then
+
+         if(nerr.gt.0.and.xnoise2.gt.0) then
             xnoise2=sqrt(xnoise2)
-            xnoise2=xmaxn*sqrt(float(nerr))
+            ston2=0.95*amp/xnoise2
          else
             xnoise2=0.
+            ston2=0.
          endif
-         ston2=0.95*amp/xnoise2
-c         print *,'RMS, dAMP, S/N = ',rms,ampe,ston,ston2
          ston=ston2
+c         amp=abs(amp)
 
-c         if(ston.lt.sncut) goto 766
-c         if(ston.gt.sncuthi) goto 766
-
-c         write(11,1101) wave0,wfit,amp,
-c     $        a(8),sqrt(covar(8,8)),ston,con,chi
          write(11,1101) wave0,amp,ston,con,chi
          goto 7661
  766     continue
-c         write(11,1101) wave0,0.,0.,0.,0.,0.,0.,0.
          write(11,1101) wave0,0.,0.,0.,0.
  7661    continue
       enddo
@@ -191,7 +192,7 @@ c 1101 format(f8.2,1x,f8.2,1x,f10.2,3(1x,f7.2),2(1x,f9.2))
       real x(n),y(n),a(na),covar(nca,nca)
       real alpha(nca,nca),sig(n)
       integer ia(ncaf)
-      common/aval/ np
+      common/aval/ np,ifitsig
 
       data tol,itermax/1.e-4,1000/
 
@@ -211,6 +212,11 @@ c     this is the wavelength:
       ia(6)=0
 c     this is the sigma:
       ia(8)=0
+      if(ifitsig.eq.1) then
+         ia(5)=1
+         ia(6)=1
+         ia(8)=1
+      endif
 
       alamda=-1
       alamo=1.e10
@@ -236,7 +242,7 @@ c      print *,'Hit max iteration'
       subroutine funcs(x,a,yfit,dyda,na)
       real a(na),dyda(na)
       parameter(pi=3.141593e0)
-      common/aval/ np
+      common/aval/ np,ifitsig
 
       h3=a(2)
       h4=a(3)
