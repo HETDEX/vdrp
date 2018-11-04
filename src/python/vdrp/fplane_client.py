@@ -104,7 +104,7 @@ def main():
 
     datestr = args.date
     filename = "fplane_{}.txt".format(datestr)
-    get_fplane(filename, datestr='', actpos=False, full=True)
+    get_fplane(filename, datestr='', actpos=True, full=False)
     print("Wrote {}".format(filename))
 
 if __name__ == "__main__":
