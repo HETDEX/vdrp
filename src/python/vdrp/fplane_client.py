@@ -15,7 +15,7 @@ except ImportError:
     from urllib2 import urlopen, HTTPError
 
 
-def get_fplane(filename, datestr='', actpos=False, full=True):
+def get_fplane(filename, datestr='', actpos=True, full=False):
     """ Obtains fplane file from fplane server at MPE.
 
     Args:
