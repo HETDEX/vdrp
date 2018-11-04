@@ -66,7 +66,8 @@ def retrieve_fplane(night, fplane_txt, wdir):
     if fplane_txt == "DATABASE":
         # fplane is retrieved from MPE server
         logging.info("Retrieving fplane file from MPE server. ")
-        get_fplane(target_filename, datestr=night, actpos=False, full=True)
+#        get_fplane(target_filename, datestr=night, actpos=False, full=True)
+        get_fplane(target_filename, datestr=night, actpos=True, full=False)
     else:
         if not "YYYYMMDD" in fplane_txt:
             # a specific fplane is specified in the config file.
