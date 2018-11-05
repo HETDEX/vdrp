@@ -565,7 +565,7 @@ def flux_norm(wdir, mag_max, infile='all.raw', outfile='norm.dat'):
 
 
 def redo_shuffle(wdir, ra, dec, track, acam_magadd, wfs1_magadd, wfs2_magadd,
-                 shuffle_cfg, fplane_txt, night):
+                 shuffle_cfg, fplane_txt, night, catalog=None):
     """
     Reruns shuffle to obtain catalog of IFU stars.
 
@@ -605,6 +605,8 @@ def redo_shuffle(wdir, ra, dec, track, acam_magadd, wfs1_magadd, wfs2_magadd,
         cmd = "do_shuffle -v --acam_magadd {:.2f} --wfs1_magadd {:.2f}" \
             " --wfs2_magadd {:.2f} ".format(acam_magadd, wfs1_magadd,
                                             wfs2_magadd)
+        if catalog is not None:
+            cmd += "--catalog {} ".format(catalog)
         cmd += " {:.6f} {:.6f} {:.1f} {:d} {:d} {:.1f} " \
             "{:.1f}".format(RA0, DEC0, radius, track, ifuslot,
                             x_offset, y_offset)
