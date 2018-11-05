@@ -7,7 +7,7 @@ Module provides interface to daophot.
 import os
 import subprocess
 import sys
-from vdrp.utils import rm
+from utils import rm
 
 DAOPHOT_FIND_CMD = \
 """att {}

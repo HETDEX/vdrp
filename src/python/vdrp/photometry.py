@@ -1355,8 +1355,7 @@ def run_shuffle_photometry(args):
     """
     nightshot = args.night + 'v' + args.shotid
 
-    stars = get_shuffle_stars(args.shuffle_ifustars_dir, nightshot,
-                              args.shuffle_mag_limit)
+    stars = get_shuffle_stars(nightshot, args)
 
     # Parallelize the star extraction. Create a MPPool with
     # shuffle_cores processes

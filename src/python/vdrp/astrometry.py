@@ -57,13 +57,21 @@ import pyhetdex.tools.read_catalogues as rc
 # from pyhetdex import coordinates
 from pyhetdex.coordinates import astrometry as phastrom
 
-from vdrp.cofes_vis import cofes_4x4_plots
-from vdrp import daophot
-from vdrp import cltools
-from vdrp import utils
-from vdrp.daophot import DAOPHOT_ALS
-from vdrp.utils import read_radec, write_radec
-from vdrp.fplane_client import retrieve_fplane
+# from vdrp.cofes_vis import cofes_4x4_plots
+# from vdrp import daophot
+# from vdrp import cltools
+# from vdrp import utils
+# from vdrp.daophot import DAOPHOT_ALS
+# from vdrp.utils import read_radec, write_radec
+# from vdrp.fplane_client import retrieve_fplane
+
+from cofes_vis import cofes_4x4_plots
+import daophot
+import cltools
+import utils
+from daophot import DAOPHOT_ALS
+from utils import read_radec, write_radec
+from fplane_client import retrieve_fplane
 
 
 class VdrpInfo(OrderedDict):
@@ -652,8 +660,9 @@ def get_track(wdir, reduction_dir, night, shotid):
 
     logging.info("-> track = {}".format(track))
 
-    vdrp_info["STRUCTAZ"] = az
-    vdrp_info["track"] = track
+    if vdrp_info is not None:
+        vdrp_info["STRUCTAZ"] = az
+        vdrp_info["track"] = track
 
     return track
 
@@ -687,9 +696,10 @@ def get_ra_dec_orig(wdir, reduction_dir, night, shotid):
     pa0 = h["PARANGLE"]
     logging.info("Original RA,DEC,PA = {},{},{}".format(ra0, dec0, pa0))
 
-    vdrp_info["orig_ra"] = ra0
-    vdrp_info["orig_dec"] = dec0
-    vdrp_info["orig_pa0"] = pa0
+    if vdrp_info is not None:
+        vdrp_info["orig_ra"] = ra0
+        vdrp_info["orig_dec"] = dec0
+        vdrp_info["orig_pa0"] = pa0
 
     with path.Path(wdir):
         utils.write_radec(ra0, dec0, pa0, "radec.orig")
