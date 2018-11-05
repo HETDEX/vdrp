@@ -39,6 +39,7 @@ except ImportError:
     import pickle
 
 import mplog
+import astrometry as astrom
 
 from distutils import dir_util
 
@@ -240,6 +241,8 @@ class ShuffleStar():
         Right ascension
     dec : float
         Declination
+    catalog : str
+        Catalog name used to find these.
     u : float
         U-Band magnitude from the shuffle catalog
     g : float
@@ -253,10 +256,11 @@ class ShuffleStar():
     """
 
     def __init__(self, starid='', shotid='', shuffleid=-1, ra=-1.0, dec=-1.0,
-                 u=99., g=99., r=99., i=99., z=99.):
+                 u=99., g=99., r=99., i=99., z=99., catalog='None'):
         self.starid = starid
         self.shotid = shotid
         self.shuffleid = shuffleid
+        self.catalog = catalog
         self.ra = ra
         self.dec = dec
         self.mag_u = u
@@ -399,6 +403,13 @@ def parseArgs(argv):
     defaults['ifu_search_radius'] = 4.
     defaults['shot_search_radius'] = 600.
 
+    # Shuffle parameters
+    defaults["acam_magadd"] = 5.
+    defaults["wfs1_magadd"] = 5.
+    defaults["wfs2_magadd"] = 5.
+    defaults["fplane_txt"] = "vdrp/config/fplane.txt"
+    defaults["shuffle_cfg"] = "vdrp/config/shuffle.cfg"
+
     defaults['seeing'] = 1.5
     defaults['sdss_filter_file'] = \
         '/work/00115/gebhardt/maverick/detect/cal_script/sdssg.dat'
@@ -483,6 +494,18 @@ def parseArgs(argv):
                         "fit results.")
 
     parser.add_argument("-t", "--task", type=str, help="Task to execute.")
+
+    # Shuffle parameters
+    parser.add_argument("--fplane_txt", type=str,
+                        help="filename for fplane file.")
+    parser.add_argument("--shuffle_cfg", type=str,
+                        help="Filename for shuffle configuration.")
+    parser.add_argument("--acam_magadd", type=float,
+                        help="do_shuffle acam magadd.")
+    parser.add_argument("--wfs1_magadd", type=float,
+                        help="do_shuffle wfs1 magadd.")
+    parser.add_argument("--wfs2_magadd", type=float,
+                        help="do_shuffle wfs2 magadd.")
 
     # Boolean paramters
     parser.add_argument("--use_tmp", action='store_true',
@@ -957,42 +980,57 @@ def extract_star_spectrum(starobs, args, prefix=''):
     return specfiles
 
 
-def get_shuffle_stars(shuffledir, nightshot, maglim):
+def get_shuffle_stars(nightshot, args):
     """
-    Find the all stars for a given night / shot.
+    Rerun shuffle and find the all stars for a given night / shot.
 
     Parameters
     ----------
-    shuffledir : str
-        Path to a directory where a nightshot directory with a
-        shout.ifustars file.
     nightshot : str
         Night + shot name to work on.
-    maglim : float
-        Magnitude limit to apply to the star selection.
+    args : argparse.Namespace
+        The script parameter namespace
     """
 
-    stars = []
+    astrom.get_ra_dec_orig('./', args.multifits_dir, args.night, args.shotid)
+    track = astrom.get_track('./', args.multifits_dir, args.night, args.shotid)
 
-    c = 1
-    try:
-        indata_str = np.loadtxt(shuffledir + '/' + nightshot
-                                + '/shout.ifustars', dtype='U50',
-                                usecols=[0, 1])
-        indata_flt = np.loadtxt(shuffledir + '/' + nightshot
-                                + '/shout.ifustars', dtype=float,
-                                usecols=[2, 3, 4, 5, 6, 7, 8])
-        for ds, df in zip(indata_str, indata_flt):
-            star = ShuffleStar(20000 + c, ds[0], ds[1], df[0], df[1], df[2],
-                               df[3], df[4], df[5], df[6])
-            if star.mag_g < maglim:
-                stars.append(star)
-                c += 1
+    ra, dec, _ = \
+        utils.read_radec("radec.orig")
 
-        return stars
-    except OSError:
-        _logger.error('Failed to find shuffle stars for night %s, shot %s'
-                      % (args.night, args.shotid))
+    # Try to run shuffle using different catalogs, we need SDSS for SED fitting,
+    # the others can be used for throughput calculation
+    for cat in 'SDSS', 'GAIA', 'USNO':
+
+        stars = []
+
+        astrom.redo_shuffle('./', ra, dec, track,
+                            args.acam_magadd, args.wfs1_magadd,
+                            args.wfs2_magadd, args.shuffle_cfg,
+                            args.fplane_txt, args.night, catalog=cat)
+
+        c = 1
+        try:
+            indata_str = np.loadtxt('shout.ifustars', dtype='U50',
+                                    usecols=[0, 1])
+            indata_flt = np.loadtxt('shout.ifustars', dtype=float,
+                                    usecols=[2, 3, 4, 5, 6, 7, 8])
+            for ds, df in zip(indata_str, indata_flt):
+                star = ShuffleStar(20000 + c, ds[0], ds[1], df[0], df[1], df[2],
+                                   df[3], df[4], df[5], df[6], cat)
+                if star.mag_g < args.shuffle_mag_limit:
+                    stars.append(star)
+                    c += 1
+
+            if len(stars):
+                return stars
+            else:
+                _logger.warn('No shuffle stars found using catalog %s' % cat)
+        except OSError:
+            _logger.warn('Failed to find shuffle stars for night %s, shot %s'
+                         'using catalog %s' % (args.night, args.shotid, cat))
+
+    _logger.error('No shuffle stars found at all!')
 
 
 def average_spectrum(spec, wlmin, wlmax):
