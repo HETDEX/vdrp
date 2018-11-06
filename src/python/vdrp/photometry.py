@@ -786,6 +786,8 @@ def call_sumspec(bindir, starname):
     starname : str
         Star name used to create the outputn filename (adds specf.dat)
     """
+    if os.path.exists('sumpspec.out'):
+        os.remove('sumspec.out')
     with open('list', 'w') as f:
         f.write(starname + 'specf.dat')
 
