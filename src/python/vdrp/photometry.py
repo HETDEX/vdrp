@@ -1298,8 +1298,9 @@ def run_combsed(bindir, sedlist, sigmacut, rmscut, outfile, plotfile=None):
         for l in sedlist:
             f.write('%s\n' % l)
 
-    input = '$f $f\n'
-    run_command(bindir + '/combsed', input.forma(sigmacut, rmscut))
+    input = '{:f} {:f}\n'
+    print('combsed', input.format(sigmacut, rmscut))
+    run_command(bindir + '/combsed', input.format(sigmacut, rmscut))
 
     shutil.move('comb.out', outfile)
 
@@ -1564,11 +1565,13 @@ def mk_sed_throughput_curve(args):
             continue
 
         shutil.copy2(os.path.join(args.sed_fit_dir, fitsedname), sedname)
-        seddata = np.loadtxt(sedname, ndmin=1)
+        seddata = np.loadtxt(sedname, ndmin=1).transpose()
+        stardata = np.loadtxt('sp%s_100.dat' % s.starid).transpose()
 
-        sedcgs = seddata[1]/6.626e-27/3.e18/seddata[0]*360.*5.e5*100.
+        sedcgs = seddata[1][1:]/6.626e-27/(3.e18/seddata[0][1:])*360.*5.e5*100.
 
-        np.savetxt('%sed.dat' % s.starid, (seddata[0], sedcgs))
+        np.savetxt('sp%dsed.dat' % s.starid, zip(stardata[0],
+                                                 stardata[1]/sedcgs))
 
         sedlist.append(sedname)
 
