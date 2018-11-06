@@ -1558,6 +1558,8 @@ def mk_sed_throughput_curve(args):
     sedlist = []
 
     for s in stars:
+        if not os.path.exists('sp%s_100.dat' % s.starid):
+            _logger.info('No star data found for sp%s_100.dat' % s.starid)
         fitsedname = '%s_%s.txt' % (s.shotid, s.shuffleid)
         sedname = 'sp%d_fitsed.dat' % s.starid
         if not os.path.exists(os.path.join(args.sed_fit_dir, fitsedname)):
