@@ -380,6 +380,8 @@ def parseArgs(argv):
 
     defaults['photometry_logfile'] = 'photometry.log'
 
+    defaults['shuffle_cores'] = 1
+
     defaults['starid'] = 1
 
     defaults['multi_shot'] = False
@@ -396,8 +398,9 @@ def parseArgs(argv):
     defaults['bin_dir'] = '/home/00115/gebhardt/bin/'
 
     defaults['extraction_aperture'] = 1.6
-    defaults['extraction_wl'] = 4500.
-    defaults['extraction_wlrange'] = 1000.
+    defaults['extraction_wl'] = 4505.
+    defaults['extraction_wlrange'] = 1035.
+    defaults['average_wl'] = 100.
     defaults['average_wlrange'] = 100.
     defaults['radec_file'] = '/work/00115/gebhardt/maverick/getfib/radec.all'
     defaults['ifu_search_radius'] = 4.
@@ -470,6 +473,8 @@ def parseArgs(argv):
                         "wavelength for the extraction")
     parser.add_argument("--extraction_wlrange", type=float, help="Wavelength "
                         "range for the extraction")
+    parser.add_argument("--average_wl", type=float, help="Central "
+                        "wavelength for the averaging")
     parser.add_argument("--average_wlrange", type=float, help="Wavelength "
                         "range for the averaging")
     parser.add_argument("--radec_file", type=str, help="Filename of file with "
@@ -974,8 +979,6 @@ def extract_star_spectrum(starobs, args, prefix=''):
                      get_throughput_file(args.tp_dir, s.night+'v'+s.shot),
                      args.norm_dir+'/'+s.fname+".norm",
                      prefix+'tmp%d.dat' % s.num)
-
-        specfiles.append(prefix+'tmp%d.dat' % s.num)
 
     return specfiles
 
@@ -1560,6 +1563,7 @@ def mk_sed_throughput_curve(args):
     for s in stars:
         if not os.path.exists('sp%s_100.dat' % s.starid):
             _logger.info('No star data found for sp%s_100.dat' % s.starid)
+            continue
         fitsedname = '%s_%s.txt' % (s.shotid, s.shuffleid)
         sedname = 'sp%d_fitsed.dat' % s.starid
         if not os.path.exists(os.path.join(args.sed_fit_dir, fitsedname)):
