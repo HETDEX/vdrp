@@ -794,7 +794,7 @@ def call_sumspec(bindir, starname):
     run_command(bindir + '/sumspec')
 
 
-def call_getnormexp(bindir, starid):
+def call_getnormexp(bindir, nightshot):
     """
     Call getnormexp. Get fwhm and relative normalizations for the frames.
 
@@ -802,12 +802,12 @@ def call_getnormexp(bindir, starid):
     ----------
     bindir : str
         The path to the sumspec binary.
-    starid : int
-        Star ID
+    name : str
+        Observation name
     """
-    input = '{sid:d}\n'
+    input = '{name:s}\n'
 
-    run_command(bindir + '/getnormexp', input.format(sid=starid))
+    run_command(bindir + '/getnormexp', input.format(name=nightshot))
 
 
 def get_throughput_file(path, shotname):
