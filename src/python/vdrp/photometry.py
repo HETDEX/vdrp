@@ -794,6 +794,22 @@ def call_sumspec(bindir, starname):
     run_command(bindir + '/sumspec')
 
 
+def call_getnormexp(bindir, starid):
+    """
+    Call getnormexp. Get fwhm and relative normalizations for the frames.
+
+    Parameters
+    ----------
+    bindir : str
+        The path to the sumspec binary.
+    starid : int
+        Star ID
+    """
+    input = '{sid:d}\n'
+
+    run_command(bindir + '/getnormexp', input.format(sid=starid))
+
+
 def get_throughput_file(path, shotname):
     """
     Equivalent of rtp0 script.
@@ -1155,8 +1171,10 @@ def run_fit2d(bindir, ra, dec, starobs, seeing, outname):
                     % (obs.ra, obs.dec, obs.avg, obs.avg_norm, obs.shotname,
                        obs.night, obs.shot, obs.expname, obs.structaz,
                        obs.avg_error))
-    with open('fwhm.use', 'w') as f:
-        f.write('%f\n' % seeing)
+    if not os.path.exists('fwhm.use'):
+        _logger.warn('No fwhm from getnormexp found, using default')
+        with open('fwhm.use', 'w') as f:
+            f.write('%f\n' % seeing)
 
     call_fit2d(bindir, ra, dec, outname)
 
@@ -1323,7 +1341,7 @@ def run_combsed(bindir, sedlist, sigmacut, rmscut, outfile, plotfile=None):
                                di[1], df[2], df[3]))
             f.write('%s\n' % outfile)
 
-        run_command(bindir + '/plotseda', '/xwin\n')
+        run_command(bindir + '/plotseda', '/vcps\n')
 
         shutil.move('pgplot.ps', plotfile)
 
@@ -1425,6 +1443,9 @@ def run_star_photometry(nightshot, ra, dec, starid, args):
             return
 
         # Call rspstar
+        # Get fwhm and relative normalizations
+        call_getnormexp(args.bin_dir, starid)
+
         specfiles = extract_star_spectrum(starobs, args)
 
         call_sumsplines(args.bin_dir, len(starobs))
