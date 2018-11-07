@@ -1444,7 +1444,7 @@ def run_star_photometry(nightshot, ra, dec, starid, args):
 
         # Call rspstar
         # Get fwhm and relative normalizations
-        call_getnormexp(args.bin_dir, starid)
+        call_getnormexp(args.bin_dir, nightshot)
 
         specfiles = extract_star_spectrum(starobs, args)
 
