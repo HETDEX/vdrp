@@ -788,7 +788,7 @@ def call_sumspec(bindir, starname):
     starname : str
         Star name used to create the outputn filename (adds specf.dat)
     """
-    if os.path.exists('sumpspec.out'):
+    if os.path.exists('sumspec.out'):
         os.remove('sumspec.out')
     with open('list', 'w') as f:
         f.write(starname + 'specf.dat')
@@ -1334,13 +1334,16 @@ def run_combsed(bindir, sedlist, sigmacut, rmscut, outfile, plotfile=None):
                            usecols=[1, 2, 4, 5])
         idata = np.loadtxt('out', dtype=int, usecols=[0, 3])
 
-        with open('in', 'w') as f:
+        with open('in', 'w') as f, open('in2', 'w') as f2:
             for di, df, sf in zip(idata, fdata, sedlist):
                 if di[1] == 0:
                     f.write('%s %d %f %f %d %f %f\n'
                             % (sf, di[0], df[0], df[1],
                                di[1], df[2], df[3]))
-            f.write('%s\n' % outfile)
+                    f2.write('%s %d %f %f %d %f %f\n'
+                            % (sf, di[0], df[0], df[1],
+                               di[1], df[2], df[3]))
+            f2.write('%s\n' % outfile)
 
         run_command(bindir + '/plotseda', '/vcps\n')
 
@@ -1608,7 +1611,7 @@ def mk_sed_throughput_curve(args):
         np.savetxt('sp%dsed.dat' % s.starid, zip(stardata[0],
                                                  stardata[1]/sedcgs))
 
-        sedlist.append(sedname)
+        sedlist.append('sp%dsed.dat' % s.starid)
 
     run_combsed(args.bin_dir, sedlist, args.sed_sigma_cut, args.sed_rms_cut,
                 '%ssedtp.dat' % nightshot, '%ssedtpa.ps' % nightshot)
