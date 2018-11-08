@@ -1629,7 +1629,7 @@ def mk_sed_throughput_curve(args):
             if not os.path.exists('sp%s_100.dat' % star.starid):
                 continue
             with open('sp%s_100.dat' % star.starid, 'r') as f:
-                for l in f.readline():
+                for l in f.readlines():
                     w, v = l.split()
                     if w.strip().startswith('4540') and float(v) > 10000.:
                         use_star = True
