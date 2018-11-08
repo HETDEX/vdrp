@@ -1341,8 +1341,8 @@ def run_combsed(bindir, sedlist, sigmacut, rmscut, outfile, plotfile=None):
                             % (sf, di[0], df[0], df[1],
                                di[1], df[2], df[3]))
                     f2.write('%s %d %f %f %d %f %f\n'
-                            % (sf, di[0], df[0], df[1],
-                               di[1], df[2], df[3]))
+                             % (sf, di[0], df[0], df[1],
+                                di[1], df[2], df[3]))
             f2.write('%s\n' % outfile)
 
         run_command(bindir + '/plotseda', '/vcps\n')
@@ -1626,17 +1626,21 @@ def mk_sed_throughput_curve(args):
     with open('offsets.dat', 'w') as off:
         for star in stars:
             use_star = False
+            if not os.path.exists('sp%s_100.dat' % star.starid):
+                continue
             with open('sp%s_100.dat' % star.starid, 'r') as f:
                 for l in f.readline():
                     w, v = l.split()
-                    if w.startswith('4540') and float(v) > 10000.:
+                    if w.strip().startswith('4540') and float(v) > 10000.:
                         use_star = True
                         break
             if use_star:
                 with open('sp%d_out2.dat' % star.starid, 'r') as f:
                     line = f.readline()
-
-                    off.write('%d %s\n' % (star.starid, line))
+                    vals = line.split()
+                    if float(vals[3]) > -0.5 and float(vals[3]) < 0.5 and \
+                       float(vals[4]) > -0.5 and float(vals[4]) < 0.5:
+                        off.write('%d %s' % (star.starid, line))
 
 
 vdrp_info = None
