@@ -400,8 +400,10 @@ def parseArgs(argv):
     defaults['extraction_aperture'] = 1.6
     defaults['extraction_wl'] = 4505.
     defaults['extraction_wlrange'] = 1035.
-    defaults['average_wl'] = 100.
-    defaults['average_wlrange'] = 100.
+    defaults['full_extraction_wl'] = 4500.
+    defaults['full_extraction_wlrange'] = 1000.
+    defaults['average_wl'] = 4500.
+    defaults['average_wlrange'] = 10.
     defaults['radec_file'] = '/work/00115/gebhardt/maverick/getfib/radec.all'
     defaults['ifu_search_radius'] = 4.
     defaults['shot_search_radius'] = 600.
@@ -962,7 +964,7 @@ def get_star_spectrum_data(ra, dec, args):
     return starobs, np.unique(night_shots)
 
 
-def extract_star_spectrum(starobs, args, prefix=''):
+def extract_star_spectrum(starobs, args, wl, wlr, prefix=''):
     """
     Equivalent of the rextsp[1] and parts of the rsp1b scripts.
 
@@ -992,12 +994,11 @@ def extract_star_spectrum(starobs, args, prefix=''):
         fpath = '%s/%s/virus/virus%07d/%s/virus/%s' \
             % (args.multifits_dir, s.night, int(s.shot),
                s.expname, s.fname) + '.fits'
-        call_imextsp(args.bin_dir, fpath, s.ifuslot, args.extraction_wl,
-                     args.extraction_wlrange,
+        call_imextsp(args.bin_dir, fpath, s.ifuslot, wl, wlr,
                      get_throughput_file(args.tp_dir, s.night+'v'+s.shot),
                      args.norm_dir+'/'+s.fname+".norm",
                      prefix+'tmp%d.dat' % s.num)
-
+        specfiles.append(prefix+'tmp%d.dat' % s.num)
     return specfiles
 
 
@@ -1446,7 +1447,9 @@ def run_star_photometry(nightshot, ra, dec, starid, args):
         # Get fwhm and relative normalizations
         call_getnormexp(args.bin_dir, nightshot)
 
-        specfiles = extract_star_spectrum(starobs, args)
+        specfiles = extract_star_spectrum(starobs, args,
+                                          args.extraction_wl,
+                                          args.extraction_wlrange)
 
         call_sumsplines(args.bin_dir, len(starobs))
 
@@ -1455,7 +1458,7 @@ def run_star_photometry(nightshot, ra, dec, starid, args):
         call_fitonevp(args.bin_dir, args.extraction_wl,
                       nightshot+'_'+str(starid))
 
-        average_spectra(specfiles, starobs, args.extraction_wl,
+        average_spectra(specfiles, starobs, args.average_wl,
                         args.average_wlrange)
 
         get_structaz(starobs, args.multifits_dir)
@@ -1474,7 +1477,10 @@ def run_star_photometry(nightshot, ra, dec, starid, args):
 
         # Extract full spectrum
 
-        fspecfiles = extract_star_spectrum(starobs, args, prefix='f')
+        fspecfiles = extract_star_spectrum(starobs, args,
+                                           args.full_extraction_wl,
+                                           args.full_extraction_wlrange,
+                                           prefix='f')
 
         run_sumlineserr(args.bin_dir, fspecfiles)
 
