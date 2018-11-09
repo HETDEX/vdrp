@@ -1180,13 +1180,11 @@ def get_sedfits(starobs, args):
         Namespace argument
     """
 
-    os.mkdir('seds')
-
     try:
         import stellarSEDfits.quick_fit as qf
         qf_args = AP.Namespace()
         qf_args.filename = 'qf.ifus'
-        qf_args.outfolder = 'seds'
+        qf_args.outfolder = None
         qf_args.ebv = args.quick_fit_ebv
         qf_args.make_plot = args.quick_fit_plot
         qf_args.wave_init = args.quick_fit_wave_init
@@ -1206,7 +1204,7 @@ def get_sedfits(starobs, args):
                      'pre-existing SED fits')
         for s in stars:
             fitsedname = '%s_%s.txt' % (s.shotid, s.shuffleid)
-            sedname = 'seds/sp%d_fitsed.dat' % s.starid
+            sedname = 'sp%d_fitsed.dat' % s.starid
             if not os.path.exists(os.path.join(args.sed_fit_dir, fitsedname)):
                 _logger.warn('No sed fit found for star %d' % s.starid)
                 continue
@@ -1665,17 +1663,9 @@ def mk_sed_throughput_curve(args):
         if not os.path.exists('sp%s_100.dat' % s.starid):
             _logger.info('No star data found for sp%s_100.dat' % s.starid)
             continue
-        fitsedname = '%s_%s.txt' % (s.shotid, s.shuffleid)
-        sedname = 'sp%d_fitsed.dat' % s.starid
-        shutil.copy2(os.path.join(args.sed_fit_dir, fitsedname), sedname)
-
-        if not os.path.exists(os.path.join(args.sed_fit_dir, fitsedname)):
-            _logger.warn('No sed fit found for star %d' % s.starid)
-            continue
-
         sedname = 'sp%d_fitsed.dat' % s.starid
 
-        if not os.path.exists(sedname)):
+        if not os.path.exists(sedname):
             _logger.warn('No sed fit found for star %d' % s.starid)
             continue
 
