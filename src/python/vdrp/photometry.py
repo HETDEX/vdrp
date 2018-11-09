@@ -424,6 +424,13 @@ def parseArgs(argv):
     defaults['sed_sigma_cut'] = 0.15
     defaults['sed_rms_cut'] = 0.01
 
+    # Parameters for quick_fit
+    defaults['quick_fit_ebv'] = 0.02
+    defaults['quick_fit_plot'] = 0
+    defaults['quick_fit_wave_init'] = 3540
+    defaults['quick_fit_wave_final'] = 5540
+    defaults['quick_fit_bin_size'] = 100
+
     defaults["task"] = "all"
 
     config_source = "Default"
@@ -499,6 +506,18 @@ def parseArgs(argv):
 
     parser.add_argument("--sed_fit_dir", type=str, help="Directory with SED  "
                         "fit results.")
+
+    # Parameters for quick_fit
+    parser.add_argument("--quick_fit_ebv", type=float,
+                        help="Extinction for star field")
+    parser.add_argument("--quick_fit_plot", type=int,
+                        help="Create SED fitting plots")
+    parser.add_argument("--quick_fit_wave_init", type=flaot,
+                        help="Initial wavelength for bin")
+    parser.add_argument("--quick_fit_wave_final", type=float,
+                        help="Final wavelength for bin")
+    parser.add_argument("--quick_fit_bin_size", type=float,
+                        help="Bin size for wavelength")
 
     parser.add_argument("-t", "--task", type=str, help="Task to execute.")
 
@@ -1146,6 +1165,54 @@ def get_structaz(starobs, path):
             obs.structaz = hdu[0].header['STRUCTAZ']
 
 
+def get_sedfits(starobs, args):
+    """
+    Run quick_fit to generate the SED fits, if available.
+
+    If quick_fit cannot be imported, fall back to copying the files
+    from sed_fit_dir
+
+    Parameters:
+    -----------
+    starobss : list
+        List with StarObservation objects.
+    args : Namespace
+        Namespace argument
+    """
+
+    os.mkdir('seds')
+
+    try:
+        import stellarSEDfits.quick_fit as qf
+        qf_args = AP.Namespace()
+        qf_args.filename = 'qf.ifus'
+        qf_args.outfolder = 'seds'
+        qf_args.ebv = args.quick_fit_ebv
+        qf_args.make_plot = args.quick_fit_plot
+        qf_args.wave_init = args.quick_fit_wave_init
+        qf_args.wave_final = args.quick_fit_wave_final
+        qf_args.bin_size = args.quick_fit_bin_size
+
+        success = True
+
+        with open('qf.ifus', 'w') as f:
+            for s in stars:
+                f.write('%s %s %f %f %f %f %f %f %f\n', s.shotid, s.shuffleid,
+                        ra, dec, u, g, r, i, z)
+        qf.make(qf_args)
+
+    except ImportError:
+        _logger.warn('Failed to import quick_fit, falling back to '
+                     'pre-existing SED fits')
+        for s in stars:
+            fitsedname = '%s_%s.txt' % (s.shotid, s.shuffleid)
+            sedname = 'seds/sp%d_fitsed.dat' % s.starid
+            if not os.path.exists(os.path.join(args.sed_fit_dir, fitsedname)):
+                _logger.warn('No sed fit found for star %d' % s.starid)
+                continue
+            shutil.copy2(os.path.join(args.sed_fit_dir, fitsedname), sedname)
+
+
 def run_fit2d(bindir, ra, dec, starobs, seeing, outname):
     """
     Prepare input files for running fit2d, and run it.
@@ -1592,17 +1659,26 @@ def mk_sed_throughput_curve(args):
 
     sedlist = []
 
+    get_sedfits(stars, args)
+
     for s in stars:
         if not os.path.exists('sp%s_100.dat' % s.starid):
             _logger.info('No star data found for sp%s_100.dat' % s.starid)
             continue
         fitsedname = '%s_%s.txt' % (s.shotid, s.shuffleid)
         sedname = 'sp%d_fitsed.dat' % s.starid
+        shutil.copy2(os.path.join(args.sed_fit_dir, fitsedname), sedname)
+
         if not os.path.exists(os.path.join(args.sed_fit_dir, fitsedname)):
             _logger.warn('No sed fit found for star %d' % s.starid)
             continue
 
-        shutil.copy2(os.path.join(args.sed_fit_dir, fitsedname), sedname)
+        sedname = 'sp%d_fitsed.dat' % s.starid
+
+        if not os.path.exists(sedname)):
+            _logger.warn('No sed fit found for star %d' % s.starid)
+            continue
+
         seddata = np.loadtxt(sedname, ndmin=1).transpose()
         stardata = np.loadtxt('sp%s_100.dat' % s.starid).transpose()
 
