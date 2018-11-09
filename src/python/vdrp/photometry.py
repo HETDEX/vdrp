@@ -512,7 +512,7 @@ def parseArgs(argv):
                         help="Extinction for star field")
     parser.add_argument("--quick_fit_plot", type=int,
                         help="Create SED fitting plots")
-    parser.add_argument("--quick_fit_wave_init", type=flaot,
+    parser.add_argument("--quick_fit_wave_init", type=float,
                         help="Initial wavelength for bin")
     parser.add_argument("--quick_fit_wave_final", type=float,
                         help="Final wavelength for bin")
@@ -1191,18 +1191,16 @@ def get_sedfits(starobs, args):
         qf_args.wave_final = args.quick_fit_wave_final
         qf_args.bin_size = args.quick_fit_bin_size
 
-        success = True
-
         with open('qf.ifus', 'w') as f:
-            for s in stars:
+            for s in starobs:
                 f.write('%s %s %f %f %f %f %f %f %f\n', s.shotid, s.shuffleid,
-                        ra, dec, u, g, r, i, z)
+                        s.ra, s.dec, s.u, s.g, s.r, s.i, s.z)
         qf.make(qf_args)
 
     except ImportError:
         _logger.warn('Failed to import quick_fit, falling back to '
                      'pre-existing SED fits')
-        for s in stars:
+        for s in starobs:
             fitsedname = '%s_%s.txt' % (s.shotid, s.shuffleid)
             sedname = 'sp%d_fitsed.dat' % s.starid
             if not os.path.exists(os.path.join(args.sed_fit_dir, fitsedname)):
