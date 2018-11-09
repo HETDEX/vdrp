@@ -1185,7 +1185,7 @@ def get_sedfits(starobs, args):
         from argparse import Namespace
         qf_args = Namespace()
         qf_args.filename = 'qf.ifus'
-        qf_args.outfolder = None
+        qf_args.outfolder = './'
         qf_args.ebv = args.quick_fit_ebv
         qf_args.make_plot = args.quick_fit_plot
         qf_args.wave_init = args.quick_fit_wave_init
@@ -1197,7 +1197,7 @@ def get_sedfits(starobs, args):
                 f.write('%s %s %f %f %f %f %f %f %f\n'
                         % (s.shotid, s.shuffleid, s.ra, s.dec, s.mag_u,
                            s.mag_g, s.mag_r, s.mag_i, s.mag_z))
-        qf.make(qf_args)
+        qf.main(qf_args)
 
     except ImportError:
         _logger.warn('Failed to import quick_fit, falling back to '
