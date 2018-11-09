@@ -1194,9 +1194,9 @@ def get_sedfits(starobs, args):
 
         with open('qf.ifus', 'w') as f:
             for s in starobs:
-                f.write('%s %s %f %f %f %f %f %f %f\n', s.shotid, s.shuffleid,
-                        s.ra, s.dec, s.mag_u, s.mag_g,
-                        s.mag_r, s.mag_i, s.mag_z)
+                f.write('%s %s %f %f %f %f %f %f %f\n'
+                        % (s.shotid, s.shuffleid, s.ra, s.dec, s.mag_u,
+                           s.mag_g, s.mag_r, s.mag_i, s.mag_z))
         qf.make(qf_args)
 
     except ImportError:
