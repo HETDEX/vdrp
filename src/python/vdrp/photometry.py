@@ -1182,7 +1182,8 @@ def get_sedfits(starobs, args):
 
     try:
         import stellarSEDfits.quick_fit as qf
-        qf_args = AP.Namespace()
+        from argparse import Namespace
+        qf_args = Namespace()
         qf_args.filename = 'qf.ifus'
         qf_args.outfolder = None
         qf_args.ebv = args.quick_fit_ebv
