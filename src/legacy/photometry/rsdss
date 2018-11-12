@@ -1,0 +1,4 @@
+rm -f s1
+cp $1 s1
+getsdssg
+awk '{print 4800.,$1}' out > g_$1

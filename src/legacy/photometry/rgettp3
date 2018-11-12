@@ -1,0 +1,4 @@
+grep -v "#" 2*ifu > j1
+awk '{print "cp /work/00115/gebhardt/maverick/detect/sed/output/"$1"_"$2".txt ."}' j1 > rtcp; chmod +x rtcp; rtcp
+awk '{print "res/sp"$2}' runstar > j2
+paste j1 j2 | awk '{print "rgettp4",$1"_"$2".txt",$10}' > j3; chmod +x j3; j3

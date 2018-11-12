@@ -1,0 +1,14 @@
+ra=$1
+dec=$2
+wc=$8
+cd $7_$6
+cp ~gebhardt/bin/ravgsp .
+# awk '{s+=1; print "ravgsp",100+s,$8,$7,$1,$2,2.5}' l1 > rs1
+awk '{s+=1; print "ravgsp",100+s,$8,$7,$1,$2,wc0}' wc0=$wc l1 > rs1
+chmod +x rs1; rs1
+if [ -e spavg101.dat ]
+then
+cat spavg*.dat > s4
+paste l1 s4 | awk '{print $1,$2,$12,$13,$14}' ra0=$ra dec0=$dec > s5
+paste l1 s4 | awk '{print 3600.*($1-ra0)*cos(dec0/57.3),3600*($2-dec0),$12,$13,$14}' ra0=$ra dec0=$dec > s6
+fi

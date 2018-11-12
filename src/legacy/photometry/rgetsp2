@@ -1,0 +1,6 @@
+sed s/rch/rchnear/ rj > rj2
+chmod +x rj2
+rj2
+sort -g jout | head -1 > j1
+awk '{print "Closest fiber is",$1,"arcseconds away"}' j1
+

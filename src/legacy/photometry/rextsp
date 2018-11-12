@@ -1,0 +1,10 @@
+rm -f out.sp $5
+~gebhardt/bin/imextsp << eof
+"$1"
+$2 $3 $4
+"$6"
+"$7"
+eof
+mv out.sp specin
+~gebhardt/bin/specclean
+mv out $5

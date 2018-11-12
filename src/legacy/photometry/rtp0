@@ -1,0 +1,7 @@
+tpfile=$1
+if [ -e /work/00115/gebhardt/maverick/detect/tp/$tpfile"sedtp_f.dat" ]
+ then
+ echo $tpfile"sedtp_f.dat"
+ else
+ echo tpavg.dat
+fi

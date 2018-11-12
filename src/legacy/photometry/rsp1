@@ -1,0 +1,27 @@
+rm -rf $7_$6
+mkdir -p $7_$6
+cd $7_$6
+~gebhardt/bin/rgetsp $1 $2 $3 $4 $5 $7_$6
+# wc list | awk '{if($1==0) print "rm list"}' > rtr; chmod +x rtr; rtr
+if [ -e list ]
+ then
+   ~gebhardt/bin/sumsplines
+   awk '{print $1,$2}' l2 | uniq | wc | awk '{print $1}' > factor
+   ~gebhardt/bin/rawksp1 factor
+#~gebhardt/bin/fitonevp << eof
+#    0 0
+#    $4
+#    /vcps
+#eof
+#   mv pgplot.ps $7_$6tot.ps
+#   mv out $7_$6spec.dat
+#   mv lines.out $7_$6spec.res
+#   awk '{print $1,$2,$4,$3*1e17,$5*1e17}' splines.out > $7_$6spece.dat
+   rm -rf sp_$7_$6
+   echo "tmp.dat files cols: wave, counts, flux, amp_norm, tp_norm, ftf_norm, err_flux" > readme.headers
+   echo "file2 contains: spectrum, use(0), weight" >> readme.headers
+   echo "fitghsp.in, the file weighted spectrum: cols are: " >> readme.headers
+ else
+  echo " "
+  echo "Nothing Here"
+fi

@@ -637,7 +637,11 @@ def call_imextsp(bindir, filename, ifuslot, wl, wlw, tpavg, norm, outfile):
 
     run_command(bindir + '/imextsp', s)
 
-    shutil.move('out.sp', outfile)
+    shutil.move('out.sp', 'specin')
+
+    run_command(bindir + '/specclean')
+
+    shutil.move('out', 'specin')
 
 
 def call_sumsplines(bindir, nspec):
@@ -1156,13 +1160,26 @@ def get_structaz(starobs, path):
     path : string
         Path to the directory where the multi extension fits are stored.
     """
+    missingobs = False
+    az_vals = []
+    m_obs = []
 
     for obs in starobs:
         fpath = '%s/%s/virus/virus%07d/%s/virus/%s' \
             % (path, obs.night, int(obs.shot),
                obs.expname, obs.fname) + '.fits'
-        with fits.open(fpath, 'readonly') as hdu:
-            obs.structaz = hdu[0].header['STRUCTAZ']
+        if not os.path.exists(fpath):
+            missingobs = True
+            m_obs.append(obs)
+        else:
+            with fits.open(fpath, 'readonly') as hdu:
+                obs.structaz = hdu[0].header['STRUCTAZ']
+                az_vals.append(obs.structaz)
+
+    if missingobs and len(m_obs):  # Replace AZ values for missing fits images
+        az_avg = np.average(az_vals)
+        for obs in m_obs:
+            obs.structaz = az_avg
 
 
 def get_sedfits(starobs, args):

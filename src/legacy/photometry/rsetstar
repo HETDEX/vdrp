@@ -1,0 +1,20 @@
+name=$1v$2
+cd $1v$2
+
+# get the stars in the IFU and the scripts
+# cp /work/00115/gebhardt/maverick/sci/panacea/test/shifts/$1v$2/shout.ifustars $1v$2.ifu
+#grep -v "#" /work/00115/gebhardt/maverick/sci/panacea/test/shifts/$1v$2/shout.ifustars | awk '{if($6<23) print $0}' > $1v$2.ifu
+grep -v "#" /work/00115/gebhardt/maverick/sci/panacea/test/shifts/$1v$2/shout.ifustars | awk '{if($6<20) print $0}' > $1v$2.ifu
+cp /work/00115/gebhardt/maverick/detect/cal_script/* .
+rm -f res/sp*.dat
+rm -f res/*.list
+
+# make the list of stars to run through rsp1a2
+grep -v "#" 2*.ifu | awk '{s+=1; print "rspstar",s+20000,$3,$4,$5,$6,$7,$8,$9,name0,1.6,100.}' name0=$name > runstar; chmod +x runstar
+jobsplitter runstar
+ls runstar_*.slurm | awk '{print "sbatch",$1}' > rbatch
+chmod +x rbatch; rbatch
+
+# grep -v "#" 2*.ifu | awk '{s+=1; print "getstar",s+20000,$3,$4,$5,$6,$7,$8,$9,"$1"}' > runstar; chmod +x runstar
+# awk '{print $1,$2,name0}' name0=$name rallt2tmp > rallt2
+# sbatch rallt2.slurm

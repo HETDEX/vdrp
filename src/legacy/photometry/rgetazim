@@ -1,0 +1,7 @@
+if [ -e $1 ]
+then
+ /home/00115/gebhardt/wcs/wcstools-3.9.2/bin/gethead $1 STRUCTAZ
+else
+ echo "666"
+fi
+

@@ -1,0 +1,3 @@
+in=$1
+awk '{print "~gebhardt/bin/rawksp2",$1}' $in > rjunk
+chmod +x rjunk; rjunk

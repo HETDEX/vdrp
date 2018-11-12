@@ -1,0 +1,23 @@
+cd $1v$2
+cp /work/00115/gebhardt/maverick/detect/cal_script/rgettp* .
+rgettp3
+cd res
+ls *sed.dat > list
+rm -f comb.out
+~gebhardt/bin/combsed << eof
+$3 $4
+eof
+paste list out | awk '{if($5==0) print $0}' > in
+mv comb.out $1v$2sedtp.dat
+ls $1v$2sedtp.dat > j1
+cat in j1 > in2
+~gebhardt/bin/plotseda << eof
+/xwin
+eof
+#mv pgplot.ps $1v$2sedtpa.ps
+awk '{print $1,(6.626e-27)*(3e18/$1)/360/5e5/$2*250.}' $1v$2sedtp.dat > $1v$2fl.dat
+grep 4540 sp20*_???.dat | awk '{if($3>10000) print $1}' | sed s/sp// | sed s/_/" "/ | awk '{print "cat 2*_"$1"/out2"}' > rtcp
+chmod +x rtcp
+cd ../
+res/rtcp > j1
+paste res/rtcp j1 | sed s/"cat 2\*_"// | sed s/"\/out2"// | awk '{if($5>-0.5&&$5<0.5&&$6>-0.5&&$6<0.5) print $0}' > offsets.dat

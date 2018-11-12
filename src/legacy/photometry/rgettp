@@ -1,0 +1,14 @@
+grep 4540 sp*_???.dat > j1
+ls sp*_???.dat | awk '{print "rsdss",$1}' > rts; chmod +x rts; rts
+grep 4800 g_sp*_???.dat > j1
+wc 2*list | head -n-1 > j2
+paste j1 j2 | awk '{print $1,$2,$3}' | sed s/g_sp// | sed s/.dat:/" "/ | sed s/_/" "/ | awk '{print $1,$2,$4,$5}' > j3
+rm -f j6
+awk '{print "rgettp2",$1}' j3 > rt; chmod +x rt
+rt 
+awk '{if($4>15&&$2>0.02&&$2<0.21) print $0}' j6 > tp.all
+~gebhardt/bin/biwt << eof
+tp.all
+2
+eof
+mv biwt.out tp.biwt

@@ -4,7 +4,7 @@ if [ -e list ]
  then
 ~gebhardt/bin/rgetadc
 paste s5 l1 a1 | awk '{print $1,$2,$3,$4,$14,$15,$16,$11,$17,$5}' > in
-echo $8 > fwhm.use
+echo $8 > fwhm.fix
 ~gebhardt/bin/fit2d << eof
 $1 $2
 /vcps
@@ -40,7 +40,7 @@ awk '{print "f"$1,$2,$3,$4,$5,$6,$7,$8}' list2 > list4
 mv list2 list2o
 cp list4 list2
 ~gebhardt/bin/sumlineserr
-awk '{print $1,$3,$5,$2,$4}' splines.out > $7_$6specf.dat
+awk '{print $1,$3,$5,$2,$4,$6,$7}' splines.out > $7_$6specf.dat
 mv list2o list2
 rm -f ftmp*dat
 cat spavg*.dat > spavg.all

@@ -1,0 +1,10 @@
+awk '{print "/home/00115/gebhardt/wcs/wcstools-3.9.2/bin/gethead",$2,"STRUCTAZ"}' rextsp0  > rj
+awk '{print "~gebhardt/bin/rgetazim",$2}' rj > rjt; chmod +x rjt; rjt > a2
+awk '{if($1<665) print $0}' a2 > a3
+~gebhardt/bin/biwt << eof
+a3
+1
+eof
+awk '{print "~gebhardt/bin/rfixazim",$2}' biwt.out > rj3
+chmod +x rj3; rj3
+rm -f a2 a3 rj2 rj3

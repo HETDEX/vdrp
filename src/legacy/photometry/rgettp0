@@ -1,0 +1,7 @@
+cd $1v$2/res
+cp /work/00115/gebhardt/maverick/detect/cal_script/rgettp* .
+cp /work/00115/gebhardt/maverick/detect/cal_script/rsdss .
+cp /work/00115/gebhardt/maverick/detect/cal_script/sdssg.dat .
+cp /work/00115/gebhardt/maverick/detect/cal_script/getsdssg .
+rgettp
+echo "Done with "$1"v"$2
