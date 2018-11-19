@@ -1846,13 +1846,13 @@ if __name__ == "__main__":
     _logger.setLevel(logging.DEBUG)
 
     cHndlr = logging.StreamHandler()
-    cHndlr.setLevel(logging.INFO)
+    cHndlr.setLevel(logging.DEBUG)
     cHndlr.setFormatter(formatter)
 
     _logger.addHandler(cHndlr)
 
     fHndlr = logging.FileHandler(args.logfile, mode='w')
-    fHndlr.setLevel(logging.INFO)
+    fHndlr.setLevel(logging.DEBUG)
     fHndlr.setFormatter(formatter)
 
     _logger.addHandler(fHndlr)
