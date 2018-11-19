@@ -583,6 +583,7 @@ def run_command(cmd, input=None):
         Input to be sent to the command through stdin.
     """
     _logger.info('Running %s' % cmd)
+    _logger.debug('Command params are %s' % input)
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
