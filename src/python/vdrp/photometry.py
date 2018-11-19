@@ -642,7 +642,7 @@ def call_imextsp(bindir, filename, ifuslot, wl, wlw, tpavg, norm, outfile):
 
     run_command(bindir + '/specclean')
 
-    shutil.move('out', 'specin')
+    shutil.move('out', outfile)
 
 
 def call_sumsplines(bindir, nspec):
