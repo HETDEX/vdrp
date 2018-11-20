@@ -1210,6 +1210,8 @@ def get_sedfits(starobs, args):
         qf_args.wave_final = args.quick_fit_wave_final
         qf_args.bin_size = args.quick_fit_bin_size
 
+        have_stars = False
+
         with open('qf.ifus', 'w') as f:
             for s in starobs:
                 if s.catalog != 'SDSS':
@@ -1220,7 +1222,10 @@ def get_sedfits(starobs, args):
                     f.write('%s %s %f %f %f %f %f %f %f\n'
                             % (s.shotid, s.shuffleid, s.ra, s.dec, s.mag_u,
                                s.mag_g, s.mag_r, s.mag_i, s.mag_z))
-        qf.main(qf_args)
+                    have_stars = True
+
+        if have_stars:
+            qf.main(qf_args)
 
     except ImportError:
         _logger.warn('Failed to import quick_fit, falling back to '
