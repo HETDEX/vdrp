@@ -1215,7 +1215,7 @@ def get_sedfits(starobs, args):
                 if s.catalog != 'SDSS':
                     _logger.info('Skipping %s star %d, currently only SDSS'
                                  ' stars support SED fitting.'
-                                 % (s.cat, s.starid))
+                                 % (s.catalog, s.starid))
                 f.write('%s %s %f %f %f %f %f %f %f\n'
                         % (s.shotid, s.shuffleid, s.ra, s.dec, s.mag_u,
                            s.mag_g, s.mag_r, s.mag_i, s.mag_z))
