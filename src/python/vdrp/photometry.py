@@ -1707,6 +1707,11 @@ def mk_sed_throughput_curve(args):
 
         sedlist.append('sp%dsed.dat' % s.starid)
 
+    if not len(sedlist):
+        _logger.warn('No SED fits found, skipping SED throughput curve'
+                     'generation')
+        return
+
     run_combsed(args.bin_dir, sedlist, args.sed_sigma_cut, args.sed_rms_cut,
                 '%ssedtp.dat' % nightshot, '%ssedtpa.ps' % nightshot)
 
