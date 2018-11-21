@@ -1,0 +1,6 @@
+# include AUTHORS
+include Changelog
+# include LICENCE
+include README.md
+# ReleaseNotes.md
+

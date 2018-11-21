@@ -38,12 +38,12 @@ try:
 except ImportError:
     import pickle
 
-import mplog
-import astrometry as astrom
+import vdrp.mplog as mplog
+import vdrp.astrometry as astrom
 
 from distutils import dir_util
 
-import utils
+import vdrp.utils as utils
 
 _baseDir = os.getcwd()
 
@@ -160,8 +160,8 @@ class VdrpInfo(OrderedDict):
         with open(os.path.join(dir, filename), 'wb') as f:
             pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
 
-    @staticmethod
-    def read(dir, filename='vdrp_info.pickle'):
+    @classmethod
+    def read(cls, dir, filename='vdrp_info.pickle'):
         if os.path.exists(os.path.join(dir, filename)):
             with open(os.path.join(dir, filename), 'rb') as f:
                 return pickle.load(f)
@@ -641,7 +641,7 @@ def call_imextsp(bindir, filename, ifuslot, wl, wlw, tpavg, norm, outfile):
 
     run_command(bindir + '/specclean')
 
-    shutil.move('out', 'specin')
+    shutil.move('out', outfile)
 
 
 def call_sumsplines(bindir, nspec):
@@ -1817,7 +1817,7 @@ def main(jobnum, args):
         _logger.info("Done.")
 
 
-if __name__ == "__main__":
+def run():
     argv = None
     if argv is None:
         argv = sys.argv
@@ -1912,3 +1912,7 @@ if __name__ == "__main__":
         args = parseArgs(remaining_argv)
 
         sys.exit(main(1, args))
+
+
+if __name__ == "__main__":
+    run()
