@@ -583,6 +583,7 @@ def run_command(cmd, input=None):
         Input to be sent to the command through stdin.
     """
     _logger.info('Running %s' % cmd)
+    _logger.debug('Command params are %s' % input)
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
@@ -1209,12 +1210,22 @@ def get_sedfits(starobs, args):
         qf_args.wave_final = args.quick_fit_wave_final
         qf_args.bin_size = args.quick_fit_bin_size
 
+        have_stars = False
+
         with open('qf.ifus', 'w') as f:
             for s in starobs:
-                f.write('%s %s %f %f %f %f %f %f %f\n'
-                        % (s.shotid, s.shuffleid, s.ra, s.dec, s.mag_u,
-                           s.mag_g, s.mag_r, s.mag_i, s.mag_z))
-        qf.main(qf_args)
+                if s.catalog != 'SDSS':
+                    _logger.info('Skipping %s star %d, currently only SDSS'
+                                 ' stars support SED fitting.'
+                                 % (s.catalog, s.starid))
+                else:
+                    f.write('%s %s %f %f %f %f %f %f %f\n'
+                            % (s.shotid, s.shuffleid, s.ra, s.dec, s.mag_u,
+                               s.mag_g, s.mag_r, s.mag_i, s.mag_z))
+                    have_stars = True
+
+        if have_stars:
+            qf.main(qf_args)
 
     except ImportError:
         _logger.warn('Failed to import quick_fit, falling back to '
@@ -1696,6 +1707,11 @@ def mk_sed_throughput_curve(args):
 
         sedlist.append('sp%dsed.dat' % s.starid)
 
+    if not len(sedlist):
+        _logger.warn('No SED fits found, skipping SED throughput curve'
+                     'generation')
+        return
+
     run_combsed(args.bin_dir, sedlist, args.sed_sigma_cut, args.sed_rms_cut,
                 '%ssedtp.dat' % nightshot, '%ssedtpa.ps' % nightshot)
 
@@ -1845,13 +1861,13 @@ def run():
     _logger.setLevel(logging.DEBUG)
 
     cHndlr = logging.StreamHandler()
-    cHndlr.setLevel(logging.INFO)
+    cHndlr.setLevel(logging.DEBUG)
     cHndlr.setFormatter(formatter)
 
     _logger.addHandler(cHndlr)
 
     fHndlr = logging.FileHandler(args.logfile, mode='w')
-    fHndlr.setLevel(logging.INFO)
+    fHndlr.setLevel(logging.DEBUG)
     fHndlr.setFormatter(formatter)
 
     _logger.addHandler(fHndlr)
