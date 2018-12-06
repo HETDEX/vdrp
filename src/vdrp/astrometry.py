@@ -75,8 +75,8 @@ class VdrpInfo(OrderedDict):
         with open(os.path.join(dir, filename), 'wb') as f:
             pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
 
-    @staticmethod
-    def read(dir, filename='vdrp_info.pickle'):
+    @classmethod
+    def read(cls, dir, filename='vdrp_info.pickle'):
         if os.path.exists(os.path.join(dir, filename)):
             with open(os.path.join(dir, filename), 'rb') as f:
                 return pickle.load(f)

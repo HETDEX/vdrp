@@ -1226,6 +1226,13 @@ def get_sedfits(starobs, args):
 
         if have_stars:
             qf.main(qf_args)
+            for s in starobs:
+                fitsedname = '%s_%s.txt' % (s.shotid, s.shuffleid)
+                sedname = 'sp%d_fitsed.dat' % s.starid
+                if not os.path.exists(fitsedname):
+                    _logger.warn('No sed fit found for star %d' % s.starid)
+                    continue
+                shutil.move(fitsedname, sedname)
 
     except ImportError:
         _logger.warn('Failed to import quick_fit, falling back to '
@@ -1702,13 +1709,13 @@ def mk_sed_throughput_curve(args):
 
         sedcgs = seddata[1][1:]/6.626e-27/(3.e18/seddata[0][1:])*360.*5.e5*100.
 
-        np.savetxt('sp%dsed.dat' % s.starid, zip(stardata[0],
-                                                 stardata[1]/sedcgs))
+        np.savetxt('sp%dsed.dat' % s.starid, zip(seddata[0][1:],
+                                                 seddata[1][1:]/sedcgs))
 
         sedlist.append('sp%dsed.dat' % s.starid)
 
     if not len(sedlist):
-        _logger.warn('No SED fits found, skipping SED throughput curve'
+        _logger.warn('No SED fits found, skipping SED throughput curve '
                      'generation')
         return
 

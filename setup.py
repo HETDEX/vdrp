@@ -46,7 +46,8 @@ def extras_require(key=None):
         return req_dic
 
 
-install_requires = ['numpy', 'scipy', 'matplotlib', 'astropy', 'pyhetdex', 'path.py']
+install_requires = ['numpy', 'scipy', 'matplotlib', 'astropy', 'pyhetdex',
+                    'stellarSEDfits', 'path.py']
 
 # entry points
 # scripts
@@ -59,7 +60,7 @@ entry_points = {'console_scripts':
 setup(
     # package description and version
     name="vdrp",
-    version='0.3.0',
+    version='0.4.0',
     author="HETDEX collaboration",
     author_email="snigula@mpe.mpg.de",
     description="VIRUS data reduction pipeline",
