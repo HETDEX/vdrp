@@ -3,4 +3,6 @@ include Changelog
 # include LICENCE
 include README.md
 # ReleaseNotes.md
-
+recursive-include src/fortran *.f
+include src/fortran/Makefile
+recursive-include src/vdrp/bin/ *
