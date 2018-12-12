@@ -10,6 +10,7 @@ tools that are use in Karl Gebhardt's astrometry procedure.
 from astropy.table import Table
 import subprocess
 from pyhetdex.het import fplane
+from vdrp.utils import bindir
 import os
 
 
@@ -60,7 +61,7 @@ def getoff2(fnradec, fnshuffle_ifustars, radius, ra_offset,
     tmatch_input.write('j3', format='ascii.fast_no_header', overwrite=True)
 
     # run getoff2
-    proc = subprocess.Popen("getoff2", stdin=subprocess.PIPE,
+    proc = subprocess.Popen(bindir()+"/getoff2", stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE)
     s = GETOFF_CMD.format(radius)
     so, se = proc.communicate(input=s)
@@ -127,7 +128,7 @@ def immosaicv(prefixes, fplane_file="fplane.txt", logging=None):
             infp.write(s)
 
     # run immosaicv
-    proc = subprocess.Popen("immosaicv", stdin=subprocess.PIPE,
+    proc = subprocess.Popen(bindir()+"/immosaicv", stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE)
     so, se = proc.communicate()
     for l in so.split("\n"):
@@ -154,7 +155,7 @@ def imrot(fitsfile, angle, logging=None):
     CMD_IMROT = "{}\n1\n{}"
 
     # run imrot
-    proc = subprocess.Popen("imrot", stdin=subprocess.PIPE,
+    proc = subprocess.Popen(bindir()/"imrot", stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE)
     s = CMD_IMROT.format(fitsfile, angle)
     so, se = proc.communicate(input=s)

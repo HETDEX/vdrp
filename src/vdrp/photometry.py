@@ -395,7 +395,7 @@ def parseArgs(argv):
     defaults['multifits_dir'] = '/work/03946/hetdex/maverick/red1/reductions/'
     defaults['tp_dir'] = '/work/00115/gebhardt/maverick/detect/tp/'
     defaults['norm_dir'] = '/work/00115/gebhardt/maverick/getampnorm/all/'
-    defaults['bin_dir'] = '/home/00115/gebhardt/bin/'
+    # defaults['bin_dir'] = '/home/00115/gebhardt/bin/'
 
     defaults['extraction_aperture'] = 1.6
     defaults['extraction_wl'] = 4505.
@@ -473,8 +473,8 @@ def parseArgs(argv):
                         "with the throughput files")
     parser.add_argument("--norm_dir", type=str, help="Directory "
                         "with the amplifier normalization files")
-    parser.add_argument("--bin_dir", type=str, help="Directory "
-                        "with the fortran binary files.")
+    # parser.add_argument("--bin_dir", type=str, help="Directory "
+    #                     "with the fortran binary files.")
 
     parser.add_argument("--extraction_aperture", type=float, help="Aperture "
                         "radius in asec for the extraction")
@@ -556,6 +556,9 @@ def parseArgs(argv):
     # should in principle be able to do this with accumulate???
     # args.use_tmp = args.use_tmp == "True"
     # args.remove_tmp = args.remove_tmp == "True"
+
+    # NEW set the bin_dir to the vdrp supplied bin directory
+    args.bin_dir = utils.bindir
 
     return args
 
