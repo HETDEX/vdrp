@@ -558,7 +558,7 @@ def parseArgs(argv):
     # args.remove_tmp = args.remove_tmp == "True"
 
     # NEW set the bin_dir to the vdrp supplied bin directory
-    args.bin_dir = utils.bindir
+    args.bin_dir = utils.bindir()
 
     return args
 
