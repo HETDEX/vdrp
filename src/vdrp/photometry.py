@@ -687,7 +687,7 @@ def call_fitonevp(bindir, wave, outname):
     """
     input = '0 0\n{wave:f}\n/vcps\n'
 
-    run_command(bindir + 'fitonevp', input.format(wave=wave))
+    run_command(bindir + '/fitonevp', input.format(wave=wave))
 
     shutil.move('pgplot.ps', outname+'tot.ps')
     shutil.move('out', outname+'spec.dat')
