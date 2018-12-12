@@ -619,3 +619,12 @@ def matrixCheby2D_7(x, y):
                       T3x*T3y, T4x*y, x*T4y, T3x*T2y, T2x*T3y, T3x*y,
                       x*T3y, T2x*T2y, T2x*y, x*T2y, x*y,
                       np.ones(x.shape))).swapaxes(0, 1)
+
+# ---------------------------------------------------------------------
+#  Package utils
+# ---------------------------------------------------------------------
+
+def bindir():
+
+    # print(os.path.dirname(os.path.realpath(__file__)) + '/bin')
+    return os.path.dirname(os.path.realpath(__file__)) + '/bin'

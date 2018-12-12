@@ -9,10 +9,51 @@ except ImportError:
     use_setuptools()
 
 from setuptools import setup, find_packages
+from setuptools.command.build_ext import build_ext
+from setuptools.command.build_py import build_py
+from setuptools.command.install import install
+from setuptools.command.develop import develop
+from setuptools.command.sdist import sdist
+
+import subprocess as sp
 
 if sys.version_info < (2, 7) or sys.version_info >= (3, 0):
     sys.exit("Python version 2.7 required")
 
+def run_install():
+    src_path = './src/fortran'
+    cmd = 'make pkg_install'
+    sp.check_call(cmd, cwd=src_path, shell=True)
+
+def run_make_clean():
+    src_path = './src/fortran'
+    cmd = 'make pkg_clean'
+    sp.check_call(cmd, cwd=src_path, shell=True)
+
+class BuildBinaries(build_ext):
+    """Custom handler for the 'install' command."""
+    def run(self):
+        run_install()
+
+class CustomBuild(build_py):
+    def run(self):
+        run_install()
+        build_py.run(self)
+
+class CustomInstall(install):
+    def run(self):
+        run_install()
+        install.run(self)
+
+class CustomDevelop(develop):
+    def run(self):
+        run_install()
+        develop.run(self)
+
+class CustomSDist(sdist):
+    def run(self):
+        run_make_clean()
+        sdist.run(self)
 
 def extras_require(key=None):
     """Deal with extra requirements
@@ -53,7 +94,8 @@ install_requires = ['numpy', 'scipy', 'matplotlib', 'astropy', 'pyhetdex',
 # scripts
 entry_points = {'console_scripts':
                 ['vdrp_astrom = vdrp.astrometry:run',
-                 'vdrp_throughput = vdrp.photometry:run']}
+                 'vdrp_throughput = vdrp.photometry:run',
+                 'vdrp_bindir = vdrp.utils:bindir']}
 
 # entry_points.update(batch_types)
 
@@ -71,6 +113,7 @@ setup(
     # list of packages and data
     package_dir={'': 'src'},
     packages=find_packages('src', exclude=["pytest", "tests"]),
+    # package_data={'vdrp': ['src/bin/sum2d']},
     # get from the MANIFEST.in file which extra file to include
     include_package_data=True,
     # don't zip when installing
@@ -90,5 +133,10 @@ setup(
                  "Operating System :: POSIX :: Linux",
                  "Programming Language :: Python :: 2.7",
                  "Topic :: Scientific/Engineering :: Astronomy",
-                 ]
+                 ],
+    cmdclass={'build_ext': BuildBinaries,
+              'install': CustomInstall,
+              'develop': CustomDevelop,
+              'sdist': CustomSDist}
+    # cmdclass={'develop': CustomDevelop}
 )

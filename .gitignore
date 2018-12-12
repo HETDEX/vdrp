@@ -11,3 +11,8 @@ src/python/tests/__pycache__
 dist
 src/vdrp.egg-info
 src/vdrp/vdrp.egg-info
+src/fortran/*.o
+.python-version
+src/python/
+src/vdrp/bin/
+
