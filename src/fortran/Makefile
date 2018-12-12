@@ -9,7 +9,7 @@ LIBDIR = $(shell vdrp_support_libdir)
 HOSTLIBS= -L$(LIBDIR) -lm -lnumrec -lquest -lgcv -llinpack -lpgplot \
 	-lcfitsio -L/usr/X11R6/lib -lX11
 
-BINARIES = ampnorm biwt combsed fit2d fit2dc fit2dfix \
+BINARIES = ampnorm combsed fit2d fit2dc fit2dfix \
 	fit2dfw fit2dpsf fitem fitema fitemfull fitemmc fitems fitonesig \
 	fitonesiga fitonev fitoneva fitonevp fitonevs fitpoly ftoa ftoaq getflim \
 	getflim2 getfwhm getnormexp getsignif getsdssg ima imaddem imaddem2 \
@@ -35,7 +35,7 @@ BINARIES = ampnorm biwt combsed fit2d fit2dc fit2dfix \
 	sumlineserr sumlineserr_t sumlineserrf sumsign sumspec sumspec100 \
 	sumspec2 sumspf sumsplines sumsplinesn sumtmp
 
-BINARIES_NOBIWT = 2dsm atof comp comp0 findpeaks getnorm imfixwv mkraster spnorm wvoff
+BINARIES_NOBIWT = 2dsm atof biwt comp comp0 findpeaks getnorm imfixwv mkraster spnorm wvoff
 
 EXTRA_BINARIES = fitlov imfit1d imfit1dp npdyn pfitlov
 
