@@ -33,7 +33,7 @@ BINARIES = ampnorm combsed fit2d fit2dc fit2dfix \
 	sumlineserr sumlineserrf sumsign sumspec sumspec100 sumspec2 sumspf \
 	sumsplines sumsplinesn sumtmp
 
-BINARIES_NOBIWT = 2dsm atof comp comp0 findpeaks getnorm imfixwv mkraster spnorm wvoff
+BINARIES_NOBIWT = 2dsm atof comp comp0 findpeaks getnorm getnormexp imfixwv mkraster spnorm wvoff
 
 EXTRA_BINARIES = fitlov imfit1d imfit1dp npdyn pfitlov
 
