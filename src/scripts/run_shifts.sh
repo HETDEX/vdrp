@@ -15,8 +15,8 @@ echo $ADD_ARGS
 # Fall back to vdrp.config if no night/shot specific 
 # configuration file exists.
 if [ ! -f $CFG ]; then
-    CFG=../vdrp.config
+    CFG=../../config/vdrp.config
 fi
 
 echo Configuration file $CFG
-../vdrp/src/python/vdrp/astrometry.py --logfile $LOG -c $CFG $NIGHT $SHOT $RA $DEC $TRACK
+vdrp_astrom --logfile $LOG -c $CFG $NIGHT $SHOT $RA $DEC $TRACK
