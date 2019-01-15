@@ -1,5 +1,8 @@
 #!/bin/bash
 
-. ../setup.sh
+# . ../setup.sh
 
-python -m unittest tests.test_cltools tests.test_daophot  tests.test_astrometry
+# python -m unittest vdrp.tests.test_cltools vdrp.tests.test_daophot  vdrp.tests.test_astrometry
+
+cd unittest
+python runtests.py

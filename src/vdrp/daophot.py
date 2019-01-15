@@ -180,7 +180,7 @@ def daophot_find(prefix, sigma, logging=None):
     test_input_files_exist(input_files)
 
     rm([prefix + ".coo", prefix + ".lst", prefix + "jnk.fits"])
-    proc = subprocess.Popen(bindir+"/daophot", stdin=subprocess.PIPE,
+    proc = subprocess.Popen(bindir()+"/daophot", stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE)
     s = DAOPHOT_FIND_CMD.format(prefix, sigma)
     so, se = proc.communicate(input=s)
@@ -280,7 +280,7 @@ def daomaster(logging=None):
     test_input_files_exist(input_files)
 
     rm(["all.raw"])
-    proc = subprocess.Popen(bindir+"/daomaster", stdin=subprocess.PIPE,
+    proc = subprocess.Popen(bindir()+"/daomaster", stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE)
     s = DAOMASTER_CMD
     so, se = proc.communicate(input=s)
