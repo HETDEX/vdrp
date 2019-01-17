@@ -25,40 +25,28 @@ c   let's center on Feb 1, 2018, which is mjd=58150.3
       call pgenv(xmin,xmax,ymin,ymax,0,0)
       call pglabel('Days since 1 Jan 2018','Cumulative Number','')
 
-      open(unit=1,file='inall',status='old')
-      n=0
-      do i=1,100000
-         read(1,*,end=667) x1
-         x1=x1-7
-         if(x1.gt.0) then
-            n=n+1
-            x(n)=x1
-            xcount=float(n)/9.
-            y(n)=xcount
-         endif
+      open(unit=2,file='inlist',status='old')
+      do ia=1,100
+         read(2,*,end=777) file1
+         open(unit=1,file=file1,status='old')
+         n=0
+         do i=1,100000
+            read(1,*,end=667) x1
+            x1=x1-7
+            if(x1.gt.0) then
+               n=n+1
+               x(n)=x1
+               xcount=float(n)
+               y(n)=xcount
+            endif
+         enddo
+ 667     continue
+         close(1)
+         call pgslw(4)
+         call pgline(n,x,y)
       enddo
- 667  continue
-      close(1)
-      call pgslw(4)
-      call pgline(n,x,y)
-      open(unit=11,file='out',status='unknown')
-      do i=1,n
-         write(11,*) x(i),y(i)
-      enddo
-      close(11)
-c      open(unit=1,file='fs2018.plan',status='old')
-c      n=0
-c      do i=1,nmax
-c         read(1,*,end=555) x1,x2
-c         n=n+1
-c         x(n)=x1
-c         y(n)=x2-8
-c      enddo
-c 555  continue
-c      close(1)
-c      call pgsci(3)
-c      call pgline(n,x,y)
-c      call pgsci(1)
+ 777  continue
+      close(2)
 
       open(unit=1,file='dex.dat',status='old')
       n=0

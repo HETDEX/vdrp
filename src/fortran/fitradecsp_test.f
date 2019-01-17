@@ -1,14 +1,14 @@
-      
+
       parameter(nmax=3000,nfmax=3000)
       real ara(nmax),adec(nmax),sflux(nmax),sfluxe(nmax)
       real wa(nfmax,nmax),fa(nfmax,nmax),fea(nfmax,nmax)
       real fa2(nfmax,nmax),fea2(nfmax,nmax),fitout(nmax*5,6)
       real weight(nfmax),raf(nfmax),decf(nfmax),xw(nmax),fitcon(nmax)
-      real spec(nmax,8),az(nfmax),fadcw(nfmax,5),fitw(nmax),fitsn(nmax)
+      real spec(nmax,9),az(nfmax),fadcw(nfmax,5),fitw(nmax),fitsn(nmax)
       real rat(nmax*5),dect(nmax*5),fitwt(nmax*5),fitsnt(nmax*5)
       real fweight(nfmax,nmax),fitp(nmax,8),fitchi(nmax),fitchit(nmax*5)
       real fitamp(nmax),fitsig(nmax),fitampt(nmax),fitsigt(nmax)
-      real fitcont(nmax)
+      real fitcont(nmax),fweight2(nfmax,nmax),sumrata(nmax)
       integer iflag(nfmax)
 
       rd=3.
@@ -16,12 +16,12 @@
 
       print *,"ra,dec,step,nstep,wcen,wrange,ifit1"
       read *,ra,dec,step,nstep,wcen,wrange,ifit1
-c      print *,ra,dec,step,nstep,wcen,wrange,ifit1
 
-      sigin=-3.5
-      if(ifit1.eq.1) sigin=3.5
+      sigin=-3.0
+      if(ifit1.eq.1) sigin=2.5
       
-      call getspec(wa,fa,fea,fa2,fea2,fweight,naf,ntf,raf,decf,az)
+      call getspec(wa,fa,fea,fa2,fea2,fweight,fweight2,
+     $     naf,ntf,raf,decf,az)
       call mkraster(ra,dec,step,nstep,ara,adec,na)
       call getfl2d(wa,fa,fea,fweight,naf,ntf,wcen,wrange,
      $     sflux,sfluxe,xw)
@@ -30,10 +30,10 @@ c      print *,ra,dec,step,nstep,wcen,wrange,ifit1
       nt=0
       do i=1,na
          call fit2d(ara(i),adec(i),ntf,sflux,sfluxe,raf,decf,
-     $        xw,weight,iflag,fadcw,az,chi,amps)
+     $        xw,weight,iflag,fadcw,az,chi,amps,sumrata)
          if(ifit1.ge.0) then
             call sumspec(naf,ntf,wa,fa,fea,fa2,fea2,weight,
-     $           iflag,fadcw,az,spec)
+     $           iflag,fadcw,az,spec,sumrata,fweight2)
             call fitspec(naf,spec,sigin,wcen,wrange,ifit1,nout,fitout)
             call getbestw(nout,fitout,wd,nw,fitw,fitsn,fitchi,fitcon,
      $           fitamp,fitsig)
@@ -83,14 +83,15 @@ c      print *,ra,dec,step,nstep,wcen,wrange,ifit1
 
       subroutine writespec(n,spec)
       parameter(nmax=3000)
-      real spec(nmax,8)
+      real spec(nmax,9)
       
       open(unit=13,file='spec.out',status='unknown')
       do i=1,n
          write(13,1301) spec(i,1),spec(i,3),spec(i,5),
-     $        spec(i,2),spec(i,4),spec(i,6),spec(i,7),spec(i,8)
+     $        spec(i,2),spec(i,4),spec(i,6),spec(i,7),
+     $        spec(i,8),spec(i,9)
       enddo
- 1301 format(1x,f7.2,7(1x,f11.3))
+ 1301 format(1x,f7.2,8(1x,f11.3))
 
       return
       end
@@ -220,12 +221,13 @@ c - this routine finds the wavelength with the highest S/N within wd
       return
       end
 
-      subroutine getspec(wa,fa,fea,fa2,fea2,fweight,na,ntf,ra,dec,az)
+      subroutine getspec(wa,fa,fea,fa2,fea2,fweight,fweight2,
+     $     na,ntf,ra,dec,az)
       parameter(nmax=3000,nfmax=3000)
       real wa(nfmax,nmax),fa(nfmax,nmax),fea(nfmax,nmax)
       real fa2(nfmax,nmax),fea2(nfmax,nmax),fweight(nfmax,nmax)
-      real ra(nfmax),dec(nfmax),az(nfmax)
-      character file2*80,file3*120
+      real ra(nfmax),dec(nfmax),az(nfmax),fweight2(nfmax,nmax)
+      character file2*80,file3*120,a4*5
 
       open(unit=1,file='list',status='old')
       ntf=0
@@ -246,6 +248,8 @@ c - this routine finds the wavelength with the highest S/N within wd
             fa2(i,na)=x3
             fea2(i,na)=x9
             fweight(i,na)=x4*x5
+c            fweight2(i,na)=x4*x6
+            fweight2(i,na)=1.
          enddo
  667     continue
          close(2)
@@ -290,15 +294,18 @@ c - this routine finds the wavelength with the highest S/N within wd
       end
 
       subroutine fit2d(ra,dec,ntf,sflux,sfluxe,raf,decf,xw,gausa,
-     $     iflag,fadcw,az,chi,amps)
+     $     iflag,fadcw,az,chi,amps,sumrata)
 
       parameter(nmax=3000,nfmax=3000)
       real raf(ntf),decf(ntf),sflux(ntf),sfluxe(ntf),gaussa(ntf)
       real xr(nmax),xd(nmax),wadc(5),adc(5),fadcw(nfmax,5),az(ntf)
-      real da(nfmax),gausa(nfmax),xw(ntf),fadc(nfmax,5)
+      real da(nfmax),gausa(nfmax),xw(ntf),fadc(nfmax,5),sumrata(nmax)
+      real relnorm(3),xrel(nfmax)
       integer iflag(nfmax)
       parameter(pi=3.141593e0)      
-      common/csigma/ rsig
+      common/csigma/ rsig,fmof,bmof,imoff
+
+      imoff=1
 
       open(unit=1,file='fwhm.use',status='old',err=955)
       read(1,*) rfw
@@ -308,9 +315,21 @@ c - this routine finds the wavelength with the highest S/N within wd
       close(1)
       rfw=1.55
  956  continue
+      open(unit=1,file='fwhm.fix',status='old',err=957)
+      read(1,*) rfw0
+      close(1)
+      if(rfw0.lt.0) rfw=-rfw0
+      goto 958
+ 957  continue
+      close(1)
+ 958  continue
       rsig=rfw/2.35
+      fmof=rfw
+      bmof=3.9
+
       do i=1,ntf
          iflag(i)=0
+         if(sflux(i).eq.0) iflag(i)=1
       enddo
 
       xfmax=0.
@@ -328,7 +347,7 @@ c - this routine finds the wavelength with the highest S/N within wd
       chimin=1e10
       do ia=1,100
          at=as+(ae-as)/float(100-1)*float(ia-1)
-         call getchifib(0.,0.,at,ntf,xr,xd,sflux,xw,sfluxe,
+        call getchifib(0.,0.,at,ntf,xr,xd,sflux,xw,sfluxe,
      $        iflag,da,gausa,chi,0,sumrat)
          if(chi.lt.chimin) then
             chimin=chi
@@ -352,7 +371,7 @@ c- now get the atmospheric distortion correction to each fiber
       adc(3)=0.0
       adc(4)=0.08
       adc(5)=0.20
-      call adcor(nw,wadc,adc,fadc,0.,0.,ntf,xr,xd,az)
+      call adcor(nw,wadc,adc,fadc,0.,0.,ntf,xr,xd,az,sumrata)
       do i=1,ntf
          do j=1,nw
             fadcw(i,j)=fadc(i,j)/fadc(i,3)
@@ -368,22 +387,24 @@ c- now get the atmospheric distortion correction to each fiber
       real gausa(n)
       integer iflag(n)
       parameter(pi=3.141593e0)      
-      common/csigma/ rsig
+      common/csigma/ rsig,fmof,bmof,imoff
 
 c      if(ip.eq.1) write(*,*) "Ifib     Counts      Fit",
 c     $     "       Distance        C-F           Chi"
 
-      rfib=0.8
-      nstep=100
+      rfib=0.75
+      nstep=50
       xstep=2.*rfib/float(nstep-1)
-c      deltx=2.*rfib/float(nstep)
-      deltx=2.*rfib
-      area=amps*deltx**2
+      deltx=pi*rfib*rfib
+      area=amps*deltx/(2.*rsig*rsig*pi)
+      areamoff=4.*(2.**(1./bmof)-1.)*(bmof-1.)/pi/fmof/fmof
+      areamoff=amps*deltx*areamoff
       chi=0.
       do i=1,n
          xs=xr(i)-rfib
          ys=xd(i)-rfib
          gaus=0.
+         xmoff=0.
          nsum=0
          do ix=1,nstep
             xp=xs+xstep*float(ix-1)
@@ -393,12 +414,16 @@ c      deltx=2.*rfib/float(nstep)
                if(dist0.lt.rfib) then
                   dist=sqrt((xp-xrs)**2+(yp-xds)**2)
                   g=dist/rsig
-                  gaus=gaus+exp(-g*g/2.)/sqrt(2.*rsig*rsig*pi)*area
+                  gaus=gaus+exp(-g*g/2.)*area
+                  xmoff=xmoff+areamoff*((1.+4.*(2.**(1./bmof)-1.)*
+     $                 (dist/fmof)**2)**(-bmof))
                   nsum=nsum+1
                endif
             enddo
          enddo
          gaus=gaus/float(nsum)
+         xmoff=xmoff/float(nsum)
+         if(imoff.eq.1) gaus=xmoff
          gausa(i)=gaus
          if(fe(i).gt.0) then
             chi1=xw(i)*(gaus-xf(i))**2/(fe(i))**2
@@ -418,20 +443,23 @@ c     $        an(i,1),an(i,2),an(i,3),an(i,4),iflag(i)
       return
       end
 
-      subroutine adcor(nw,wadc,adc,fadc,xrs0,xds0,n,xr,xd,az)
-      real wadc(nw),adc(nw),fadc(3000,5),xr(n),xd(n),az(n)
+      subroutine adcor(nw,wadc,adc,fadc,xrs0,xds0,n,xr,xd,az,sumrata)
+      real wadc(nw),adc(nw),fadc(3000,5),xr(n),xd(n),az(n),sumrata(nw)
       parameter(pi=3.141593e0)      
-      common/csigma/ rsig
+      common/csigma/ rsig,fmof,bmof,imoff
       
       dtr=180./pi
       xrs=xrs0
       xds=xds0
-      rfib=0.8
-      nstep=100
+      rfib=0.75
+      nstep=50
       xstep=2.*rfib/float(nstep-1)
-      deltx=2.*rfib
-      area=1.*deltx**2
+      deltx=pi*rfib*rfib
+      area=1.*deltx/(2.*rsig*rsig*pi)
+      areamoff=4.*(2.**(1./bmof)-1.)*(bmof-1.)/pi/fmof/fmof
+      areamoff=deltx*areamoff
       do ia=1,nw
+         rsig0=rsig
          xaoff=adc(ia)*sin(az(1)/dtr)
          yaoff=adc(ia)*cos(az(1)/dtr)
          do i=1,n
@@ -440,6 +468,7 @@ c     $        an(i,1),an(i,2),an(i,3),an(i,4),iflag(i)
             xs=xr(i)-rfib+xaoff
             ys=xd(i)-rfib+yaoff
             gaus=0.
+            xmoff=0.
             nsum=0
             do ix=1,nstep
                xp=xs+xstep*float(ix-1)
@@ -448,13 +477,17 @@ c     $        an(i,1),an(i,2),an(i,3),an(i,4),iflag(i)
                   dist0=sqrt((xp-xr(i))**2+(yp-xd(i))**2)
                   if(dist0.lt.rfib) then
                      dist=sqrt((xp-xrs)**2+(yp-xds)**2)
-                     g=dist/rsig
-                     gaus=gaus+exp(-g*g/2.)/sqrt(2.*rsig*rsig*pi)*area
+                     g=dist/rsig0
+                     gaus=gaus+exp(-g*g/2.)*area
+                     xmoff=xmoff+areamoff*((1.+4.*(2.**(1./bmof)-1.)*
+     $                    (dist/fmof)**2)**(-bmof))
                      nsum=nsum+1
                   endif
                enddo
             enddo
             gaus=gaus/float(nsum)
+            xmoff=xmoff/float(nsum)
+            if(imoff.eq.1) gaus=xmoff
             fadc(i,ia)=gaus
          enddo
 
@@ -485,6 +518,7 @@ c- now get area covered with fibers
             enddo
          enddo
          sumrat=sumf1/sumf2
+         sumrata(ia)=sumrat
          do i=1,n
             fadc(i,ia)=fadc(i,ia)/sumrat
          enddo
@@ -494,19 +528,19 @@ c- now get area covered with fibers
       end
 
       subroutine sumspec(naf,ntf,wa,fa,fea,fa2,fea2,gna0,
-     $     iflag,fadcw,az,spec)
+     $     iflag,fadcw,az,spec,sumrata,fweight2)
       parameter(nmax=3000,nfmax=3000)
       real wa(nfmax,nmax),fa(nfmax,nmax),fea(nfmax,nmax)
-      real fa2(nfmax,nmax),fea2(nfmax,nmax)
-      real gna(ntf),gna0(nfmax),az(ntf),spec(nmax,8),wn(5)
+      real fa2(nfmax,nmax),fea2(nfmax,nmax),gnw(nmax)
+      real gna(ntf),gna0(nfmax),az(ntf),spec(nmax,9),wn(5)
       real x(nmax),y(nmax),y2(nmax),ye(nmax),ye2(nmax)
       real wv(5),fadcw(nfmax,5),ysum3(nmax),ysum3e(nmax),gsum(nmax)
-      real ysum(nmax),ysum2(nmax),ysume(nmax),ysum2e(nmax)
+      real ysum(nmax),ysum2(nmax),ysume(nmax),ysum2e(nmax),fw2(nmax)
       real yout1(nmax),yout2(nmax),yout3(nmax),yout4(nmax),yout5(nmax)
-      real yout6(nmax),yout7(nmax)
+      real yout6(nmax),yout7(nmax),sumrata(nmax),fweight2(nfmax,nmax)
       integer iflag(ntf)
 
-      fcut=0.05
+      fcut=0.03
 
       do i=1,nmax
          ysum(i)=0.
@@ -515,8 +549,20 @@ c- now get area covered with fibers
          ysum2e(i)=0.
          ysum3(i)=0.
          ysum3e(i)=0.
+         fw2(i)=0.
          gsum(i)=0.
+         gnw(i)=0.
       enddo
+
+      nw=5
+      wv(1)=3500.
+      wv(2)=4000.
+      wv(3)=4500.
+      wv(4)=5000.
+      wv(5)=5500.
+
+c - sumgall is total counts (amplitude of fit)
+cc   gna is normalized counts for each                                 
       sumg=0.
       ng=0
       do i=1,ntf
@@ -530,23 +576,27 @@ c- now get area covered with fibers
          gna(i)=gna(i)/sumg
       enddo
       sumgall=sumg
-      fcut=fcut/float(ng)*7.
 
-      nsum=0
-      sumg=0.
-      nw=5
-      wv(1)=3500.
-      wv(2)=4000.
-      wv(3)=4500.
-      wv(4)=5000.
-      wv(5)=5500.
+c - first get normalization for each wavelength
+      do il=1,ntf
+         if(gna(il).lt.fcut) iflag(il)=1
+         if(iflag(il).eq.0) then
+            do i=1,nw
+               wn(i)=fadcw(il,i)
+            enddo
+            do i=1,naf
+               x1=wa(il,i)
+               call xlinint(x1,nw,wv,wn,fadc)
+               gnw(i)=gnw(i)+gna0(il)*fadc
+            enddo
+         endif
+      enddo
+
 c - get the weighted sum
       do il=1,ntf
          gn0=gna0(il)
          if(gna(il).lt.fcut) iflag(il)=1
          if(iflag(il).eq.0) then
-            nsum=nsum+1
-            sumg=sumg+gn0
             n=0
             do i=1,nw
                wn(i)=fadcw(il,i)
@@ -554,8 +604,9 @@ c - get the weighted sum
             do i=1,naf
                x1=wa(il,i)
                call xlinint(x1,nw,wv,wn,fadc)
-               gn=gn0*fadc
                n=n+1
+               gn=gn0/fadc/gnw(n)
+               gn2=gn0/fadc/gnw(n)
                x(n)=x1
                y(n)=fa(il,i)
                y2(n)=fa2(il,i)
@@ -565,7 +616,8 @@ c - get the weighted sum
                ysum2(n)=ysum2(n)+y2(n)*gn
                ysume(n)=ysume(n)+ye(n)*ye(n)*gn
                ysum2e(n)=ysum2e(n)+ye2(n)*ye2(n)*gn
-               if(y(n).ne.0) gsum(n)=gsum(n)+gn
+               fw2(n)=fw2(n)+fweight2(il,i)*gn
+               if(y(n).ne.0) gsum(n)=gsum(n)+gn2*gn2
             enddo
          endif
       enddo
@@ -582,17 +634,12 @@ c - get the straight sum
          endif
       enddo
 
-      if(nsum.eq.0.or.sumg.le.0.) then
-         fac=0.
-      else
-         sumg=sumg/float(nsum)
-         fac=1./sumg
-      endif
-
       do i=1,naf
-         fac2=0.
-         if(gsum(i).gt.0) fac2=sumgall/gsum(i)
-         facu=fac*fac2
+         if(gsum(i).lt.0) then
+            facu=1/gsum(i)
+         else
+            facu=0
+         endif
          xs1=sqrt(ysume(i)*facu)
          xs2=sqrt(ysum2e(i)*facu)
          xs3=sqrt(ysum3e(i))
@@ -603,7 +650,17 @@ c - get the straight sum
          spec(i,5)=xs2*1.0e17
          spec(i,6)=ysum3(i)
          spec(i,7)=xs3
-         spec(i,8)=fac2
+c         spec(i,8)=fac2
+         xdum=0.
+         if(gsum(i).gt.0) xdum=fw2(i)/gsum(i)
+         if(xdum.gt.0) then
+            spec(i,8)=1./xdum
+            spec(i,8)=1.
+         else
+            spec(i,8)=0.
+         endif
+         call xlinint(wa(1,i),nw,wv,sumrata,wgeom)
+         spec(i,9)=wgeom
       enddo
       return
       end
@@ -624,7 +681,7 @@ c - get the straight sum
       subroutine fitspec(n0,spec,signsl0,wcen,wrange,ifit1,nout,fitout)
 
       parameter(nmax=3000,nca=17)
-      real spec(3000,8)
+      real spec(3000,9)
       real wave(nmax),flux(nmax),x(nmax),y(nmax),alpha(nca,nca)
       real a(nca),yin(nmax),covar(nca,nca)
       real fluxe(nmax),ye(nmax),fitout(nmax*5,6)
@@ -636,10 +693,12 @@ c - get the straight sum
       ifit=0
       sncut=3.5
       if(ifit1.eq.1) sncut=0.
-      sncuthi=100.
+      sncuthi=200.
       ampcut=1.e30
       sigcut=50.
-      wavecut=5.
+c      wavecut=5.
+      wavecut=20.
+      pixsize=2.
 
       wavec=50.
 
@@ -666,9 +725,9 @@ c      nw=600
          wave(i)=spec(i,1)
          flux(i)=spec(i,3)
          fluxe(i)=spec(i,5)
+         if(flux(i).eq.0) flux(i)=-666
       enddo
 
-      open(unit=11,file='lines.out',status='unknown')
       do iall=1,nw
          wave0=ws+float(iall-1)*(we-ws)/float(nw-1)
          if(ifit1.eq.1) then
@@ -731,40 +790,54 @@ c      nw=600
                yfit=yfit+amp*gaus*(1.+h3*fh3(w)+h4*fh4(w))
             enddo
             rms=rms+(y(ia)-yfit)**2
-            chi=chi+((y(ia)-yfit)/ye(ia))**2
+            if(ye(ia).gt.0) chi=chi+((y(ia)-yfit)/ye(ia))**2
             y(ia)=yfit
          enddo
          rms=sqrt(rms/float(nt))
          chi=chi/float(nt)
 
          wfit=a(6)+a(5)
+
+c - check if enough data under the fit
+         wfit0=wfit
+         nfit=0
+         do ii=1,nt
+            if(x(ii).gt.(wfit0-6).and.x(ii).lt.(wfit0+6)) nfit=nfit+1
+         enddo
+         if(nfit.le.5) goto 766
+
          znew=(a(6)+a(5))/wave0-1
          zerr=(a(6)+a(5)+sqrt(covar(5,5)))/wave0-1
          zerr=zerr-znew
-         ampe=covar(7,7)
+c         ampe=covar(7,7)
+
          if(sigg.gt.sigcut) goto 766
          if(chi.gt.99) goto 766
          if(con.gt.1000) goto 766
          if(amp.le.0) goto 766
          if(abs(wfit-wave0).gt.wavecut) goto 766
+         if((wfit-x(1)).lt.6) goto 766
+         if((x(nt)-wfit).lt.6) goto 766
+
          igood=0
-         if(ampe.gt.0.and.ampe.lt.ampcut) then
+c         if(ampe.gt.0.and.ampe.lt.ampcut) then
             igood=1
-         endif
+c         endif
          if(igood.eq.0) goto 766
 c         if((wfit-x(1)).lt.8) goto 766
 c         if((x(nt)-wfit).lt.8) goto 766
-         ampe=sqrt(ampe)
+c         ampe=sqrt(ampe)
          sigg=sqrt(sigg*sigg)
          xnp=4.*sigg
+         xnp=xnp/pixsize
 
 c - get noise from the rms
          xnoise=rms*sqrt(xnp)
-         ston=0.95*amp/xnoise
+         ston=0.95*amp/xnoise/pixsize
 
 c - get noise from the errors
-         w1=wfit-4.*sigg
-         w2=wfit+4.*sigg
+         w1=wfit-xnp
+         w2=wfit+xnp
          nerr=0
          xnoise2=0.
          xmaxn=0.
@@ -781,7 +854,7 @@ c - get noise from the errors
          else
             xnoise2=0.
          endif
-         ston2=0.95*amp/xnoise2
+         ston2=0.95*amp/xnoise2/pixsize
 c         print *,'RMS, dAMP, S/N = ',rms,ampe,ston,ston2
          ston=ston2
 
@@ -791,8 +864,8 @@ c         print *,'RMS, dAMP, S/N = ',rms,ampe,ston,ston2
          ifit=ifit+1
          nout=ifit
          fitout(ifit,1)=wfit
-         fitout(ifit,2)=amp
-         fitout(ifit,3)=a(8)
+         fitout(ifit,2)=amp/pixsize
+         fitout(ifit,3)=abs(a(8))
          fitout(ifit,4)=ston
          fitout(ifit,5)=con
          fitout(ifit,6)=chi

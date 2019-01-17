@@ -37,7 +37,7 @@ c      call ftgiou(51,ier)
          write(*,*) 'Error opening image : ',file1
          goto 706
       endif
-      do iext=1,17
+      do iext=1,18
          ier=0
          call ftmahd(51,iext,ihd,ier)
 c         call ftghdn(51,nhdu)

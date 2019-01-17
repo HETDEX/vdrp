@@ -1,6 +1,6 @@
 
       call getseed(iseed)
-      n=100
+      n=200
       ws=3490.
       we=5510.
       wt=we-ws

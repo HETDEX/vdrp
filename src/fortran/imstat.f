@@ -8,9 +8,9 @@
 c 1    call qc1('Image ','imstat.def',file1)
 c      call qi1('Which extension ','imstat.def',iext)
 c      call savdef
-      print *,"Image"
+c      print *,"Image"
       read *,file1
-      print *,"Which extension"
+c      print *,"Which extension"
       read *,iext
 
       im1=0
@@ -35,12 +35,9 @@ c      call savdef
       call ftg2de(im1,igc,0.,narrm,ncol,nrow,xd,anyf,ier)
       call ftclos(im1,ier)
 
-c      call qi2('X range ','imstat.def',ix1,ix2)
-c      call qi2('Y range ','imstat.def',iy1,iy2)
-c      call savdef
-      print *,"X range"
+c      print *,"X range"
       read *,ix1,ix2
-      print *,"Y range"
+c      print *,"Y range"
       read *,iy1,iy2
 
       n=0
@@ -54,9 +51,9 @@ c      call savdef
       enddo
       call biwgt(xin,n,xb,xs)
       open(unit=11,file='imstat.out',status='unknown')
-      print *
-      print *,file1(1:120),n,xb,xs,sum,sum/float(n)
-      print *
+c      print *
+c      print *,file1(1:120),n,xb,xs,sum,sum/float(n)
+c      print *
       write(11,1101) file1,n,xb,xs,sum
       close(11)
  1101 format(a120,1x,i10,3(1x,1pe13.5))

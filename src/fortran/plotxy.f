@@ -18,6 +18,7 @@
       call pgpap(0.,1.)
       call pgscf(2)
       call pgsch(1.5)
+      call pgslw(2)
 
       xoff=8.5
       xoff=0.
@@ -149,7 +150,16 @@ c      call pgpt1(x1n,x2n,5)
       x1n= x1*cos(ang/57.3)+x2*sin(ang/57.3)
       x2n=-x1*sin(ang/57.3)+x2*cos(ang/57.3)
 c      call pgpt1(x1n,x2n,5)
+      call pgsci(2)
+
+      xl(1)=xmin
+      xl(2)=xmax
+      yl(1)=5.
+      yl(2)=5.
+      call pgslw(3)
+c      call pgline(2,xl,yl)
       call pgsci(1)
+      call pgslw(2)
 
       call pgsch(1.5)
       open(unit=11,file='labels.dat',status='old',err=866)

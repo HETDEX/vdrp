@@ -3,14 +3,17 @@
       real xr(nmax),xd(nmax),xf(nmax),xw(nmax),az(nmax)
       real xr0(nmax),xd0(nmax),wadc(10),adc(10),fadcw(10)
       real xfa(nmax),da(nmax),gausa(nmax),fadc(3000,10)
-      real ferr(nmax)
+      real ferr(nmax),xrel(nmax),relnorm(3)
       integer iflag(nmax)
-      character an(nmax,4)*20,a5*20,a6*20,a7*20,a8*20
+      character an(nmax,4)*20,a5*20,a6*20,a7*20,a8*20,aname(3)*5
       parameter(pi=3.141593e0)      
-      common/csigma/ rsig
+      common/csigma/ rsig,fmof,bmof,imoff
+
+      imoff=0
+      imoff=1
 
       read *,xrs0,xds0
-c      read *,ampfix
+
       open(unit=1,file='fwhm.use',status='old',err=955)
       read(1,*) rfw
       close(1)
@@ -20,7 +23,40 @@ c      read *,ampfix
       rfw=1.55
       print *,"No fwhm.use file, using: ",rfw
  956  continue
-c      rfw=1.5
+      open(unit=1,file='fwhm.fix',status='old',err=957)
+      read(1,*) rfw0
+      close(1)
+      if(rfw0.lt.0) rfw=-rfw0
+      goto 958
+ 957  continue
+      close(1)
+ 958  continue
+      print *,"Using FWHM: ",rfw
+      fmof=rfw
+      bmof=3.9
+
+c - get relative frame normalizations
+      open(unit=1,file='normexp.out',status='old',err=333)
+      ne=0
+      do i=1,3
+         read(1,*,end=334) a5,x2,x3
+         ne=ne+1
+         aname(ne)=a5
+         relnorm(ne)=x3
+      enddo
+ 334  continue
+      goto 335
+ 333  continue
+      ne=3
+      aname(1)='exp01'
+      aname(2)='exp02'
+      aname(3)='exp03'
+      relnorm(1)=1.
+      relnorm(2)=1.
+      relnorm(3)=1.
+ 335  continue
+      close(1)
+
       rsig=rfw/2.35
       open(unit=1,file="in",status="old",err=866)
       xmax=-1e10
@@ -45,6 +81,9 @@ c      rfw=1.5
          ferr(n)=x10
          iflag(n)=0
          if(xf(n).eq.0) iflag(n)=1
+         do j=1,ne
+            if(a8(1:5).eq.aname(j)) xrel(n)=relnorm(j)
+         enddo
          xmin=min(xmin,xr(i))
          xmax=max(xmax,xr(i))
          ymin=min(xmin,xd(i))
@@ -66,12 +105,12 @@ c      rfw=1.5
 
       as=10.
       ae=2000.
-      ae=xfmax*2.
+      ae=xfmax*5.
       print *,ae
       chimin=1e10
       do ia=1,100
          at=as+(ae-as)/float(100-1)*float(ia-1)
-         call getchifib(0.,0.,at,n,xr,xd,xf,xw,ferr,
+         call getchifib(0.,0.,at,n,xr,xd,xf,xw,ferr,xrel,
      $        iflag,da,gausa,an,chi,0,sumrat)
          if(chi.lt.chimin) then
             chimin=chi
@@ -80,17 +119,17 @@ c      rfw=1.5
       enddo
       amps=atb
       print *,"Begin:"
-      call getchifib(0.,0.,amps,n,xr,xd,xf,xw,ferr,
+      call getchifib(0.,0.,amps,n,xr,xd,xf,xw,ferr,xrel,
      $     iflag,da,gausa,an,chi,1,sumrat)
 
-      nstepa=20
+      nstepa=40
       nstepc=20
       xs=-.5
       xe=0.5
       ys=-0.5
       ye=0.5
       as=0.7*amps
-      ae=1.6*amps
+      ae=1.4*amps
       chimin=1e10
 c      do i=1,nstepc
 c         xt=xs+(xe-xs)/float(nstepc-1)*float(i-1)
@@ -101,7 +140,7 @@ c            yt=ys+(ye-ys)/float(nstepc-1)*float(j-1)
 c      at=ampfix
       do ia=1,nstepa
                at=as+(ae-as)/float(nstepa-1)*float(ia-1)
-               call getchifib(xt,yt,at,n,xr,xd,xf,xw,ferr,
+               call getchifib(xt,yt,at,n,xr,xd,xf,xw,ferr,xrel,
      $              iflag,da,gausa,an,chi,0,sumrat)
                if(chi.lt.chimin) then
                   chimin=chi
@@ -114,13 +153,20 @@ c         enddo
       enddo
 
       print *,"End:"
-      call getchifib(xtb,ytb,atb,n,xr,xd,xf,xw,ferr,
+      call getchifib(xtb,ytb,atb,n,xr,xd,xf,xw,ferr,xrel,
      $     iflag,da,gausa,an,chi,1,sumrat)
       print *,xtb,ytb,xrs0,xds0,atb/amps
       xnew=xrs0+xtb/3600./cos(xds0/57.3)
       ynew=xds0+ytb/3600.
       print *,"RAnew, DECnew, Amp, chimin, FW"
       print *,xnew,ynew,atb,chimin,rfw
+      sumg=0.
+      sumd=0.
+      do i=1,n
+         sumg=sumg+gausa(i)
+         sumd=sumd+xf(i)
+      enddo
+      sumrat=sumg/atb
       open(unit=11,file='out2',status='unknown')
       write(11,1103) xnew,ynew,atb,xtb,ytb,chimin,rfw,sumrat
       close(11)
@@ -144,21 +190,18 @@ c- now get the atmospheric distortion correction to each fiber
          do j=1,nw
             fadcw(j)=fadc(i,j)/fadc(i,3)
          enddo
-c         write(*,1002) i,fadcw(1),fadcw(2),fadcw(3),fadcw(4),fadcw(5)
       enddo
- 1002 format(i4,5(1x,f5.3))
+ 1002 format(i4,5(1x,f6.3))
 
       xmin=0.
-      xmax=2.5
+      xmax=3.5
       ymin=-20.
       ymax=0.
 
       open(unit=11,file='out',status='unknown')
-      gsum=0.
       do i=1,n
          xr(i)=sqrt(xr(i)**2+xd(i)**2)
          ymax=max(ymax,xf(i))
-         gsum=gsum+gausa(i)
          do j=1,nw
             fadcw(j)=fadc(i,j)/fadc(i,3)
          enddo
@@ -167,7 +210,7 @@ c         write(*,1002) i,fadcw(1),fadcw(2),fadcw(3),fadcw(4),fadcw(5)
      $        fadcw(1),fadcw(2),fadcw(3),fadcw(4),fadcw(5)
       enddo
       close(11)
-      print *,"Fiber coverage: ",sumrat
+      print *,"Fiber coverage: ",sumg/atb
 
       ymax=ymax*1.5
       call pgbegin(0,'?',1,1)
@@ -188,33 +231,35 @@ c         write(*,1002) i,fadcw(1),fadcw(2),fadcw(3),fadcw(4),fadcw(5)
       enddo
  866  continue
  1001 format(2(2x,f10.5),1x,f10.2,1x,f5.3,2x,a17,1x,a8,1x,a3,1x,a5,
-     $     x,i1,1x,f11.2,5(1x,f5.3))
+     $     x,i1,1x,f11.2,5(1x,f6.3))
 
       end
 
-      subroutine getchifib(xrs,xds,amps,n,xr,xd,xf,xw,fe,iflag,da,
+      subroutine getchifib(xrs,xds,amps,n,xr,xd,xf,xw,fe,xrel,iflag,da,
      $     gausa,an,chi,ip,sumrat)
       real xr(n),xd(n),xf(n),xw(n),da(n),chia(10000),fe(n)
-      real gausa(n)
+      real gausa(n),xrel(n)
       integer iflag(n)
       character an(3000,4)*20
       parameter(pi=3.141593e0)      
-      common/csigma/ rsig
+      common/csigma/ rsig,fmof,bmof,imoff
 
       if(ip.eq.1) write(*,*) "Ifib     Counts      Fit",
      $     "       Distance        C-F           Chi"
 
-      rfib=0.8
-      nstep=100
+      rfib=0.75
+      nstep=50
       xstep=2.*rfib/float(nstep-1)
-c      deltx=2.*rfib/float(nstep)
-      deltx=2.*rfib
-      area=amps*deltx**2
+      deltx=pi*rfib*rfib
+      area=amps*deltx/(2.*rsig*rsig*pi)
+      areamoff=4.*(2.**(1./bmof)-1.)*(bmof-1.)/pi/fmof/fmof
+      areamoff=amps*deltx*areamoff
       chi=0.
       do i=1,n
          xs=xr(i)-rfib
          ys=xd(i)-rfib
          gaus=0.
+         xmoff=0.
          nsum=0
          do ix=1,nstep
             xp=xs+xstep*float(ix-1)
@@ -224,12 +269,16 @@ c      deltx=2.*rfib/float(nstep)
                if(dist0.lt.rfib) then
                   dist=sqrt((xp-xrs)**2+(yp-xds)**2)
                   g=dist/rsig
-                  gaus=gaus+exp(-g*g/2.)/sqrt(2.*rsig*rsig*pi)*area
+                  gaus=gaus+exp(-g*g/2.)*area
+                  xmoff=xmoff+areamoff*((1.+4.*(2.**(1./bmof)-1.)*
+     $                 (dist/fmof)**2)**(-bmof))
                   nsum=nsum+1
                endif
             enddo
          enddo
          gaus=gaus/float(nsum)
+         xmoff=xmoff/float(nsum)
+         if(imoff.eq.1) gaus=xmoff
          gausa(i)=gaus
          if(fe(i).gt.0) then
             chi1=xw(i)*(gaus-xf(i))**2/(fe(i))**2
@@ -262,7 +311,7 @@ c- now get area covered with fibers
       sumf1=0.
       sumf2=0.
       nfull=100
-      sigfull=6.
+      sigfull=5.
       xs=xrs-sigfull*rsig
       xe=xrs+sigfull*rsig
       ys=xds-sigfull*rsig
@@ -292,28 +341,31 @@ c- now get area covered with fibers
       subroutine adcor(nw,wadc,adc,fadc,xrs0,xds0,n,xr,xd,az)
       real wadc(nw),adc(nw),fadc(3000,10),xr(n),xd(n),az(n)
       parameter(pi=3.141593e0)      
-      common/csigma/ rsig
+      common/csigma/ rsig,fmof,bmof,imoff
       
       dtr=180./pi
       xrs=xrs0
       xds=xds0
-      rfib=0.8
-      nstep=100
+      rfib=0.75
+      nstep=50
       xstep=2.*rfib/float(nstep-1)
-      deltx=2.*rfib
-      area=1.*deltx**2
+      deltx=pi*rfib*rfib
+      area=1.*deltx/(2.*rsig*rsig*pi)
+      areamoff=4.*(2.**(1./bmof)-1.)*(bmof-1.)/pi/fmof/fmof
+      areamoff=deltx*areamoff
       do ia=1,nw
+         rsig0=rsig
+c         if(ia.eq.1) rsig0=rsig*1.1
+c         if(ia.eq.2) rsig0=rsig*1.05
          xaoff=adc(ia)*sin(az(1)/dtr)
          yaoff=adc(ia)*cos(az(1)/dtr)
-c         print *,wadc(ia),xaoff,yaoff
          do i=1,n
             xaoff=adc(ia)*sin(az(i)/dtr)
             yaoff=adc(ia)*cos(az(i)/dtr)
-c            xs=xr(i)-rfib+adc(ia)
-c            ys=xd(i)-rfib
             xs=xr(i)-rfib+xaoff
             ys=xd(i)-rfib+yaoff
             gaus=0.
+            xmoff=0.
             nsum=0
             do ix=1,nstep
                xp=xs+xstep*float(ix-1)
@@ -322,13 +374,17 @@ c            ys=xd(i)-rfib
                   dist0=sqrt((xp-xr(i))**2+(yp-xd(i))**2)
                   if(dist0.lt.rfib) then
                      dist=sqrt((xp-xrs)**2+(yp-xds)**2)
-                     g=dist/rsig
-                     gaus=gaus+exp(-g*g/2.)/sqrt(2.*rsig*rsig*pi)*area
+                     g=dist/rsig0
+                     gaus=gaus+exp(-g*g/2.)*area
+                     xmoff=xmoff+areamoff*((1.+4.*(2.**(1./bmof)-1.)*
+     $                    (dist/fmof)**2)**(-bmof))
                      nsum=nsum+1
                   endif
                enddo
             enddo
             gaus=gaus/float(nsum)
+            xmoff=xmoff/float(nsum)
+            if(imoff.eq.1) gaus=xmoff
             fadc(i,ia)=gaus
          enddo
 
@@ -336,11 +392,11 @@ c- now get area covered with fibers
          sumf1=0.
          sumf2=0.
          nfull=100
-         sigfull=6.
-         xs=xrs-sigfull*rsig
-         xe=xrs+sigfull*rsig
-         ys=xds-sigfull*rsig
-         ye=xds+sigfull*rsig
+         sigfull=5.
+         xs=xrs-sigfull*rsig0
+         xe=xrs+sigfull*rsig0
+         ys=xds-sigfull*rsig0
+         ye=xds+sigfull*rsig0
          xs=xs+xaoff
          ys=ys+yaoff
          do ix=1,nfull
@@ -360,9 +416,9 @@ c- now get area covered with fibers
          enddo
          sumrat=sumf1/sumf2
          do i=1,n
-            fadc(i,ia)=fadc(i,ia)/sumrat
+c - this is unnecessary?
+c            fadc(i,ia)=fadc(i,ia)/sumrat
          enddo
-c         print *,ia,sumrat
       enddo
 
       return

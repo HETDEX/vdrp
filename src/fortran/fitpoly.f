@@ -13,7 +13,7 @@
       xmin=3500.
       xmax=5500.
       ymin=0.
-      ymax=0.2
+      ymax=0.23
       call pgsls(1)
       call pgslw(1)
 
@@ -47,7 +47,7 @@
          c0a(i)=c0min+(c0max-c0min)/float(n0step-1)*float(i-1)
       enddo
       c1min=0.005
-      c1max=0.19
+      c1max=0.28
       n1step=200
       do i=1,n1step
          c1a(i)=c1min+(c1max-c1min)/float(n1step-1)*float(i-1)

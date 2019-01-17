@@ -27,7 +27,8 @@ c      call pgbegin(0,'?',3,3)
       nl=0
       ic=0
       do il=1,10000
-         read(1,*,end=666) file1
+c         read(1,*,end=666) file1
+         read(1,*,end=666) file1,xnorm
          open(unit=2,file=file1,status='old')
          ymin=1e10
          ymax=-ymin
@@ -37,7 +38,7 @@ c      call pgbegin(0,'?',3,3)
             if(x2.ne.0) then
                n=n+1
                x(n)=x1
-               y(n)=x2
+               y(n)=x2*xnorm
                ymin=min(ymin,y(n))
                ymax=max(ymax,y(n))
             endif
@@ -75,15 +76,19 @@ c      call pgbegin(0,'?',3,3)
          ybit=(ymax-ymin)/10.
          ymin=ymin-ybit
          ymax=ymax+ybit
-         call pgenv(xmin,xmax,ymin,ymax,0,0)
+         if(il.eq.1) call pgenv(xmin,xmax,ymin,ymax,0,0)
 c         call pgenv(xmin,xmax,0.,20.,0,0)
 c         if(il.eq.1) call pgenv(xmin,xmax,0.,ymax,0,0)
+         call pgsci(il)
          call pgline(n,x,y)
 c         call pgline(nbb,xn,yn)
          call pgsch(1.8)
 c         call pgsci(2)
-         call pglabel('Wavelength','1e-17 ergs/cm\U2\D/s','')
-         call pgmtxt('T',0.9,0.5,0.5,file1(1:nf))
+c         if(il.eq.1) call pglabel('Wavelength',
+c     $        '1e-17 ergs/cm\U2\D/s','')
+         if(il.eq.1) call pglabel('Wavelength',
+     $        'Counts','')
+c         call pgmtxt('T',0.9,0.5,0.5,file1(1:nf))
          call pgsch(1.5)
          call pgsci(1)
  866     continue

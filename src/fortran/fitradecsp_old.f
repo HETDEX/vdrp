@@ -227,7 +227,7 @@ c - this routine finds the wavelength with the highest S/N within wd
       real wa(nfmax,nmax),fa(nfmax,nmax),fea(nfmax,nmax)
       real fa2(nfmax,nmax),fea2(nfmax,nmax),fweight(nfmax,nmax)
       real ra(nfmax),dec(nfmax),az(nfmax),fweight2(nfmax,nmax)
-      character file2*80,file3*120,a4*5
+      character file2*80,file3*120
 
       open(unit=1,file='list',status='old')
       ntf=0
@@ -300,12 +300,9 @@ c            fweight2(i,na)=x4*x6
       real raf(ntf),decf(ntf),sflux(ntf),sfluxe(ntf),gaussa(ntf)
       real xr(nmax),xd(nmax),wadc(5),adc(5),fadcw(nfmax,5),az(ntf)
       real da(nfmax),gausa(nfmax),xw(ntf),fadc(nfmax,5),sumrata(nmax)
-      real relnorm(3),xrel(nfmax)
       integer iflag(nfmax)
       parameter(pi=3.141593e0)      
-      common/csigma/ rsig,fmof,bmof,imoff
-
-      imoff=1
+      common/csigma/ rsig
 
       open(unit=1,file='fwhm.use',status='old',err=955)
       read(1,*) rfw
@@ -315,18 +312,7 @@ c            fweight2(i,na)=x4*x6
       close(1)
       rfw=1.55
  956  continue
-      open(unit=1,file='fwhm.fix',status='old',err=957)
-      read(1,*) rfw0
-      close(1)
-      if(rfw0.lt.0) rfw=-rfw0
-      goto 958
- 957  continue
-      close(1)
- 958  continue
       rsig=rfw/2.35
-      fmof=rfw
-      bmof=3.9
-
       do i=1,ntf
          iflag(i)=0
          if(sflux(i).eq.0) iflag(i)=1
@@ -347,7 +333,7 @@ c            fweight2(i,na)=x4*x6
       chimin=1e10
       do ia=1,100
          at=as+(ae-as)/float(100-1)*float(ia-1)
-        call getchifib(0.,0.,at,ntf,xr,xd,sflux,xw,sfluxe,
+         call getchifib(0.,0.,at,ntf,xr,xd,sflux,xw,sfluxe,
      $        iflag,da,gausa,chi,0,sumrat)
          if(chi.lt.chimin) then
             chimin=chi
@@ -387,24 +373,22 @@ c- now get the atmospheric distortion correction to each fiber
       real gausa(n)
       integer iflag(n)
       parameter(pi=3.141593e0)      
-      common/csigma/ rsig,fmof,bmof,imoff
+      common/csigma/ rsig
 
 c      if(ip.eq.1) write(*,*) "Ifib     Counts      Fit",
 c     $     "       Distance        C-F           Chi"
 
-      rfib=0.75
-      nstep=50
+      rfib=0.8
+      nstep=100
       xstep=2.*rfib/float(nstep-1)
-      deltx=pi*rfib*rfib
-      area=amps*deltx/(2.*rsig*rsig*pi)
-      areamoff=4.*(2.**(1./bmof)-1.)*(bmof-1.)/pi/fmof/fmof
-      areamoff=amps*deltx*areamoff
+c      deltx=2.*rfib/float(nstep)
+      deltx=2.*rfib
+      area=amps*deltx**2
       chi=0.
       do i=1,n
          xs=xr(i)-rfib
          ys=xd(i)-rfib
          gaus=0.
-         xmoff=0.
          nsum=0
          do ix=1,nstep
             xp=xs+xstep*float(ix-1)
@@ -414,16 +398,12 @@ c     $     "       Distance        C-F           Chi"
                if(dist0.lt.rfib) then
                   dist=sqrt((xp-xrs)**2+(yp-xds)**2)
                   g=dist/rsig
-                  gaus=gaus+exp(-g*g/2.)*area
-                  xmoff=xmoff+areamoff*((1.+4.*(2.**(1./bmof)-1.)*
-     $                 (dist/fmof)**2)**(-bmof))
+                  gaus=gaus+exp(-g*g/2.)/sqrt(2.*rsig*rsig*pi)*area
                   nsum=nsum+1
                endif
             enddo
          enddo
          gaus=gaus/float(nsum)
-         xmoff=xmoff/float(nsum)
-         if(imoff.eq.1) gaus=xmoff
          gausa(i)=gaus
          if(fe(i).gt.0) then
             chi1=xw(i)*(gaus-xf(i))**2/(fe(i))**2
@@ -446,20 +426,17 @@ c     $        an(i,1),an(i,2),an(i,3),an(i,4),iflag(i)
       subroutine adcor(nw,wadc,adc,fadc,xrs0,xds0,n,xr,xd,az,sumrata)
       real wadc(nw),adc(nw),fadc(3000,5),xr(n),xd(n),az(n),sumrata(nw)
       parameter(pi=3.141593e0)      
-      common/csigma/ rsig,fmof,bmof,imoff
+      common/csigma/ rsig
       
       dtr=180./pi
       xrs=xrs0
       xds=xds0
-      rfib=0.75
-      nstep=50
+      rfib=0.8
+      nstep=100
       xstep=2.*rfib/float(nstep-1)
-      deltx=pi*rfib*rfib
-      area=1.*deltx/(2.*rsig*rsig*pi)
-      areamoff=4.*(2.**(1./bmof)-1.)*(bmof-1.)/pi/fmof/fmof
-      areamoff=deltx*areamoff
+      deltx=2.*rfib
+      area=1.*deltx**2
       do ia=1,nw
-         rsig0=rsig
          xaoff=adc(ia)*sin(az(1)/dtr)
          yaoff=adc(ia)*cos(az(1)/dtr)
          do i=1,n
@@ -468,7 +445,6 @@ c     $        an(i,1),an(i,2),an(i,3),an(i,4),iflag(i)
             xs=xr(i)-rfib+xaoff
             ys=xd(i)-rfib+yaoff
             gaus=0.
-            xmoff=0.
             nsum=0
             do ix=1,nstep
                xp=xs+xstep*float(ix-1)
@@ -477,17 +453,13 @@ c     $        an(i,1),an(i,2),an(i,3),an(i,4),iflag(i)
                   dist0=sqrt((xp-xr(i))**2+(yp-xd(i))**2)
                   if(dist0.lt.rfib) then
                      dist=sqrt((xp-xrs)**2+(yp-xds)**2)
-                     g=dist/rsig0
-                     gaus=gaus+exp(-g*g/2.)*area
-                     xmoff=xmoff+areamoff*((1.+4.*(2.**(1./bmof)-1.)*
-     $                    (dist/fmof)**2)**(-bmof))
+                     g=dist/rsig
+                     gaus=gaus+exp(-g*g/2.)/sqrt(2.*rsig*rsig*pi)*area
                      nsum=nsum+1
                   endif
                enddo
             enddo
             gaus=gaus/float(nsum)
-            xmoff=xmoff/float(nsum)
-            if(imoff.eq.1) gaus=xmoff
             fadc(i,ia)=gaus
          enddo
 
@@ -531,7 +503,7 @@ c- now get area covered with fibers
      $     iflag,fadcw,az,spec,sumrata,fweight2)
       parameter(nmax=3000,nfmax=3000)
       real wa(nfmax,nmax),fa(nfmax,nmax),fea(nfmax,nmax)
-      real fa2(nfmax,nmax),fea2(nfmax,nmax),gnw(nmax)
+      real fa2(nfmax,nmax),fea2(nfmax,nmax)
       real gna(ntf),gna0(nfmax),az(ntf),spec(nmax,9),wn(5)
       real x(nmax),y(nmax),y2(nmax),ye(nmax),ye2(nmax)
       real wv(5),fadcw(nfmax,5),ysum3(nmax),ysum3e(nmax),gsum(nmax)
@@ -551,18 +523,7 @@ c- now get area covered with fibers
          ysum3e(i)=0.
          fw2(i)=0.
          gsum(i)=0.
-         gnw(i)=0.
       enddo
-
-      nw=5
-      wv(1)=3500.
-      wv(2)=4000.
-      wv(3)=4500.
-      wv(4)=5000.
-      wv(5)=5500.
-
-c - sumgall is total counts (amplitude of fit)
-cc   gna is normalized counts for each                                 
       sumg=0.
       ng=0
       do i=1,ntf
@@ -576,27 +537,23 @@ cc   gna is normalized counts for each
          gna(i)=gna(i)/sumg
       enddo
       sumgall=sumg
+c      fcut=fcut/float(ng)*7.
 
-c - first get normalization for each wavelength
-      do il=1,ntf
-         if(gna(il).lt.fcut) iflag(il)=1
-         if(iflag(il).eq.0) then
-            do i=1,nw
-               wn(i)=fadcw(il,i)
-            enddo
-            do i=1,naf
-               x1=wa(il,i)
-               call xlinint(x1,nw,wv,wn,fadc)
-               gnw(i)=gnw(i)+gna0(il)*fadc
-            enddo
-         endif
-      enddo
-
+      nsum=0
+      sumg=0.
+      nw=5
+      wv(1)=3500.
+      wv(2)=4000.
+      wv(3)=4500.
+      wv(4)=5000.
+      wv(5)=5500.
 c - get the weighted sum
       do il=1,ntf
          gn0=gna0(il)
          if(gna(il).lt.fcut) iflag(il)=1
          if(iflag(il).eq.0) then
+            nsum=nsum+1
+            sumg=sumg+gn0
             n=0
             do i=1,nw
                wn(i)=fadcw(il,i)
@@ -604,9 +561,8 @@ c - get the weighted sum
             do i=1,naf
                x1=wa(il,i)
                call xlinint(x1,nw,wv,wn,fadc)
+               gn=gn0*fadc
                n=n+1
-               gn=gn0/fadc/gnw(n)
-               gn2=gn0/fadc/gnw(n)
                x(n)=x1
                y(n)=fa(il,i)
                y2(n)=fa2(il,i)
@@ -617,7 +573,7 @@ c - get the weighted sum
                ysume(n)=ysume(n)+ye(n)*ye(n)*gn
                ysum2e(n)=ysum2e(n)+ye2(n)*ye2(n)*gn
                fw2(n)=fw2(n)+fweight2(il,i)*gn
-               if(y(n).ne.0) gsum(n)=gsum(n)+gn2*gn2
+               if(y(n).ne.0) gsum(n)=gsum(n)+gn
             enddo
          endif
       enddo
@@ -634,12 +590,17 @@ c - get the straight sum
          endif
       enddo
 
+      if(nsum.eq.0.or.sumg.le.0.) then
+         fac=0.
+      else
+         sumg=sumg/float(nsum)
+         fac=1./sumg/1.2
+      endif
+
       do i=1,naf
-         if(gsum(i).gt.0) then
-            facu=1./gsum(i)
-         else
-            facu=0.
-         endif
+         fac2=0.
+         if(gsum(i).gt.0) fac2=sumgall/gsum(i)
+         facu=fac*fac2
          xs1=sqrt(ysume(i)*facu)
          xs2=sqrt(ysum2e(i)*facu)
          xs3=sqrt(ysum3e(i))

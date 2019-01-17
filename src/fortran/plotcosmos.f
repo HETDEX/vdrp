@@ -25,8 +25,8 @@
       ymax=2.95
       xcen=(xmax+xmin)/2.
       ycen=(ymax+ymin)/2.
-      xside=0.7
-      yside=0.7
+      xside=0.5
+      yside=0.5
 c      xside=2.0
 c      yside=2.0
       xmin=xcen-xside/2.
@@ -71,28 +71,40 @@ c         call pgpap(0.,rat)
          close(1)
       enddo
 
-c      xoff=-0.027
-c      yoff=0.015
-c      read *,xoff,yoff
-      xoff=0.117
-      yoff=0.125
-      open(unit=1,file='cosnewpos',status='old')
+      xoff=0
+      yoff=0
+c      xoff=0.117
+c      yoff=0.125
+c      open(unit=1,file='cosnewpos',status='old')
+c      open(unit=1,file='cosnewposb',status='old')
+c      open(unit=1,file='cosnewposc',status='old')
+      open(unit=1,file='cosnewposd',status='old')
       open(unit=11,file='new.out',status='unknown')
-      do i=1,100000
-         read(1,*,end=670) x1,x2,x3,x4,x5,x6,x7,x8,a2
-         xp(1)=x1+xoff
-         yp(1)=x2+yoff
-         xp(2)=x3+xoff
-         yp(2)=x4+yoff
-         xp(3)=x5+xoff
-         yp(3)=x6+yoff
-         xp(4)=x7+xoff
-         yp(4)=x8+yoff
-         call pgsci(4)
-         call pgpoly(4,xp,yp)
-         write(11,1101) xp(1),yp(1),xp(2),yp(2),xp(3),yp(3),xp(4),yp(4)
+      do ii=1,2
+         nifu=176
+         if(ii.eq.1) then
+            nifu=44
+            xoff=-0.0065
+            yoff=0.012
+         endif
+         do i=1,nifu
+            read(1,*,end=670) x1,x2,x3,x4,x5,x6,x7,x8,a2
+            xp(1)=x1+xoff
+            yp(1)=x2+yoff
+            xp(2)=x3+xoff
+            yp(2)=x4+yoff
+            xp(3)=x5+xoff
+            yp(3)=x6+yoff
+            xp(4)=x7+xoff
+            yp(4)=x8+yoff
+            call pgsci(4)
+            call pgpoly(4,xp,yp)
+            write(11,1101) xp(1),yp(1),xp(2),yp(2),xp(3),yp(3),
+     $           xp(4),yp(4)
+         enddo
+ 670     continue
+         rewind(1)
       enddo
- 670  continue
       close(1)
       close(11)
  1101 format(8(1x,f11.5))
@@ -159,17 +171,18 @@ c      call pgpt1(xc,yc,17)
          call pgrect(x1,x2,y1,y2)
       enddo
 
+      xpos=150.22
       call pgsch(1.5)
       call pgsci(4)
-      call pgptxt(150.3,2.11,0.,0.,'DEX_proposed')
+      call pgptxt(xpos,2.11,0.,0.,'DEX_18.3')
       call pgsci(1)
-      call pgptxt(150.3,2.07,0.,0.,'DEX_all')
+      call pgptxt(xpos,2.08,0.,0.,'DEX_all')
       call pgsci(2)
-      call pgptxt(150.3,2.03,0.,0.,'DEX_11')
+      call pgptxt(xpos,2.05,0.,0.,'DEX_11')
       call pgsci(6)
-      call pgptxt(150.3,1.99,0.,0.,'3dHST')
+      call pgptxt(xpos,2.02,0.,0.,'3dHST')
       call pgsci(5)
-      call pgptxt(150.3,1.95,0.,0.,'MUSE')
+      call pgptxt(xpos,1.99,0.,0.,'MUSE')
 
       call pgend
       end

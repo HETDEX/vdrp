@@ -9,7 +9,6 @@
       ylocut=-100.
       yhicut=1000.
       fcut=0.03
-c      fcut=0.06
 
       open(unit=1,file='list2',status='old',err=866)
 
@@ -71,6 +70,7 @@ c - first get normalization for each wavelength
 
 c - get the weighted sum
       do il=1,1000
+c         read(1,*,end=666) file1,iflag,gn
          read(1,*,end=666) file1,iflag,gn,wn(1),wn(2),wn(3),wn(4),wn(5)
          gn0=gn
          if(gna(il).lt.fcut) iflag=1
@@ -82,7 +82,8 @@ c - get the weighted sum
                call xlinint(x1,nw,wv,wn,fadc)
                n=n+1
                gn=gn0/fadc/gnw(n)
-               gn2=gn0/fadc/gnw(n)
+c               gn2=gn
+               gn2=gn0/gnw(n)
                x(n)=x1
                y(n)=x2
                y2(n)=x3
@@ -121,8 +122,7 @@ c - get the straight sum
 
       open(unit=11,file='splines.out',status='unknown')
       do i=1,n
-c         facu=1./gsum(i)*1.3
-         facu=1./gsum(i)
+         facu=1./gsum(i)*1.3
          xs1=sqrt(ysume(i)*facu)
          xs2=sqrt(ysum2e(i)*facu)
          xs3=sqrt(ysum3e(i))

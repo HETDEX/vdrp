@@ -7,6 +7,7 @@
       logical simple,extend,anyf
       parameter(pi=3.141593e0)      
 
+      read(*,*) invert ! 0 for add lines, 1 for invert by -1
       rfw=1.9
       rsig=rfw/2.35
       wsig=2.3
@@ -72,52 +73,56 @@ c         print *,i,xpos(i),ypos(i)
          enddo
       enddo
 
-      open(unit=1,file='inlist',status='old')
-      open(unit=11,file='outlist',status='unknown')
-      ntot=0
-c      ntotm=25
-      ntotm=1000
-      do iall=1,1000
-         read(1,*,end=666) x,y,w,xf
-         call getflux(x,y,nrow,xpos,ypos,xf,xfa,rsig,frach,fracout)
-         if(frach.gt.0) then
-            ntot=ntot+1
-            if(ntot.gt.ntotm) goto 666
-            sumf=0.
-            do j=1,nrow
-               sumf=sumf+xfa(j)
-            enddo
-c            write(11,*) x,y,w,xf,frach
-            write(11,*) x,y,w,xf,sumf/xf
-         endif
-         sum1=0.
-         sum2=0.
-         sumt=0.
-         do j=1,nrow
-            xfrac=xfa(j)
-            do i=1,ncol
-               wvadd(i)=0.
-            enddo
-            if(xfrac.gt.0) then
-               sum=0.
-               do i=1,ncol
-                  xp=wv(i,j)
-                  wg=(xp-w)/wsig
-                  gaus=exp(-wg*wg/2.)/sqrt(2.*wsig*wsig*pi)*dwave
-                  wvadd(i)=xfrac*gaus*(1.+h4*fh4(wg))
-                  sum=sum+wvadd(i)
+      if(invert.eq.0) then
+         open(unit=1,file='inlist',status='old')
+         open(unit=11,file='outlist',status='unknown')
+         ntot=0
+         ntotm=1000
+         do iall=1,1000
+            read(1,*,end=666) x,y,w,xf
+            call getflux(x,y,nrow,xpos,ypos,xf,xfa,rsig,frach,fracout)
+            if(frach.gt.0) then
+               ntot=ntot+1
+               if(ntot.gt.ntotm) goto 666
+               sumf=0.
+               do j=1,nrow
+                  sumf=sumf+xfa(j)
                enddo
-c               print *,xfrac/sum,xfrac,sum
-               do i=1,ncol
-c                  xd2(i,j)=xd2(i,j)+wvadd(i)/sum*xfrac
-                  xd2(i,j)=xd2(i,j)+wvadd(i)
-               enddo
+               write(11,*) x,y,w,xf,sumf/xf
             endif
+            sum1=0.
+            sum2=0.
+            sumt=0.
+            do j=1,nrow
+               xfrac=xfa(j)
+               do i=1,ncol
+                  wvadd(i)=0.
+               enddo
+               if(xfrac.gt.0) then
+                  sum=0.
+                  do i=1,ncol
+                     xp=wv(i,j)
+                     wg=(xp-w)/wsig
+                     gaus=exp(-wg*wg/2.)/sqrt(2.*wsig*wsig*pi)*dwave
+                     wvadd(i)=xfrac*gaus*(1.+h4*fh4(wg))
+                     sum=sum+wvadd(i)
+                  enddo
+                  do i=1,ncol
+                     xd2(i,j)=xd2(i,j)+wvadd(i)
+                  enddo
+               endif
+            enddo
          enddo
-      enddo
- 666  continue
-      close(1)
-      close(11)
+ 666     continue
+         close(1)
+         close(11)
+      else
+         do j=1,nrow
+            do i=1,ncol
+               xd2(i,j)=-xd2(i,j)
+            enddo
+         enddo
+      endif
 
       ier=0
       call ftinit(50,'imadd.fits',iblock,ier)
@@ -152,10 +157,8 @@ c                  xd2(i,j)=xd2(i,j)+wvadd(i)/sum*xfrac
       enddo
       ntot=0
       nhit=0
-c      do xp=xs,xe,xstep
       do ix=1,ngrid
          xp=xs+float(ix-1)*xstep
-c         do yp=ys,ye,ystep
          do iy=1,ngrid
             yp=ys+float(iy-1)*ystep
             ntot=ntot+1
@@ -180,13 +183,7 @@ c                  gaus=exp(-g*g/2.)/sqrt(2.*rsig*rsig*pi)*area
       do i=1,n
          sum=sum+xfa(i)
       enddo
-c      do i=1,n
-c         if(sum.gt.0) then
-c            xfa(i)=xfa(i)/sum*xf*frach
-c         else
-c            xfa(i)=0.
-c         endif
-c      enddo
+
       return
       end
 

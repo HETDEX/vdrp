@@ -24,15 +24,15 @@
       data deps /1.d-7/
       data epsabs,epsrel,epsode /1.e-10,1.e-5,1.e-5/
       data apow,apowi /4.,3./
-c      data radd,nadd /50.,15/
+      data radd,nadd /50.,15/
 c      data radd,nadd /1500.,15/
 c      data radd,nadd /2000.,15/
-      data radd,nadd /500.,15/
+c      data radd,nadd /500.,15/
       kmax=0
       ntot=0
 
       ibox=0
-      ipsf=0
+      ipsf=1
 c      see=1.0
       see=0.15
       see=see/2.35
@@ -157,7 +157,7 @@ c - plot the Nuker profile and points
 
       call pgenv(rminp,rmaxp,fmin,fmax,0,30)
       call pgpoint(n,rl,f,21)
-      call pglabel('R (arcsec)','\\gS (L\\D\\(2281)\\U/pc\\U2\\D)','')
+      call pglabel('R (arcsec)','\gS (L\D\(2281)\U/pc\U2\D)','')
       call pgmtext('T',-1.6,.5,.5,title)
 
 c -- smoothing the surface brightness
@@ -303,13 +303,13 @@ c - plot the density profiles
 
       call pgenv(rminp,rmaxp,xmin,xmax,0,30)
       call pgline(np,rfit,xnewl)
-      call pglabel('r (arcsec)','\\gn (L\\D\\(2281)\\U/pc\\U3\\D)','')
+      call pglabel('r (arcsec)','\gn (L\D\(2281)\U/pc\U3\D)','')
       call pgmtext('T',-1.6,.5,.5,title)
 
 c - plot the derivatives
 
       call pgenv(rminp,rmaxp,-3.,0.,0,10)
-      call pglabel('r (arcsec)','dlog \\gn /dlog r','')
+      call pglabel('r (arcsec)','dlog \gn /dlog r','')
       call pgline(np,rfit,dn1)
       call pgmtext('T',-1.6,.5,.5,title)
 
@@ -351,7 +351,7 @@ c - plot the mass
       ymax=ymax+ybit
 
       call pgenv(rminp,rmaxp,ymin,ymax,0,30)
-      call pglabel('r (arcsec)','Mass (M\\D\\(2281)\\U)','')
+      call pglabel('r (arcsec)','Mass (M\D\(2281)\U)','')
       call pgline(np,rfit,mass)
       call pgmtext('T',-1.6,.5,.5,title)
 
@@ -418,7 +418,7 @@ c - plot v
       ymax=ymax+ybit
 
       call pgenv(rminp,rmaxp,ymin,ymax,0,10)
-      call pglabel('r (arcsec)','v\\Dr\\U (km/s)','')
+      call pglabel('r (arcsec)','v\Dr\U (km/s)','')
 c      call pgline(np,rfit,vr)
       call pgmtext('T',-1.6,.5,.5,title)
       call pgline(np,rfit,vsig)
@@ -477,7 +477,7 @@ c - plot sigma
       ymax=ymax+ybit
 
       call pgenv(rminp,rmaxp,ymin,ymax,0,10)
-      call pglabel('R (arcsec)','\\gs (km/s)','')
+      call pglabel('R (arcsec)','\gs (km/s)','')
       call pgline(np,rfit,sig)
       call pgmtext('T',-1.6,.5,.5,title)
 

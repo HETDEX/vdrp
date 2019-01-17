@@ -3,8 +3,8 @@
       real x(nmax),y(nmax),ye(nmax),ya(nmax,1000),xin(1000),ya2(nmax)
       real yel(nmax),yeu(nmax),xg(nmax),yg(nmax),ydiff(nmax)
       real xball(nmax),xballa(nmax),xballa2(nmax),xballs(nmax)
-      real xballr(nmax)
-      integer ibad(nmax)
+      real xballr(nmax),fap(nmax),facapa(nmax)
+      integer ibad(nmax),iap(nmax)
       character file1*80,file2*80
 
 c- sigcut is the point-to-point normalization scatter
@@ -25,6 +25,24 @@ c- rmscut is the rms of the difference after normalization
  866  continue
       close(1)
 
+      nap=0
+      open(unit=1,file="apsum.out",status="old",err=555)
+      do i=1,nmax
+         read(1,*,end=555) i1,x2
+         nap=nap+1
+         iap(nap)=i1
+         fap(nap)=x2
+         xin(nap)=x2
+      enddo
+ 555  continue
+      close(1)
+
+      xbap=1.
+      if(nap.gt.0) then
+         call biwgt(xin,nap,xbap,xsap)
+         print *,"N_good and apcor: ",nap,xbap
+      endif
+
       open(unit=1,file='list',status='old')
 
       nall=0
@@ -32,11 +50,24 @@ c- rmscut is the rms of the difference after normalization
       do il=1,1000
          read(1,*,end=666) file1
          open(unit=2,file=file1,status='old')
+         read(file1(3:7),'(i5)') iid
+         if(nap.gt.0) then
+            facap=xbap
+            do ii=1,nap
+               if(iap(ii).eq.iid) facap=fap(ii)
+            enddo
+         else
+            facap=xbap
+         endif
+         facap=facap/xbap
+         facapa(il)=facap
+
          nl=nl+1
          n=0
          do i=1,2000
             read(2,*,end=667) x1,x2
             n=n+1
+c            x2=x2/facap
             x(n)=x1
             ya(n,il)=x2
 c            ydiff(n)=x2-yg(n)
@@ -81,10 +112,12 @@ c      print *,nl,nall,xb,xs
 c         if(xballa(i).lt.(xb-xs)) ibad(i)=1
          if(ibad(i).eq.0) then
             write(*,1001) i,xballa(i),xballs(i),ibad(i),xballa2(i),
-     $           xballr(i)
+     $           xballr(i),facapa(i)
+            write(11,1001) i,xballa(i),xballs(i),ibad(i),xballa2(i),
+     $           xballr(i),facapa(i)
+         else
+            write(11,1001) i,0.,0.,ibad(i),0.,0.,facapa(i)
          endif
-         write(11,1001) i,xballa(i),xballs(i),ibad(i),xballa2(i),
-     $        xballr(i)
       enddo
       close(11)
 
@@ -105,6 +138,6 @@ c         if(xballa(i).lt.(xb-xs)) ibad(i)=1
       enddo
       close(11)
 
- 1001 format(i4,2(1x,f9.4),2x,i1,2(1x,f9.4))
+ 1001 format(i4,2(1x,f9.4),2x,i1,2(1x,f9.4),1x,f6.3)
 
       end

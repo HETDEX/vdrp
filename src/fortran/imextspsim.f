@@ -33,6 +33,7 @@ c - get the relative frame normalization
       do i=1,3
          read(1,*,end=366) ae,x2,x3
 c         if(ae.eq.file1(73:77)) xrelnorm=x3
+c         if(ae.eq.file1(41:45)) xrelnorm=x3
          if(ae.eq.aef) xrelnorm=x3
       enddo
  366  continue

@@ -14,6 +14,7 @@
       iread=0
       iblock=1
       call ftopen(im1,file1,iread,iblock,ier)
+      print *,ier
       if(ier.ne.0) then
          write(*,*) 'Error opening image : ',file1
          goto 1

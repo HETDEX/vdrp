@@ -146,8 +146,7 @@ c         call pgsls(4)
             if(x(ii).gt.(wfit0-6).and.x(ii).lt.(wfit0+6)) nfit=nfit+1
          enddo
          close(1)
-         if(nfit.le.5) goto 766
-         print *,nfit
+c         if(nfit.le.5) goto 766
          
          znew=(a(6)+a(5))/wl0(il)-1
          zerr=(a(6)+a(5)+sqrt(covar(5,5)))/wl0(il)-1
@@ -159,6 +158,7 @@ c         call pgsls(4)
          sigg=sqrt(sigg*sigg)
          xnp=4.*sigg
          xnp=xnp/pixsize
+         print *,amp
          if(abs(wfit-wl0(il)).gt.20.or.amp.le.0.) goto 766
 
          if((wfit-x(1)).lt.6) goto 766

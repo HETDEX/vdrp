@@ -3,13 +3,12 @@
       real x(nmax),y(nmax),y2(nmax),ysum(nmax),ysum2(nmax)
       real ysum3(nmax),gna(nmax),ye(nmax),ysum3e(nmax)
       real yin1(nmax),yin2(nmax),ysume(nmax),ysum2e(nmax)
-      real gsum(nmax),wv(5),wn(5),gnw(nmax)
+      real gsum(nmax),wv(5),wn(5)
       character file1*80,file2*80,c1*8
 
       ylocut=-100.
       yhicut=1000.
       fcut=0.03
-c      fcut=0.06
 
       open(unit=1,file='list2',status='old',err=866)
 
@@ -20,17 +19,7 @@ c      fcut=0.06
          ysum2e(i)=0.
          ysum3(i)=0.
          gsum(i)=0.
-         gnw(i)=0.
       enddo
-      nw=5
-      wv(1)=3500.
-      wv(2)=4000.
-      wv(3)=4500.
-      wv(4)=5000.
-      wv(5)=5500.
-
-c - sumgall is total counts (amplitude of fit)
-c   gna is normalized counts for each
       sumg=0.
       ng=0
       do ig=1,1000
@@ -48,41 +37,38 @@ c   gna is normalized counts for each
          gna(i)=gna(i)/sumg
       enddo
       sumgall=sumg
-
-c - first get normalization for each wavelength      
-      do il=1,1000
-         read(1,*,end=966) file1,iflag,gn,wn(1),wn(2),wn(3),wn(4),wn(5)
-         if(gna(il).lt.fcut) iflag=1
-         if(iflag.eq.0) then
-            open(unit=2,file=file1,status='old')
-            n=0
-            do i=1,2000
-               read(2,*,end=967) x1,x2,x3,x4,x5,x6,x7,x8,x9
-               call xlinint(x1,nw,wv,wn,fadc)
-               n=n+1
-               gnw(n)=gnw(n)+gn*fadc
-            enddo
- 967        continue
-            close(2)
-         endif
-      enddo
- 966  continue
-      rewind(1)
-
+c      fcut=fcut/float(ng)*7.
+      
+      ic=0
+      nl=0
+      nsum=0
+      ymaxs=0.
+      sumg=0.
+      sum2t=0.
+      sum3t=0.
+      nw=5
+      wv(1)=3500.
+      wv(2)=4000.
+      wv(3)=4500.
+      wv(4)=5000.
+      wv(5)=5500.
 c - get the weighted sum
       do il=1,1000
+c         read(1,*,end=666) file1,iflag,gn
          read(1,*,end=666) file1,iflag,gn,wn(1),wn(2),wn(3),wn(4),wn(5)
          gn0=gn
          if(gna(il).lt.fcut) iflag=1
          if(iflag.eq.0) then
+            nsum=nsum+1
+            sumg=sumg+gn
             open(unit=2,file=file1,status='old')
             n=0
             do i=1,2000
                read(2,*,end=667) x1,x2,x3,x4,x5,x6,x7,x8,x9
                call xlinint(x1,nw,wv,wn,fadc)
+               gn=gn0*fadc
+c               gn=gn0
                n=n+1
-               gn=gn0/fadc/gnw(n)
-               gn2=gn0/fadc/gnw(n)
                x(n)=x1
                y(n)=x2
                y2(n)=x3
@@ -91,7 +77,11 @@ c - get the weighted sum
                ysum2(n)=ysum2(n)+x3*gn
                ysume(n)=ysume(n)+x8*x8*gn
                ysum2e(n)=ysum2e(n)+x9*x9*gn
-               if(x2.ne.0) gsum(n)=gsum(n)+gn2*gn2
+c               ysum3(n)=ysum3(n)+x2
+c               ysum3e(n)=ysum3e(n)+x8*x8
+               sum2t=sum2t+x3*gn
+               sum3t=sum3t+x3
+               if(x2.ne.0) gsum(n)=gsum(n)+gn
             enddo
          endif
  667     continue
@@ -103,6 +93,7 @@ c - get the weighted sum
 c - get the straight sum
       do il=1,1000
          read(1,*,end=676) file1,iflag,gn
+c         read(1,*,end=676) file1,iflag,gn,wn(1),wn(2),wn(3),wn(4),wn(5)
          if(iflag.eq.0) then
             open(unit=2,file=file1,status='old')
             n=0
@@ -119,10 +110,20 @@ c - get the straight sum
  676  continue
       close(1)
 
+      print *,"Num = ",nsum
+      print *,sumg,sumgall
+      if(nsum.eq.0.or.sumg.le.0.) then
+         fac=0.
+      else
+         sumg=sumg/float(nsum)
+         fac=1./sumg/1.2
+      endif
+
       open(unit=11,file='splines.out',status='unknown')
       do i=1,n
-c         facu=1./gsum(i)*1.3
-         facu=1./gsum(i)
+         fac2=0.
+         if(gsum(i).gt.0) fac2=sumgall/gsum(i)
+         facu=fac*fac2
          xs1=sqrt(ysume(i)*facu)
          xs2=sqrt(ysum2e(i)*facu)
          xs3=sqrt(ysum3e(i))
