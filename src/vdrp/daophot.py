@@ -8,6 +8,7 @@ import os
 import subprocess
 import sys
 from utils import rm
+from hetdex_vdrp_support.tools import bindir
 
 DAOPHOT_FIND_CMD = \
 """att {}
@@ -179,7 +180,7 @@ def daophot_find(prefix, sigma, logging=None):
     test_input_files_exist(input_files)
 
     rm([prefix + ".coo", prefix + ".lst", prefix + "jnk.fits"])
-    proc = subprocess.Popen("daophot", stdin=subprocess.PIPE,
+    proc = subprocess.Popen(bindir()+"/daophot", stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE)
     s = DAOPHOT_FIND_CMD.format(prefix, sigma)
     so, se = proc.communicate(input=s)
@@ -213,7 +214,7 @@ def daophot_phot(prefix, logging=None):
 
     rm([prefix + ".ap", prefix + "1s.fits",
         prefix + ".als", prefix + "jnk.fits"])
-    proc = subprocess.Popen("daophot", stdin=subprocess.PIPE,
+    proc = subprocess.Popen(bindir()+"/daophot", stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE)
     s = DAOPHOT_PHOT_CMD.format(prefix, prefix, prefix)
     so, se = proc.communicate(input=s)
@@ -246,7 +247,7 @@ def allstar(prefix, psf="use.psf", logging=None):
     test_input_files_exist(input_files)
 
     rm([prefix + "s.fits", prefix + ".als", prefix + "jnk.fits"])
-    proc = subprocess.Popen("allstar", stdin=subprocess.PIPE,
+    proc = subprocess.Popen(bindir()+"/allstar", stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE)
     s = ALLSTAR_CMD.format(prefix, psf, prefix)
     so, se = proc.communicate(input=s)
@@ -279,7 +280,7 @@ def daomaster(logging=None):
     test_input_files_exist(input_files)
 
     rm(["all.raw"])
-    proc = subprocess.Popen("daomaster", stdin=subprocess.PIPE,
+    proc = subprocess.Popen(bindir()+"/daomaster", stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE)
     s = DAOMASTER_CMD
     so, se = proc.communicate(input=s)

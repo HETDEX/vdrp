@@ -38,12 +38,12 @@ try:
 except ImportError:
     import pickle
 
-import mplog
-import astrometry as astrom
+import vdrp.mplog as mplog
+import vdrp.astrometry as astrom
 
 from distutils import dir_util
 
-import utils
+import vdrp.utils as utils
 
 _baseDir = os.getcwd()
 
@@ -160,8 +160,8 @@ class VdrpInfo(OrderedDict):
         with open(os.path.join(dir, filename), 'wb') as f:
             pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
 
-    @staticmethod
-    def read(dir, filename='vdrp_info.pickle'):
+    @classmethod
+    def read(cls, dir, filename='vdrp_info.pickle'):
         if os.path.exists(os.path.join(dir, filename)):
             with open(os.path.join(dir, filename), 'rb') as f:
                 return pickle.load(f)
@@ -395,7 +395,7 @@ def parseArgs(argv):
     defaults['multifits_dir'] = '/work/03946/hetdex/maverick/red1/reductions/'
     defaults['tp_dir'] = '/work/00115/gebhardt/maverick/detect/tp/'
     defaults['norm_dir'] = '/work/00115/gebhardt/maverick/getampnorm/all/'
-    defaults['bin_dir'] = '/home/00115/gebhardt/bin/'
+    # defaults['bin_dir'] = '/home/00115/gebhardt/bin/'
 
     defaults['extraction_aperture'] = 1.6
     defaults['extraction_wl'] = 4505.
@@ -473,8 +473,8 @@ def parseArgs(argv):
                         "with the throughput files")
     parser.add_argument("--norm_dir", type=str, help="Directory "
                         "with the amplifier normalization files")
-    parser.add_argument("--bin_dir", type=str, help="Directory "
-                        "with the fortran binary files.")
+    # parser.add_argument("--bin_dir", type=str, help="Directory "
+    #                     "with the fortran binary files.")
 
     parser.add_argument("--extraction_aperture", type=float, help="Aperture "
                         "radius in asec for the extraction")
@@ -556,6 +556,9 @@ def parseArgs(argv):
     # should in principle be able to do this with accumulate???
     # args.use_tmp = args.use_tmp == "True"
     # args.remove_tmp = args.remove_tmp == "True"
+
+    # NEW set the bin_dir to the vdrp supplied bin directory
+    args.bin_dir = utils.bindir()
 
     return args
 
@@ -684,7 +687,7 @@ def call_fitonevp(bindir, wave, outname):
     """
     input = '0 0\n{wave:f}\n/vcps\n'
 
-    run_command(bindir + 'fitonevp', input.format(wave=wave))
+    run_command(bindir + '/fitonevp', input.format(wave=wave))
 
     shutil.move('pgplot.ps', outname+'tot.ps')
     shutil.move('out', outname+'spec.dat')
@@ -1226,6 +1229,13 @@ def get_sedfits(starobs, args):
 
         if have_stars:
             qf.main(qf_args)
+            for s in starobs:
+                fitsedname = '%s_%s.txt' % (s.shotid, s.shuffleid)
+                sedname = 'sp%d_fitsed.dat' % s.starid
+                if not os.path.exists(fitsedname):
+                    _logger.warn('No sed fit found for star %d' % s.starid)
+                    continue
+                shutil.move(fitsedname, sedname)
 
     except ImportError:
         _logger.warn('Failed to import quick_fit, falling back to '
@@ -1702,13 +1712,13 @@ def mk_sed_throughput_curve(args):
 
         sedcgs = seddata[1][1:]/6.626e-27/(3.e18/seddata[0][1:])*360.*5.e5*100.
 
-        np.savetxt('sp%dsed.dat' % s.starid, zip(stardata[0],
-                                                 stardata[1]/sedcgs))
+        np.savetxt('sp%dsed.dat' % s.starid, zip(seddata[0][1:],
+                                                 seddata[1][1:]/sedcgs))
 
         sedlist.append('sp%dsed.dat' % s.starid)
 
     if not len(sedlist):
-        _logger.warn('No SED fits found, skipping SED throughput curve'
+        _logger.warn('No SED fits found, skipping SED throughput curve '
                      'generation')
         return
 
@@ -1833,7 +1843,7 @@ def main(jobnum, args):
         _logger.info("Done.")
 
 
-if __name__ == "__main__":
+def run():
     argv = None
     if argv is None:
         argv = sys.argv
@@ -1928,3 +1938,7 @@ if __name__ == "__main__":
         args = parseArgs(remaining_argv)
 
         sys.exit(main(1, args))
+
+
+if __name__ == "__main__":
+    run()

@@ -57,21 +57,13 @@ import pyhetdex.tools.read_catalogues as rc
 # from pyhetdex import coordinates
 from pyhetdex.coordinates import astrometry as phastrom
 
-# from vdrp.cofes_vis import cofes_4x4_plots
-# from vdrp import daophot
-# from vdrp import cltools
-# from vdrp import utils
-# from vdrp.daophot import DAOPHOT_ALS
-# from vdrp.utils import read_radec, write_radec
-# from vdrp.fplane_client import retrieve_fplane
-
-from cofes_vis import cofes_4x4_plots
-import daophot
-import cltools
-import utils
-from daophot import DAOPHOT_ALS
-from utils import read_radec, write_radec
-from fplane_client import retrieve_fplane
+from vdrp.cofes_vis import cofes_4x4_plots
+from vdrp import daophot
+from vdrp import cltools
+from vdrp import utils
+from vdrp.daophot import DAOPHOT_ALS
+from vdrp.utils import read_radec, write_radec
+from vdrp.fplane_client import retrieve_fplane
 
 
 class VdrpInfo(OrderedDict):
@@ -83,8 +75,8 @@ class VdrpInfo(OrderedDict):
         with open(os.path.join(dir, filename), 'wb') as f:
             pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
 
-    @staticmethod
-    def read(dir, filename='vdrp_info.pickle'):
+    @classmethod
+    def read(cls, dir, filename='vdrp_info.pickle'):
         if os.path.exists(os.path.join(dir, filename)):
             with open(os.path.join(dir, filename), 'rb') as f:
                 return pickle.load(f)
@@ -2115,7 +2107,7 @@ def main(args):
         logging.info("Done.")
 
 
-if __name__ == "__main__":
+def run():
     argv = None
     if argv is None:
         argv = sys.argv
@@ -2123,3 +2115,7 @@ if __name__ == "__main__":
     # command line parameters overwrite config file.
     args = parseArgs(argv)
     sys.exit(main(args))
+
+
+if __name__ == "__main__":
+    run()

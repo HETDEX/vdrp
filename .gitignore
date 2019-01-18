@@ -8,3 +8,11 @@ src/python/tests/__pycache__
 .DS_Store
 *.swm
 *.swn
+dist
+src/vdrp.egg-info
+src/vdrp/vdrp.egg-info
+src/fortran/*.o
+.python-version
+src/python/
+src/vdrp/bin/
+

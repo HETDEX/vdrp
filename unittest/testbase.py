@@ -32,8 +32,9 @@ class TestBase(unittest.TestCase):
         cls.test_dir = tempfile.mkdtemp()
         print("Testdir is {}".format(cls.test_dir))
         print("Copy test data...")
-        p = vdrp.__path__
-        ptestdata = os.path.join(p[0], '../tests/testdata')
+        # p = vdrp.__path__
+        p = os.path.dirname(os.path.realpath(__file__))
+        ptestdata = os.path.join(p, 'testdata')
         ptestdata = os.path.realpath(ptestdata)
 
         for f in cls.ff:
