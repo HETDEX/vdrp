@@ -155,7 +155,7 @@ def imrot(fitsfile, angle, logging=None):
     CMD_IMROT = "{}\n1\n{}"
 
     # run imrot
-    proc = subprocess.Popen(bindir()/"imrot", stdin=subprocess.PIPE,
+    proc = subprocess.Popen(bindir()+"/imrot", stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE)
     s = CMD_IMROT.format(fitsfile, angle)
     so, se = proc.communicate(input=s)
