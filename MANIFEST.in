@@ -6,3 +6,4 @@ include README.md
 recursive-include src/fortran *.f
 include src/fortran/Makefile
 recursive-include src/vdrp/bin/ *
+recursive-include src/vdrp/config/ *

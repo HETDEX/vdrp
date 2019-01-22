@@ -84,6 +84,52 @@ class VdrpInfo(OrderedDict):
             return VdrpInfo()
 
 
+def getDefaults():
+
+    defaults = {}
+    defaults["use_tmp"] = "False"
+    defaults["remove_tmp"] = "True"
+    defaults["logfile"] = "astrometry.log"
+    defaults["reduction_dir"] = "/work/04287/mxhf/maverick/red1/reductions/"
+    defaults["cofes_vis_vmin"] = -15.
+    defaults["cofes_vis_vmax"] = 25.
+    defaults["daophot_sigma"] = 2
+    defaults["daophot_xmin"] = 4
+    defaults["daophot_xmax"] = 45
+    defaults["daophot_ymin"] = 4
+    defaults["daophot_ymix"] = 45
+    defaults["daophot_opt"] = "$config/daophot.opt"
+    defaults["daophot_phot_psf"] = "$config/use.psf"
+    defaults["daophot_photo_opt"] = "$config/photo.opt"
+    defaults["daophot_allstar_opt"] = "$config/allstar.opt"
+    defaults["mktot_ifu_grid"] = "$config/ifu_grid.txt"
+    defaults["mktot_magmin"] = 0.
+    defaults["mktot_magmax"] = 21.
+    defaults["mktot_xmin"] = 0.
+    defaults["mktot_xmax"] = 50.
+    defaults["mktot_ymin"] = 0.
+    defaults["mktot_ymax"] = 50.
+    defaults["fluxnorm_mag_max"] = 19.
+    defaults["fplane_txt"] = "$config/fplane.txt"
+    defaults["shuffle_cfg"] = "$config/shuffle.cfg"
+    defaults["acam_magadd"] = 5.
+    defaults["wfs1_magadd"] = 5.
+    defaults["wfs2_magadd"] = 5.
+    defaults["add_radec_angoff"] = 0.1
+    defaults["add_radec_angoff_trial"] = \
+        "1.35,1.375,1.4,1.425,1.45,1.475,1.5,1.525,1.55,1.575,1.6"
+    defaults["add_radec_angoff_trial_dir"] = "add_radec_angoff_trial"
+    defaults["getoff2_radii"] = 11., 5., 3.
+    defaults["mkmosaic_angoff"] = 1.8
+    defaults["task"] = "all"
+    defaults["offset_exposure_indices"] = "1,2,3"
+    defaults["optimal_ang_off_smoothing"] = 0.05
+    defaults["dither_offsets"] = "[(0.,0.),(1.270,-0.730),(1.270,0.730)]"
+    # for fibcoords
+    defaults["ixy_dir"] = "$config/"
+    defaults["addin_dir"] = "$config/"
+
+
 def parseArgs(args):
     """ Parses configuration file and command line arguments.
     Command line arguments overwrite configuration file settiongs which
@@ -105,47 +151,7 @@ def parseArgs(args):
                              help="Specify config file", metavar="FILE")
     args, remaining_argv = conf_parser.parse_known_args()
 
-    defaults = {}
-    defaults["use_tmp"] = "False"
-    defaults["remove_tmp"] = "True"
-    defaults["logfile"] = "astrometry.log"
-    defaults["reduction_dir"] = "/work/04287/mxhf/maverick/red1/reductions/"
-    defaults["cofes_vis_vmin"] = -15.
-    defaults["cofes_vis_vmax"] = 25.
-    defaults["daophot_sigma"] = 2
-    defaults["daophot_xmin"] = 4
-    defaults["daophot_xmax"] = 45
-    defaults["daophot_ymin"] = 4
-    defaults["daophot_ymix"] = 45
-    defaults["daophot_opt"] = "vdrp/config/daophot.opt"
-    defaults["daophot_phot_psf"] = "vdrp/config/use.psf"
-    defaults["daophot_photo_opt"] = "vdrp/config/photo.opt"
-    defaults["daophot_allstar_opt"] = "vdrp/config/allstar.opt"
-    defaults["mktot_ifu_grid"] = "vdrp/config/ifu_grid.txt"
-    defaults["mktot_magmin"] = 0.
-    defaults["mktot_magmax"] = 21.
-    defaults["mktot_xmin"] = 0.
-    defaults["mktot_xmax"] = 50.
-    defaults["mktot_ymin"] = 0.
-    defaults["mktot_ymax"] = 50.
-    defaults["fluxnorm_mag_max"] = 19.
-    defaults["fplane_txt"] = "vdrp/config/fplane.txt"
-    defaults["shuffle_cfg"] = "vdrp/config/shuffle.cfg"
-    defaults["acam_magadd"] = 5.
-    defaults["wfs1_magadd"] = 5.
-    defaults["wfs2_magadd"] = 5.
-    defaults["add_radec_angoff"] = 0.1
-    defaults["add_radec_angoff_trial"] = 0.1
-    defaults["add_radec_angoff_trial_dir"] = "add_radec_angoff_trial"
-    defaults["getoff2_radii"] = 11., 5., 3.
-    defaults["mkmosaic_angoff"] = 1.8
-    defaults["task"] = "all"
-    defaults["offset_exposure_indices"] = "1,2,3"
-    defaults["optimal_ang_off_smoothing"] = 0.05
-    defaults["dither_offsets"] = "[(0.,0.),(1.270,-0.730),(1.270,0.730)]"
-    # for fibcoords
-    defaults["ixy_dir"] = "vdrp/config/"
-    defaults["addin_dir"] = "vdrp/config/"
+    defaults = getDefaults()
 
     config_source = "Default"
     if args.conf_file:
@@ -196,7 +202,7 @@ def parseArgs(args):
                         help="Filename for daophot "
                         "allstar task configuration.")
     parser.add_argument("--mktot_ifu_grid", type=str,
-                        help="Name of file that holds gird of "
+                        help="Name of file that holds grid of "
                         "IFUs offset fit (mktot).")
     parser.add_argument("--mktot_magmin", type=float,
                         help="Magnitude limit for offset fit (mktot).")
@@ -277,6 +283,19 @@ def parseArgs(args):
 
     args.offset_exposure_indices = [int(t) for t in
                                     args.offset_exposure_indices.split(",")]
+
+    args.daophot_opt = utils.mangle_confgig_pathname(args.daophot_opt)
+    args.daophot_phot_psf = \
+        utils.mangle_confgig_pathname(args.daophot_phot_psf)
+    args.daophot_photo_opt = \
+        utils.mangle_confgig_pathname(args.daophot_photo_opt)
+    args.daophot_allstar_opt = \
+        utils.mangle_confgig_pathname(args.daophot_allstar_opt)
+    args.mktot_ifu_grid = utils.mangle_confgig_pathname(args.mktot_ifu_grid)
+    args.fplane_txt = utils.mangle_confgig_pathname(args.fplane_txt)
+    args.shuffle_cfg = utils.mangle_confgig_pathname(args.shuffle_cfg)
+    args.ixy_dir = utils.mangle_confgig_pathname(args.ixy_dir)
+    args.addin_dir = utils.mangle_confgig_pathname(args.addin_dir)
 
     return args
 

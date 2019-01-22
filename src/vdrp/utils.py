@@ -620,11 +620,76 @@ def matrixCheby2D_7(x, y):
                       x*T3y, T2x*T2y, T2x*y, x*T2y, x*y,
                       np.ones(x.shape))).swapaxes(0, 1)
 
+
+# ---------------------------------------------------------------------
+#  Config utils
+# ---------------------------------------------------------------------
+
+
+def mangle_config_pathname(path):
+    return path.replace('$config', configdir())
+
+
+def write_conf_file(fname):
+
+    from vdrp.astrometry import getDefaults as ast_getDefaults
+    from vdrp.photometry import getDefaults as tp_getDefaults
+
+    # Now read the packaged config file
+    with open(configdir() + '/vdrp.config', 'r') as _in:
+        cfgtxt = _in.read()
+
+    defaults = {}
+    ast_defaults = ast_getDefaults()
+    tp_defaults = tp_getDefaults()
+
+    for k in ast_defaults:
+        defaults['ast_'+k] = ast_defaults[k]
+        if 'ast_'+k not in cfgtxt:
+            print('Astrometry parameter %s is missing in config file!' % k)
+
+    for k in tp_defaults:
+        defaults['tp_'+k] = tp_defaults[k]
+        if 'tp_'+k not in cfgtxt:
+            print('Throughput parameter %s is missing in config file!' % k)
+
+    with open(fname, 'w') as _out:
+        _out.write(cfgtxt.format(defaults))
+
+
+def print_conffile():
+    from argparse import ArgumentParser as AP
+
+    parser = AP(description='Write a config file with default values')
+
+    parser.add_argument('filename', metavar='filename', type=str,
+                        help='Name of the file to write')
+
+    args = parser.parse_args(sys.argv)
+
+    write_conf_file(args.filename)
+
+
 # ---------------------------------------------------------------------
 #  Package utils
 # ---------------------------------------------------------------------
 
+
 def bindir():
 
-    # print(os.path.dirname(os.path.realpath(__file__)) + '/bin')
     return os.path.dirname(os.path.realpath(__file__)) + '/bin'
+
+
+def print_bindir():
+
+    print(bindir)
+
+
+def configdir():
+
+    return os.path.dirname(os.path.realpath(__file__)) + '/config'
+
+
+def print_configdir():
+
+    print(configdir)
