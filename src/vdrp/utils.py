@@ -682,7 +682,7 @@ def bindir():
 
 def print_bindir():
 
-    print(bindir)
+    print(bindir())
 
 
 def configdir():
@@ -692,4 +692,4 @@ def configdir():
 
 def print_configdir():
 
-    print(configdir)
+    print(configdir())
