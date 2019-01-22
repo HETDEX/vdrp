@@ -352,26 +352,7 @@ class StarObservation():
         self.fname, self.ifuslot = self.full_fname.split('.')[0].rsplit('_', 1)
 
 
-def parseArgs(argv):
-    """ Parses configuration file and command line arguments.
-    Command line arguments overwrite configuration file settiongs which
-    in turn overwrite default values.
-
-    Args:
-        args (argparse.Namespace): Return the populated namespace.
-    """
-
-    # Parse any conf_file specification
-    # We make this parser with add_help=False so that
-    # it doesn't parse -h and print help.
-    conf_parser = AP(description=__doc__,  # printed with -h/--help
-                     # Don't mess with format of description
-                     formatter_class=ap_RDHF,
-                     # Turn off help, so we print all options in response to -h
-                     add_help=False)
-    conf_parser.add_argument("-c", "--conf_file",
-                             help="Specify config file", metavar="FILE")
-    args, remaining_argv = conf_parser.parse_known_args(argv)
+def getDefaults():
 
     defaults = {}
 
@@ -385,7 +366,7 @@ def parseArgs(argv):
     defaults['starid'] = 1
 
     defaults['multi_shot'] = False
-    defaults['target_coords'] = False
+    # defaults['target_coords'] = False
 
     defaults['dithall_dir'] = '/work/00115/gebhardt/maverick/detect/'
     defaults["shuffle_mag_limit"] = 20.
@@ -412,8 +393,8 @@ def parseArgs(argv):
     defaults["acam_magadd"] = 5.
     defaults["wfs1_magadd"] = 5.
     defaults["wfs2_magadd"] = 5.
-    defaults["fplane_txt"] = "vdrp/config/fplane.txt"
-    defaults["shuffle_cfg"] = "vdrp/config/shuffle.cfg"
+    defaults["fplane_txt"] = "$config/fplane.txt"
+    defaults["shuffle_cfg"] = "$config/shuffle.cfg"
 
     defaults['seeing'] = 1.5
     defaults['sdss_filter_file'] = \
@@ -433,6 +414,30 @@ def parseArgs(argv):
 
     defaults["task"] = "all"
 
+
+def parseArgs(argv):
+    """ Parses configuration file and command line arguments.
+    Command line arguments overwrite configuration file settiongs which
+    in turn overwrite default values.
+
+    Args:
+        args (argparse.Namespace): Return the populated namespace.
+    """
+
+    # Parse any conf_file specification
+    # We make this parser with add_help=False so that
+    # it doesn't parse -h and print help.
+    conf_parser = AP(description=__doc__,  # printed with -h/--help
+                     # Don't mess with format of description
+                     formatter_class=ap_RDHF,
+                     # Turn off help, so we print all options in response to -h
+                     add_help=False)
+    conf_parser.add_argument("-c", "--conf_file",
+                             help="Specify config file", metavar="FILE")
+    args, remaining_argv = conf_parser.parse_known_args(argv)
+
+    defaults = getDefaults()
+
     config_source = "Default"
     if args.conf_file:
         config_source = args.conf_file
@@ -440,7 +445,8 @@ def parseArgs(argv):
         config.read([args.conf_file])
         defaults.update(dict(config.items("Photometry")))
 
-        bool_flags = ['use_tmp', 'remove_tmp', 'multi_shot', 'target_coords']
+        # bool_flags = ['use_tmp', 'remove_tmp', 'multi_shot', 'target_coords']
+        bool_flags = ['use_tmp', 'remove_tmp', 'multi_shot']
         for bf in bool_flags:
             if config.has_option('Photometry', bf):
                 defaults[bf] = config.getboolean('Photometry', bf)
@@ -482,6 +488,11 @@ def parseArgs(argv):
                         "wavelength for the extraction")
     parser.add_argument("--extraction_wlrange", type=float, help="Wavelength "
                         "range for the extraction")
+    parser.add_argument("--full_extraction_wl", type=float, help="Central "
+                        "wavelength for the full spectrum extraction")
+    parser.add_argument("--full_extraction_wlrange", type=float,
+                        help="Wavelength range for the full "
+                        "spectrum extraction")
     parser.add_argument("--average_wl", type=float, help="Central "
                         "wavelength for the averaging")
     parser.add_argument("--average_wlrange", type=float, help="Wavelength "
@@ -494,18 +505,22 @@ def parseArgs(argv):
                         "search for shots near a given star.")
 
     parser.add_argument("--seeing", type=float, help="Seeing in arcseconds"
-                        "to assume for spectral extraction.")
+                        " to assume for spectral extraction.")
 
     parser.add_argument("--target_ra", type=float, help="Target RA for multi"
                         " shot mode.")
     parser.add_argument("--target_dec", type=float, help="Target DEC for multi"
                         " shot mode.")
 
-    parser.add_argument("--sdss_filter_file", type=str, help="Filter cureve "
+    parser.add_argument("--sdss_filter_file", type=str, help="Filter curve "
                         "for SDSS g-Band filter.")
 
     parser.add_argument("--sed_fit_dir", type=str, help="Directory with SED  "
                         "fit results.")
+    parser.add_argument("--sed_sigma_cut", type=float, help="Sigma cut level"
+                        " for combsed.")
+    parser.add_argument("--sed_rms_cut", type=str, help="RMS cut level"
+                        " for combsed.")
 
     # Parameters for quick_fit
     parser.add_argument("--quick_fit_ebv", type=float,
@@ -535,14 +550,14 @@ def parseArgs(argv):
 
     # Boolean paramters
     parser.add_argument("--use_tmp", action='store_true',
-                        help="Run using all shots containing the star at the "
-                        "given coordinates. Equivalent of rsp1 script")
+                        help="Use a temporary directory. Result files will"
+                        " be copied to NIGHTvSHOT/res.")
     parser.add_argument("--multi_shot", action='store_true',
                         help="Run using all shots containing the star at the "
                         "given coordinates. Equivalent of rsp1 script")
-    parser.add_argument("--target_coords", action='store_true',
-                        help="Run over all stars from shuffle for the given"
-                        "night and shot, ignoring the ra and dec parameters")
+    # parser.add_argument("--target_coords", action='store_true',
+    #                     help="Run over all stars from shuffle for the given"
+    #                     "night and shot, ignoring the ra and dec parameters")
 
     # positional arguments
     parser.add_argument('night', metavar='night', type=str,
@@ -559,6 +574,9 @@ def parseArgs(argv):
 
     # NEW set the bin_dir to the vdrp supplied bin directory
     args.bin_dir = utils.bindir()
+
+    args.fplane_txt = utils.mangle_config_pathname(args.fplane_txt)
+    args.shuffle_cfg = utils.mangle_config_pathname(args.shuffle_cfg)
 
     return args
 

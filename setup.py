@@ -20,40 +20,48 @@ import subprocess as sp
 if sys.version_info < (2, 7) or sys.version_info >= (3, 0):
     sys.exit("Python version 2.7 required")
 
+
 def run_install():
     src_path = './src/fortran'
     cmd = 'make pkg_install'
     sp.check_call(cmd, cwd=src_path, shell=True)
+
 
 def run_make_clean():
     src_path = './src/fortran'
     cmd = 'make pkg_clean'
     sp.check_call(cmd, cwd=src_path, shell=True)
 
+
 class BuildBinaries(build_ext):
     """Custom handler for the 'install' command."""
     def run(self):
         run_install()
+
 
 class CustomBuild(build_py):
     def run(self):
         run_install()
         build_py.run(self)
 
+
 class CustomInstall(install):
     def run(self):
         run_install()
         install.run(self)
+
 
 class CustomDevelop(develop):
     def run(self):
         run_install()
         develop.run(self)
 
+
 class CustomSDist(sdist):
     def run(self):
         run_make_clean()
         sdist.run(self)
+
 
 def extras_require(key=None):
     """Deal with extra requirements
@@ -88,21 +96,22 @@ def extras_require(key=None):
 
 
 install_requires = ['numpy', 'scipy', 'matplotlib', 'astropy', 'pyhetdex',
-                    'stellarSEDfits', 'path.py']
+                    'hetdex_vdrp_support', 'stellarSEDfits', 'path.py']
 
 # entry points
 # scripts
 entry_points = {'console_scripts':
                 ['vdrp_astrom = vdrp.astrometry:run',
                  'vdrp_throughput = vdrp.photometry:run',
-                 'vdrp_bindir = vdrp.utils:bindir']}
+                 'vdrp_bindir = vdrp.utils:print_bindir',
+                 'vdrp_config = vdrp.utils:print_conffile']}
 
 # entry_points.update(batch_types)
 
 setup(
     # package description and version
     name="vdrp",
-    version='0.4.0',
+    version='1.0.5',
     author="HETDEX collaboration",
     author_email="snigula@mpe.mpg.de",
     description="VIRUS data reduction pipeline",
@@ -111,9 +120,9 @@ setup(
     # custom test class
 
     # list of packages and data
-    package_dir={'': 'src'},
+    package_dir={'': 'src', 'config': 'src/vdrp/config'},
     packages=find_packages('src', exclude=["pytest", "tests"]),
-    # package_data={'vdrp': ['src/bin/sum2d']},
+    package_data={'bin': ['vdrp/bin'], 'config': ['vdrp/config']},
     # get from the MANIFEST.in file which extra file to include
     include_package_data=True,
     # don't zip when installing
