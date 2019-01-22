@@ -129,6 +129,8 @@ def getDefaults():
     defaults["ixy_dir"] = "$config/"
     defaults["addin_dir"] = "$config/"
 
+    return defaults
+
 
 def parseArgs(args):
     """ Parses configuration file and command line arguments.

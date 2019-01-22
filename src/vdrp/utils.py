@@ -662,10 +662,10 @@ def print_conffile():
 
     parser = AP(description='Write a config file with default values')
 
-    parser.add_argument('filename', metavar='filename', type=str,
+    parser.add_argument('filename', type=str,
                         help='Name of the file to write')
 
-    args = parser.parse_args(sys.argv)
+    args = parser.parse_args()
 
     write_conf_file(args.filename)
 

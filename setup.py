@@ -104,6 +104,7 @@ entry_points = {'console_scripts':
                 ['vdrp_astrom = vdrp.astrometry:run',
                  'vdrp_throughput = vdrp.photometry:run',
                  'vdrp_bindir = vdrp.utils:print_bindir',
+                 'vdrp_configdir = vdrp.utils:print_configdir',
                  'vdrp_config = vdrp.utils:print_conffile']}
 
 # entry_points.update(batch_types)

@@ -414,6 +414,8 @@ def getDefaults():
 
     defaults["task"] = "all"
 
+    return defaults
+
 
 def parseArgs(argv):
     """ Parses configuration file and command line arguments.
