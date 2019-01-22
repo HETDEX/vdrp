@@ -654,7 +654,7 @@ def write_conf_file(fname):
             print('Throughput parameter %s is missing in config file!' % k)
 
     with open(fname, 'w') as _out:
-        _out.write(cfgtxt.format(defaults))
+        _out.write(cfgtxt.format(**defaults))
 
 
 def print_conffile():
