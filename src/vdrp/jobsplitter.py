@@ -139,11 +139,10 @@ def create_job_file(fname, commands, maxjobs, jobspernode, args):
 
     # Now write the corresponding slurm file
 
-    launcherdir = os.path.dirname(os.path.abspath(__file__))
     with open(fn + '.slurm', 'w') as sf:
         pyenvstr = ''
         if args.py_env is not None:
-            pyenvstr = pyenv.format(args.py_env)
+            pyenvstr = pyenv.format(args.pyenv_env)
 
         sf.write(slurm_header.format(pyenv=pyenvstr,
                                      jobname=fn,
