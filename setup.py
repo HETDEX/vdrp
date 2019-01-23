@@ -108,7 +108,7 @@ entry_points = {'console_scripts':
                  'vdrp_configdir = vdrp.utils:print_configdir',
                  'vdrp_config = vdrp.utils:print_conffile',
                  'vdrp_runner = vdrp.vdrprunner:run',
-                 'vdrp_jobsplitter = vdrp_jobsplitter:run']}
+                 'vdrp_jobsplitter = vdrp.jobsplitter:run']}
 
 # entry_points.update(batch_types)
 
