@@ -26,8 +26,17 @@ slurm_header = '''#!/bin/bash
 cd {workdir:s}
 echo " WORKING DIR: {workdir:s}/"
 
+{pyenv:s}
 module load gcc
 module unload xalt
+'''
+
+pyenv = '''export PATH="$HOME/.pyenv/bin:$PATH"
+eval "$(pyenv init -)"
+eval "$(pyenv virtualenv-init -)"
+
+pyenv shell {pyenv_env:}
+
 '''
 
 pyslurm = '''module load pylauncher
@@ -132,7 +141,12 @@ def create_job_file(fname, commands, maxjobs, jobspernode, args):
 
     launcherdir = os.path.dirname(os.path.abspath(__file__))
     with open(fn + '.slurm', 'w') as sf:
-        sf.write(slurm_header.format(jobname=fn,
+        pyenvstr = ''
+        if args.py_env is not None:
+            pyenvstr = pyenv.format(args.py_env)
+
+        sf.write(slurm_header.format(pyenv=pyenvstr,
+                                     jobname=fn,
                                      nnodes=args.nodes,
                                      ntasks=20*args.nodes,
                                      runtime=runtime,
@@ -141,7 +155,6 @@ def create_job_file(fname, commands, maxjobs, jobspernode, args):
         if args.debug:
             debug = '-d'
         sf.write(pyslurm.format(workdir='./',
-                                launcherpath=launcherdir,
                                 ncores=args.threads*args.cores,
                                 debug=debug,
                                 runfile=fname))
@@ -182,6 +195,8 @@ def parse_args(argv):
                    help='Expected runtime of slurm job')
     p.add_argument('--queue', '-q', type=str, default='vis',
                    help='Slurm queue to use.')
+    p.add_argument('--py_env', '-p', type=str,
+                   help='Use a specific pyenv environment')
     p.add_argument('--debug', '-d', action="store_true",
                    help='Keep pylauncher workdir after completion')
     p.add_argument('cmdfile', type=str, help="""Input commands file""")

@@ -36,7 +36,7 @@ def VDRPLauncher(commandfile, **kwargs):
     job = pylauncher.LauncherJob(
         hostpool=pylauncher.HostPool(
             hostlist=pylauncher.SLURMHostList(
-                tag=".maverick.tacc.utexas.edu"),
+                tag=".wrangler.tacc.utexas.edu"),
             commandexecutor=pylauncher.SSHExecutor(
                 workdir=workdir, debug=debug),
             debug=debug),

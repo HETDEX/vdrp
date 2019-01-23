@@ -97,7 +97,7 @@ def extras_require(key=None):
 
 install_requires = ['numpy', 'scipy', 'matplotlib', 'astropy', 'pyhetdex',
                     'hetdex-shuffle', 'hetdex_vdrp_support', 'stellarSEDfits',
-                    'path.py', 'urllib3<1.24']
+                    'path.py', 'paramiko', 'urllib3<1.24']
 
 # entry points
 # scripts
