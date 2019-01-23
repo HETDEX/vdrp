@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-
 from __future__ import print_function
 
 from argparse import ArgumentParser as AP
@@ -96,7 +95,12 @@ def parse_args(argv):
     return p.parse_args(args=argv)
 
 
-if __name__ == "__main__":
+def run():
 
     args = parse_args(sys.argv[1:])
     main(args)
+
+
+if __name__ == "__main__":
+
+    run()

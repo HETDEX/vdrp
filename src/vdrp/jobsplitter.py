@@ -15,7 +15,7 @@ slurm_header = '''#!/bin/bash
 #SBATCH -J {jobname:s}         # Job name
 #SBATCH -N {nnodes:d}          # Number of nodes
 #SBATCH -n {ntasks:d}          # Total number of tasks
-#SBATCH -p vis                 # Queue name
+#SBATCH -p normal              # Queue name
 #SBATCH -o {jobname:s}.o%j     # Name of stdout output file
 #SBATCH -t {runtime:s}         # Run time (hh:mm:ss)
 #SBATCH -A Hobby-Eberly-Telesco
@@ -31,7 +31,7 @@ module unload xalt
 '''
 
 pyslurm = '''module load pylauncher
-{launcherpath:s}/vdrprunner.py -c {ncores:d} {debug:s} {runfile}
+vdrp_runner -c {ncores:d} {debug:s} {runfile}
 '''
 
 shslurm = '''module load launcher
@@ -189,7 +189,12 @@ def parse_args(argv):
     return p.parse_args(args=argv)
 
 
-if __name__ == "__main__":
+def run():
 
     args = parse_args(sys.argv[1:])
     main(args)
+
+
+if __name__ == "__main__":
+
+    run()

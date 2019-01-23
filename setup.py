@@ -96,7 +96,8 @@ def extras_require(key=None):
 
 
 install_requires = ['numpy', 'scipy', 'matplotlib', 'astropy', 'pyhetdex',
-                    'hetdex_vdrp_support', 'stellarSEDfits', 'path.py']
+                    'hetdex-shuffle', 'hetdex_vdrp_support', 'stellarSEDfits',
+                    'path.py', 'urllib3<1.24']
 
 # entry points
 # scripts
@@ -105,7 +106,9 @@ entry_points = {'console_scripts':
                  'vdrp_throughput = vdrp.photometry:run',
                  'vdrp_bindir = vdrp.utils:print_bindir',
                  'vdrp_configdir = vdrp.utils:print_configdir',
-                 'vdrp_config = vdrp.utils:print_conffile']}
+                 'vdrp_config = vdrp.utils:print_conffile',
+                 'vdrp_runner = vdrp.vdrprunner:run',
+                 'vdrp_jobsplitter = vdrp_jobsplitter:run']}
 
 # entry_points.update(batch_types)
 
