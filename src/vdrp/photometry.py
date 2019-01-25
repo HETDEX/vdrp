@@ -581,7 +581,7 @@ def get_star_spectrum_data(ra, dec, args):
         filtered = dithall.where(((np.sqrt((np.cos(dec/57.3)
                                             * (dithall.ra-ra))**2
                                            + (dithall.dec-dec)**2) * 3600.)
-                                  < args.ifu_search_radius))[0]
+                                  < args.ifu_search_radius))
 
         _logger.info('Found %d fibers' % len(w))
 
