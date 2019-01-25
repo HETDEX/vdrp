@@ -171,7 +171,7 @@ def setup_fluxlim(args):
     and launch it using sbatch
     """
 
-    nightshot = args.night+'v'+args.shot
+    nightshot = args.night+'v'+args.shotid
     dithall = DithAllFile(args.dithall_dir+'/'+nightshot +
                           '/dithall.use')
 
