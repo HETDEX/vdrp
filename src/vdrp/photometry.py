@@ -912,7 +912,7 @@ def run_fit2d(ra, dec, starobs, seeing, outname):
         with open('fwhm.use', 'w') as f:
             f.write('%f\n' % seeing)
 
-    vp.call_fit2d(vp._vdrp_bindir, ra, dec, outname)
+    vp.call_fit2d(ra, dec, outname)
 
 
 def run_sumlineserr(specfiles):
@@ -967,7 +967,7 @@ def run_fitem(wl, outname):
             f.write('%s %s %s %s %s\n' %
                     (d[0], d[2], d[4], d[1], d[3]))
 
-    vp.call_fitem(vp._vdrp_bindir, wl)
+    vp.call_fitem(wl)
 
     shutil.move('fitghsp.in', outname+'spece.dat')
     shutil.move('pgplot.ps', outname+'_2dn.ps')
