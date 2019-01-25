@@ -1,0 +1,15 @@
+id=$1
+id2=$3
+grep $1 $2 | grep exp01 | awk '{print sqrt($4*$4+$5*$5),$1,$2,$4,$5}' date0=$date shot0=$shot | sort -g | head -2 > j1
+~gebhardt/bin/biwt << eof
+j1
+2
+eof
+mv biwt.out b1
+~gebhardt/bin/biwt << eof
+j1
+3
+eof
+mv biwt.out b2
+paste b1 b2 | awk '{print $2,$5}' > b3
+awk '{print $1,$2,id20,id0}' id0=$id id20=$id2 b3

@@ -1,0 +1,17 @@
+/work/00115/gebhardt/maverick/flim/headfits -a -k CRVAL1 -t float -v $1 image3d.fits 
+/work/00115/gebhardt/maverick/flim/headfits -a -k CRVAL2 -t float -v $2 image3d.fits 
+/work/00115/gebhardt/maverick/flim/headfits -a -k CRVAL3 -t float -v 3470.0 image3d.fits 
+/work/00115/gebhardt/maverick/flim/headfits -a -k CDELT3 -t float -v 2.0 image3d.fits 
+/work/00115/gebhardt/maverick/flim/headfits -a -k CTYPE1 -v RA---TAN image3d.fits 
+/work/00115/gebhardt/maverick/flim/headfits -a -k CTYPE2 -v DEC--TAN image3d.fits 
+/work/00115/gebhardt/maverick/flim/headfits -a -k CTYPE3 -v Wave image3d.fits 
+/work/00115/gebhardt/maverick/flim/headfits -a -k CD1_1 -t float -v 0.0002777 image3d.fits 
+/work/00115/gebhardt/maverick/flim/headfits -a -k CD1_2 -t float -v 0 image3d.fits 
+/work/00115/gebhardt/maverick/flim/headfits -a -k CD2_2 -t float -v 0.0002777 image3d.fits 
+/work/00115/gebhardt/maverick/flim/headfits -a -k CD2_1 -t float -v 0 image3d.fits 
+/work/00115/gebhardt/maverick/flim/headfits -a -k CRPIX1 -t float -v 35.0 image3d.fits 
+/work/00115/gebhardt/maverick/flim/headfits -a -k CRPIX2 -t float -v 35.0 image3d.fits 
+/work/00115/gebhardt/maverick/flim/headfits -a -k CRPIX3 -t float -v 1 image3d.fits 
+/work/00115/gebhardt/maverick/flim/headfits -a -k CUNIT1 -v deg image3d.fits 
+/work/00115/gebhardt/maverick/flim/headfits -a -k CUNIT2 -v deg image3d.fits 
+/work/00115/gebhardt/maverick/flim/headfits -a -k EQUINOX -t float -v 2000 image3d.fits 

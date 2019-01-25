@@ -1,0 +1,7 @@
+date=$1
+shot=$2
+mkdir -p $1v$2
+cd $1v$2
+cp /work/00115/gebhardt/maverick/flim/rsetfl_w .
+rsetfl_w $1 $2
+sbatch rfl$1v$2.slurm

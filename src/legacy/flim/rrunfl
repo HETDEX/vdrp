@@ -1,0 +1,33 @@
+ra=$1
+dec=$2
+resdir=$(pwd)
+cd /tmp
+rm -rf $3_$4
+mkdir $3_$4
+cd $3_$4
+~gebhardt/bin/mklistfl << eof
+$1 $2
+$3
+eof
+mv out rt
+chmod +x rt
+cp ~gebhardt/bin/rspfl3f .
+cp /work/00115/gebhardt/maverick/flim/run10 .
+cp /work/00115/gebhardt/maverick/flim/run11 .
+cp /work/00115/gebhardt/maverick/flim/raddwcs .
+mkdir -p spec
+rt
+cd spec
+wc *.spec | awk '{if($1==0) print "rm",$4}' > rtmp; chmod +x rtmp; rtmp
+cd ..
+cat spec/*.spec > all.spec
+awk '{print $0,ra0,dec0}' ra0=$ra dec0=$dec run10 > run10tmp
+chmod +x run10tmp
+run10tmp
+ls w*.j4 > list
+rm -f image3d.fits
+~gebhardt/bin/mkimage3d
+raddwcs $1 $2
+mv image3d.fits $resdir/$3_$4_3d.fits
+cd $resdir
+rm -rf $3_$4

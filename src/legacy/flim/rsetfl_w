@@ -1,0 +1,12 @@
+cp /work/00115/gebhardt/maverick/flim/rrunfl .
+cp /work/00115/gebhardt/maverick/flim/rungrep .
+cp /work/00115/gebhardt/maverick/flim/temp_w.slurm .
+date=$1
+shot=$2
+ls /work/03946/hetdex/maverick/red1/reductions/$1/virus/virus0000$2/exp03/*/multi*LL*fits | sed s/"\/"/" "/g | awk '{print $12}' | sed s/_LL.fits// > j1
+awk '{print "rungrep",$1,"/work/00115/gebhardt/maverick/detect/"date0"v"shot0"/dithall.use",date0"v"shot0}' date0=$date shot0=$shot j1 > rtmp
+chmod +x rtmp
+rtmp > j2
+awk '{print "rrunfl",$0}' j2 | grep -v "666" > rfl$1v$2
+sed s/rfl666/rfl$1v$2/ temp_w.slurm > rfl$1v$2.slurm
+rm -f b1 b2 b3 j1 j2

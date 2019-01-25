@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-""" Photometry routine
+""" Fluxlimit routine
 
 Contains python translation of Karl Gebhardt
 
@@ -14,8 +14,6 @@ from __future__ import print_function
 from argparse import RawDescriptionHelpFormatter as ap_RDHF
 from argparse import ArgumentParser as AP
 
-# import multiprocessing
-
 import os
 import shutil
 import sys
@@ -23,7 +21,9 @@ import ConfigParser
 import logging
 import logging.config
 import copy
+import subprocess
 from astropy.io import fits
+import astropy.stats as aps
 # from astropy.io import ascii
 import tempfile
 import numpy as np
@@ -34,11 +34,13 @@ except ImportError:
 
 import vdrp.mplog as mplog
 import vdrp.astrometry as astrom
-import vdrp.programs as vp
 
 from distutils import dir_util
 
 import vdrp.utils as utils
+import vdrp.photometry as phot
+import vdrp.programs as vp
+
 from vdrp.mphelpers import MPPool, ThreadPool
 from vdrp.vdrp_helpers import VdrpInfo, save_data, read_data, run_command
 from vdrp.containers import DithAllFile
@@ -68,185 +70,6 @@ class NoShotsException(Exception):
     pass
 
 
-class Spectrum():
-    """
-    This class encapsulates the content of a tmp*.dat spectrum file
-
-    Attributes
-    ----------
-
-    wl : float
-        Wavelength
-    cnts : float
-        Counts of the spectrum
-    flx : float
-        Flux of the spectrum
-    amp_norm : float
-        Ampliflier normalization
-    tp_norm : float
-        Throughput normalization
-    ftf_norm : float
-        Fiber to fiber normalization
-    err_cts : float
-
-    err_cts_local : float
-
-    err_max_flux : float
-
-    """
-    def __init__(self):
-        self.wl = None
-        self.cnts = None
-        self.flux = None
-        self.amp_norm = None
-        self.tp_norm = None
-        self.ftf_norm = None
-        self.err_cts = None
-        self.err_cts_local = None
-        self.err_max_flux = None
-
-    def read(self, fname):
-        indata = np.loadtxt(fname).transpose()
-
-        self.wl = indata[0]
-        self.cnts = indata[1]
-        self.flux = indata[2]
-        self.amp_norm = indata[3]
-        self.tp_norm = indata[4]
-        self.ftf_norm = indata[5]
-        self.err_cts = indata[6]
-        self.err_cts_local = indata[7]
-        self.err_max_flux = indata[8]
-
-
-class ShuffleStar():
-    """
-    Class to store the information about one star from the shuffle output
-
-    Attributes
-    ----------
-
-    starid : int
-        ID for the star.
-    shotid : int
-        Shot number of the star observation
-    shuffleid : int
-        ID of the star in shuffle catalog
-    ra : float
-        Right ascension
-    dec : float
-        Declination
-    catalog : str
-        Catalog name used to find these.
-    u : float
-        U-Band magnitude from the shuffle catalog
-    g : float
-        G-Band magnitude from the shuffle catalog
-    r : float
-        R-Band magnitude from the shuffle catalog
-    i : float
-        I-Band magnitude from the shuffle catalog
-    z : float
-        Z-Band magnitude from the shuffle catalog
-    """
-
-    def __init__(self, starid='', shotid='', shuffleid=-1, ra=-1.0, dec=-1.0,
-                 u=99., g=99., r=99., i=99., z=99., catalog='None'):
-        self.starid = starid
-        self.shotid = shotid
-        self.shuffleid = shuffleid
-        self.catalog = catalog
-        self.ra = ra
-        self.dec = dec
-        self.mag_u = u
-        self.mag_g = g
-        self.mag_r = r
-        self.mag_i = i
-        self.mag_z = z
-
-
-class StarObservation():
-    """
-    Data for one spectrum covering a star observation. This corresponds to the
-    data stored in the l1 file with additions from other files
-
-    Attributes
-    ----------
-    num : int
-        Star number
-    night : int
-        Night of the observation
-    shot : int
-        Shot of the observation
-    ra : float
-        Right Ascension of the fiber center
-    dec : float
-        Declination of the fiber center
-    x : float
-        Offset of fiber relative to IFU center in x direction
-    y : float
-        Offset of fiber relative to IFU center in y direction
-    full_fname : str
-        Filename of the multi extension fits file.
-    shotname : str
-        NightvShot shot name
-    expname : str
-        Name of the exposure.
-    dist : float
-        Distance of the fiber from the star position
-    offset_ra : float
-        Offset in ra of the fiber from the star position
-    offset_dec : float
-        Offset in dec of the fiber from the star position
-    fname : str
-        Basename of the fits filenname
-    ifuslot : str
-        IFU slot ID
-    avg : float
-        Average of the spectrum
-    avg_norm : float
-
-    avg_error : float
-        Error of the average of the spectrum
-    structaz : float
-        Azimuth of the telescope structure, read from the image header
-    """
-    def __init__(self, num=0., night=-1, shot=-1, ra=-1, dec=-1, x=-1, y=-1,
-                 fname='', shotname='', expname='', offset_ra=-1,
-                 offset_dec=1):
-
-        self.num = 0
-        self.night = -1.  # l1 - 10
-        self.shot = -1.  # l1 - 11
-        self.ra = -1.  # l1 - 1
-        self.dec = -1.  # l1 - 2
-        self.x = -1.  # l1 - 3
-        self.y = -1.  # l1 - 4
-        self.full_fname = ''  # l1 - 5
-        self.shotname = ''  # l1 - 9
-        self.expname = ''  # l1 - 6
-        self.dist = -1.  # l1 - 7
-        self.offset_ra = -1.
-        self.offset_dec = -1.
-        self.fname = ''
-        self.ifuslot = ''
-
-        # l1 - 8 is args.extraction_wl
-
-        self.avg = 0.
-        self.avg_norm = 0.
-        self.avg_error = 0.
-
-        self.structaz = -1.
-
-    def set_fname(self, fname):
-        """
-        Split the full filename into the base name and the ifuslot
-        """
-        self.full_fname = fname
-        self.fname, self.ifuslot = self.full_fname.split('.')[0].rsplit('_', 1)
-
-
 def getDefaults():
 
     defaults = {}
@@ -254,60 +77,10 @@ def getDefaults():
     defaults["use_tmp"] = False
     defaults["remove_tmp"] = True
 
-    defaults['photometry_logfile'] = 'photometry.log'
-
-    defaults['shuffle_cores'] = 1
-
-    defaults['starid'] = 1
-
-    defaults['multi_shot'] = False
-    # defaults['target_coords'] = False
+    defaults['fluxlim_logfile'] = 'fluxlim.log'
 
     defaults['dithall_dir'] = '/work/00115/gebhardt/maverick/detect/'
-    defaults["shuffle_mag_limit"] = 20.
-
-    defaults["shuffle_ifustars_dir"] = \
-        '/work/00115/gebhardt/maverick/sci/panacea/test/shifts/'
     defaults['multifits_dir'] = '/work/03946/hetdex/maverick/red1/reductions/'
-    defaults['tp_dir'] = '/work/00115/gebhardt/maverick/detect/tp/'
-    defaults['norm_dir'] = '/work/00115/gebhardt/maverick/getampnorm/all/'
-    # defaults['bin_dir'] = '/home/00115/gebhardt/bin/'
-
-    defaults['extraction_aperture'] = 1.6
-    defaults['extraction_wl'] = 4505.
-    defaults['extraction_wlrange'] = 1035.
-    defaults['full_extraction_wl'] = 4500.
-    defaults['full_extraction_wlrange'] = 1000.
-    defaults['average_wl'] = 4500.
-    defaults['average_wlrange'] = 10.
-    defaults['radec_file'] = '/work/00115/gebhardt/maverick/getfib/radec.all'
-    defaults['ifu_search_radius'] = 4.
-    defaults['shot_search_radius'] = 600.
-
-    # Shuffle parameters
-    defaults["acam_magadd"] = 5.
-    defaults["wfs1_magadd"] = 5.
-    defaults["wfs2_magadd"] = 5.
-    defaults["fplane_txt"] = "$config/fplane.txt"
-    defaults["shuffle_cfg"] = "$config/shuffle.cfg"
-
-    defaults['seeing'] = 1.5
-    defaults['sdss_filter_file'] = \
-        '/work/00115/gebhardt/maverick/detect/cal_script/sdssg.dat'
-
-    defaults['sed_fit_dir'] = \
-        '/work/00115/gebhardt/maverick/detect/sed/output/'
-    defaults['sed_sigma_cut'] = 0.15
-    defaults['sed_rms_cut'] = 0.01
-
-    # Parameters for quick_fit
-    defaults['quick_fit_ebv'] = 0.02
-    defaults['quick_fit_plot'] = 0
-    defaults['quick_fit_wave_init'] = 3540
-    defaults['quick_fit_wave_final'] = 5540
-    defaults['quick_fit_bin_size'] = 100
-
-    defaults["task"] = "all"
 
     return defaults
 
@@ -340,13 +113,12 @@ def parseArgs(argv):
         config_source = args.conf_file
         config = ConfigParser.SafeConfigParser()
         config.read([args.conf_file])
-        defaults.update(dict(config.items("Photometry")))
+        defaults.update(dict(config.items("FluxLim")))
 
-        # bool_flags = ['use_tmp', 'remove_tmp', 'multi_shot', 'target_coords']
-        bool_flags = ['use_tmp', 'remove_tmp', 'multi_shot']
+        bool_flags = ['use_tmp', 'remove_tmp']
         for bf in bool_flags:
-            if config.has_option('Photometry', bf):
-                defaults[bf] = config.getboolean('Photometry', bf)
+            if config.has_option('FluxLim', bf):
+                defaults[bf] = config.getboolean('FluxLim', bf)
 
     # Parse rest of arguments
     # Don't suppress add_help here so it will handle -h
@@ -355,106 +127,18 @@ def parseArgs(argv):
     parser = AP(parents=[conf_parser])
 
     parser.set_defaults(**defaults)
-    parser.add_argument("--photometry_logfile", type=str,
+    parser.add_argument("--fluxlim_logfile", type=str,
                         help="Filename for log file.")
 
-    parser.add_argument("--shuffle_cores", type=int,
-                        help="Number of multiprocessing cores to use for"
-                        "shuffle star extraction.")
-    parser.add_argument("--starid", type=int,
-                        help="Star ID to use, default is 1")
     parser.add_argument("--dithall_dir", type=str, help="Base directory "
                         "used to find the dithall.use files")
-    parser.add_argument("--shuffle_mag_limit", type=float,
-                        help="Magnitude cutoff for selection of stars found by"
-                        " shuffle")
-    parser.add_argument("--shuffle_ifustars_dir", type=str, help="Directory "
-                        "with the *ifustars shuffle output files")
     parser.add_argument("--multifits_dir", type=str, help="Directory "
                         "with the multi extension fits files")
-    parser.add_argument("--tp_dir", type=str, help="Directory "
-                        "with the throughput files")
-    parser.add_argument("--norm_dir", type=str, help="Directory "
-                        "with the amplifier normalization files")
-    # parser.add_argument("--bin_dir", type=str, help="Directory "
-    #                     "with the fortran binary files.")
-
-    parser.add_argument("--extraction_aperture", type=float, help="Aperture "
-                        "radius in asec for the extraction")
-    parser.add_argument("--extraction_wl", type=float, help="Central "
-                        "wavelength for the extraction")
-    parser.add_argument("--extraction_wlrange", type=float, help="Wavelength "
-                        "range for the extraction")
-    parser.add_argument("--full_extraction_wl", type=float, help="Central "
-                        "wavelength for the full spectrum extraction")
-    parser.add_argument("--full_extraction_wlrange", type=float,
-                        help="Wavelength range for the full "
-                        "spectrum extraction")
-    parser.add_argument("--average_wl", type=float, help="Central "
-                        "wavelength for the averaging")
-    parser.add_argument("--average_wlrange", type=float, help="Wavelength "
-                        "range for the averaging")
-    parser.add_argument("--radec_file", type=str, help="Filename of file with "
-                        "RA DEC PA positions for all shots")
-    parser.add_argument("--ifu_search_radius", type=float, help="Radius for "
-                        "search for fibers near a given star.")
-    parser.add_argument("--shot_search_radius", type=float, help="Radius for "
-                        "search for shots near a given star.")
-
-    parser.add_argument("--seeing", type=float, help="Seeing in arcseconds"
-                        " to assume for spectral extraction.")
-
-    parser.add_argument("--target_ra", type=float, help="Target RA for multi"
-                        " shot mode.")
-    parser.add_argument("--target_dec", type=float, help="Target DEC for multi"
-                        " shot mode.")
-
-    parser.add_argument("--sdss_filter_file", type=str, help="Filter curve "
-                        "for SDSS g-Band filter.")
-
-    parser.add_argument("--sed_fit_dir", type=str, help="Directory with SED  "
-                        "fit results.")
-    parser.add_argument("--sed_sigma_cut", type=float, help="Sigma cut level"
-                        " for combsed.")
-    parser.add_argument("--sed_rms_cut", type=str, help="RMS cut level"
-                        " for combsed.")
-
-    # Parameters for quick_fit
-    parser.add_argument("--quick_fit_ebv", type=float,
-                        help="Extinction for star field")
-    parser.add_argument("--quick_fit_plot", type=int,
-                        help="Create SED fitting plots")
-    parser.add_argument("--quick_fit_wave_init", type=float,
-                        help="Initial wavelength for bin")
-    parser.add_argument("--quick_fit_wave_final", type=float,
-                        help="Final wavelength for bin")
-    parser.add_argument("--quick_fit_bin_size", type=float,
-                        help="Bin size for wavelength")
-
-    parser.add_argument("-t", "--task", type=str, help="Task to execute.")
-
-    # Shuffle parameters
-    parser.add_argument("--fplane_txt", type=str,
-                        help="filename for fplane file.")
-    parser.add_argument("--shuffle_cfg", type=str,
-                        help="Filename for shuffle configuration.")
-    parser.add_argument("--acam_magadd", type=float,
-                        help="do_shuffle acam magadd.")
-    parser.add_argument("--wfs1_magadd", type=float,
-                        help="do_shuffle wfs1 magadd.")
-    parser.add_argument("--wfs2_magadd", type=float,
-                        help="do_shuffle wfs2 magadd.")
 
     # Boolean paramters
     parser.add_argument("--use_tmp", action='store_true',
                         help="Use a temporary directory. Result files will"
                         " be copied to NIGHTvSHOT/res.")
-    parser.add_argument("--multi_shot", action='store_true',
-                        help="Run using all shots containing the star at the "
-                        "given coordinates. Equivalent of rsp1 script")
-    # parser.add_argument("--target_coords", action='store_true',
-    #                     help="Run over all stars from shuffle for the given"
-    #                     "night and shot, ignoring the ra and dec parameters")
 
     # positional arguments
     parser.add_argument('night', metavar='night', type=str,
@@ -472,10 +156,59 @@ def parseArgs(argv):
     # NEW set the bin_dir to the vdrp supplied bin directory
     # args.bin_dir = utils.bindir()
 
-    args.fplane_txt = utils.mangle_config_pathname(args.fplane_txt)
-    args.shuffle_cfg = utils.mangle_config_pathname(args.shuffle_cfg)
+    # args.fplane_txt = utils.mangle_config_pathname(args.fplane_txt)
+    # args.shuffle_cfg = utils.mangle_config_pathname(args.shuffle_cfg)
 
     return args
+
+
+def setup_fluxlim(args):
+    """
+    This is equivalent to the rflim0 and rsetfl scripts.
+
+    Determine the input values for the flux limit calculation,
+    create the input file, create the slurm file using the jobsplitter
+    and launch it using sbatch
+    """
+
+    nightshot = args.night+'v'+args.shot
+    dithall = DithAllFile(args.dithall_dir+'/'+nightshot +
+                          '/dithall.use')
+
+    ifus = np.unique(dithall.ifuslot)
+
+    with open('flim%sv%s', 'w') as f:
+
+        for ifu in ifus:
+            ifu_dith = dithall.where(dithall.ifuslot == ifu)
+            dist = np.sqrt(ifu_dith.x*ifu_dith.x + ifu_dith.y*ifu_dith.y)
+            sortidx = np.argsort(dist)
+
+            ra_mean = aps.biweight_location(ifu_dith.ra[sortidx][0:2])
+            dec_mean = aps.biweight_location(ifu_dith.dec[sortidx][0:2])
+
+            fname = ifu_dith.filename[sortidx][0]
+
+            f.write('vdrp_calc_flim %.7f %f %s %s'
+                    % (ra_mean, dec_mean, nightshot,
+                       '_'.join(fname.split('_')[0:4])))
+
+
+def calc_fluxlim(args):
+    """
+    Equivalent of the rflim0 script.
+
+    Calculate the flux limit for a given night and shot.
+
+    Paramters
+    ---------
+    args : struct
+        The arguments structure
+    """
+
+    # Simulate the combination of mklistfl, and executing its output file
+
+    pass
 
 
 def get_throughput_file(path, shotname):
@@ -570,42 +303,47 @@ def get_star_spectrum_data(ra, dec, args):
 
     for n, s in zip(night, shot):
         dithall_file = args.dithall_dir+'/'+n+'v'+s+'/dithall.use'
-        try:
-            dithall = DithAllFile(dithall_file)
+        _logger.info('Reading dithall file %s' % dithall_file)
 
+        try:
+            ra_ifu, dec_ifu, x_ifu, y_ifu = np.loadtxt(dithall_file,
+                                                       unpack=True,
+                                                       usecols=[0, 1, 3, 4])
+            fname_ifu, shotname_ifu, expname_ifu = \
+                np.loadtxt(dithall_file, unpack=True,
+                           dtype='U50', usecols=[7, 8, 9])
         except Exception as e:
             _logger.warn('Failed to read %s' % dithall_file)
             _logger.exception(e)
             continue
 
-        filtered = dithall.where(((np.sqrt((np.cos(dec/57.3)
-                                            * (dithall.ra-ra))**2
-                                           + (dithall.dec-dec)**2) * 3600.)
-                                  < args.ifu_search_radius))[0]
+        w = np.where(((np.sqrt((np.cos(dec/57.3)*(ra_ifu-ra))**2
+                               + (dec_ifu-dec)**2)*3600.)
+                      < args.ifu_search_radius))[0]
 
         _logger.info('Found %d fibers' % len(w))
 
-        for d in filtered:
+        for i in w:
 
             so = StarObservation()
 
             so.num = c+101
             so.night = n
             so.shot = s
-            so.ra = d.ra
-            so.dec = d.dec
-            so.x = d.x
-            so.y = d.y
-            so.set_fname(d.filename)
-            so.shotname = d.timestamp
-            so.expname = d.expname
+            so.ra = ra_ifu[i]
+            so.dec = dec_ifu[i]
+            so.x = x_ifu[i]
+            so.y = y_ifu[i]
+            so.set_fname(fname_ifu[i])
+            so.shotname = shotname_ifu[i]
+            so.expname = expname_ifu[i]
 
             so.dist = 3600.*np.sqrt((np.cos(dec/57.3)*(so.ra-ra))**2
                                     + (so.dec-dec)**2)
 
             # This is written to loffset
-            so.offsets_ra = 3600.*(d.ra-ra)
-            so.offsets_dec = 3600.*(d.dec-dec)
+            so.offsets_ra = 3600.*(ra_ifu[i]-ra)
+            so.offsets_dec = 3600.*(dec_ifu[i]-dec)
 
             # Make sure we actually have data for this shot
             fpath = '%s/%s/virus/virus%07d/%s/virus/%s' \
@@ -655,10 +393,10 @@ def extract_star_spectrum(starobs, args, wl, wlr, prefix=''):
         fpath = '%s/%s/virus/virus%07d/%s/virus/%s' \
             % (args.multifits_dir, s.night, int(s.shot),
                s.expname, s.fname) + '.fits'
-        vp.call_imextsp(args.bin_dir, fpath, s.ifuslot, wl, wlr,
-                        get_throughput_file(args.tp_dir, s.night+'v'+s.shot),
-                        args.norm_dir+'/'+s.fname+".norm",
-                        prefix+'tmp%d.dat' % s.num)
+        call_imextsp(args.bin_dir, fpath, s.ifuslot, wl, wlr,
+                     get_throughput_file(args.tp_dir, s.night+'v'+s.shot),
+                     args.norm_dir+'/'+s.fname+".norm",
+                     prefix+'tmp%d.dat' % s.num)
         specfiles.append(prefix+'tmp%d.dat' % s.num)
     return specfiles
 
@@ -681,8 +419,8 @@ def get_shuffle_stars(nightshot, args):
     ra, dec, _ = \
         utils.read_radec("radec.orig")
 
-    # Try to run shuffle using different catalogs, we need SDSS for SED
-    # fitting, the others can be used for throughput calculation
+    # Try to run shuffle using different catalogs, we need SDSS for SED fitting,
+    # the others can be used for throughput calculation
     for cat in 'SDSS', 'GAIA', 'USNO':
 
         stars = []
@@ -699,8 +437,8 @@ def get_shuffle_stars(nightshot, args):
             indata_flt = np.loadtxt('shout.ifustars', dtype=float,
                                     usecols=[2, 3, 4, 5, 6, 7, 8])
             for ds, df in zip(indata_str, indata_flt):
-                star = ShuffleStar(20000 + c, ds[0], ds[1], df[0], df[1],
-                                   df[2], df[3], df[4], df[5], df[6], cat)
+                star = ShuffleStar(20000 + c, ds[0], ds[1], df[0], df[1], df[2],
+                                   df[3], df[4], df[5], df[6], cat)
                 if star.mag_g < args.shuffle_mag_limit:
                     stars.append(star)
                     c += 1
@@ -912,7 +650,7 @@ def run_fit2d(ra, dec, starobs, seeing, outname):
         with open('fwhm.use', 'w') as f:
             f.write('%f\n' % seeing)
 
-    vp.call_fit2d(utils._vdrp_bindir, ra, dec, outname)
+    call_fit2d(utils._vdrp_bindir, ra, dec, outname)
 
 
 def run_sumlineserr(specfiles):
@@ -967,7 +705,7 @@ def run_fitem(wl, outname):
             f.write('%s %s %s %s %s\n' %
                     (d[0], d[2], d[4], d[1], d[3]))
 
-    vp.call_fitem(utils._vdrp_bindir, wl)
+    call_fitem(utils._vdrp_bindir, wl)
 
     shutil.move('fitghsp.in', outname+'spece.dat')
     shutil.move('pgplot.ps', outname+'_2dn.ps')
@@ -1015,19 +753,21 @@ def run_biwt(data, outfile):
         for d in data:
             f.write('%f\n' % d)
 
-    run_command(utils._vdrp_bindir + '/biwt', 'tp.dat\n1\n')
+    run_command(bindir + '/biwt', 'tp.dat\n1\n')
 
     os.remove('tp.dat')
 
     shutil.move('biwt.out', outfile)
 
 
-def run_combsed(sedlist, sigmacut, rmscut, outfile, plotfile=None):
+def run_combsed(bindir, sedlist, sigmacut, rmscut, outfile, plotfile=None):
     """
 
 
     Parameters
     ----------
+    bindir : str
+        The path to the biwt binary
     sedlist : list
         List of filenames of SED fits
     sigmacut : float
@@ -1049,8 +789,7 @@ def run_combsed(sedlist, sigmacut, rmscut, outfile, plotfile=None):
 
     input = '{:f} {:f}\n'
     print('combsed', input.format(sigmacut, rmscut))
-    run_command(utils._vdrp_bindir + '/combsed',
-                input.format(sigmacut, rmscut))
+    run_command(bindir + '/combsed', input.format(sigmacut, rmscut))
 
     shutil.move('comb.out', outfile)
 
@@ -1071,7 +810,7 @@ def run_combsed(sedlist, sigmacut, rmscut, outfile, plotfile=None):
                                 di[1], df[2], df[3]))
             f2.write('%s\n' % outfile)
 
-        run_command(utils._vdrp_bindir + '/plotseda', '/vcps\n')
+        run_command(bindir + '/plotseda', '/vcps\n')
 
         shutil.move('pgplot.ps', plotfile)
 
@@ -1174,18 +913,18 @@ def run_star_photometry(nightshot, ra, dec, starid, args):
 
         # Call rspstar
         # Get fwhm and relative normalizations
-        vp.call_getnormexp(args.bin_dir, nightshot)
+        call_getnormexp(args.bin_dir, nightshot)
 
         specfiles = extract_star_spectrum(starobs, args,
                                           args.extraction_wl,
                                           args.extraction_wlrange)
 
-        vp.call_sumsplines(args.bin_dir, len(starobs))
+        call_sumsplines(args.bin_dir, len(starobs))
 
         apply_factor_spline(len(nshots))
 
-        vp.call_fitonevp(args.bin_dir, args.extraction_wl,
-                         nightshot+'_'+str(starid))
+        call_fitonevp(args.bin_dir, args.extraction_wl,
+                      nightshot+'_'+str(starid))
 
         average_spectra(specfiles, starobs, args.average_wl,
                         args.average_wlrange)
@@ -1198,7 +937,7 @@ def run_star_photometry(nightshot, ra, dec, starid, args):
         # Save the out2 file created by fit2d
         shutil.copy2('out2', 'sp%d_out2.dat' % starid)
 
-        vp.call_mkimage(args.bin_dir, ra, dec, starobs)
+        call_mkimage(args.bin_dir, ra, dec, starobs)
 
         run_sumlineserr(args.bin_dir, specfiles)
 
@@ -1220,7 +959,7 @@ def run_star_photometry(nightshot, ra, dec, starid, args):
             for d in indata:
                 f.write('%s %s %s %s %s\n' % (d[0], d[2], d[4], d[1], d[3]))
 
-        vp.call_sumspec(args.bin_dir, starname)
+        call_sumspec(args.bin_dir, starname)
 
         mind = args.shot_search_radius
         for o in starobs:
@@ -1331,7 +1070,7 @@ def mk_sed_throughput_curve(args):
             continue
 
         seddata = np.loadtxt(sedname, ndmin=1).transpose()
-        # stardata = np.loadtxt('sp%s_100.dat' % s.starid).transpose()
+        stardata = np.loadtxt('sp%s_100.dat' % s.starid).transpose()
 
         sedcgs = seddata[1][1:]/6.626e-27/(3.e18/seddata[0][1:])*360.*5.e5*100.
 
@@ -1378,7 +1117,7 @@ def mk_sed_throughput_curve(args):
 vdrp_info = None
 
 
-def main(jobnum, args):
+def main(jobnum, args, task):
     """
     Main function.
     """
@@ -1386,7 +1125,7 @@ def main(jobnum, args):
 
     # Create results directory for given night and shot
     cwd = _baseDir
-    results_dir = os.path.join(cwd, args.night + 'v' + args.shotid,  'res')
+    results_dir = os.path.join(cwd, args.night + 'v' + args.shotid,  'flim')
     utils.createDir(results_dir)
     args.results_dir = results_dir
 
@@ -1394,15 +1133,7 @@ def main(jobnum, args):
     with open(os.path.join(results_dir, 'args.pickle'), 'wb') as f:
         pickle.dump(args, f, pickle.HIGHEST_PROTOCOL)
 
-    tasks = args.task.split(",")
-    if args.use_tmp and tasks != ['all'] and tasks != ['extract_coord']:
-        _logger.error("Step-by-step execution not possible when running "
-                      "in a tmp directory.")
-        _logger.error("   Please either call without -t or set "
-                      "use_tmp to False.")
-        sys.exit(1)
-
-    _logger.info("Executing tasks : {}".format(tasks))
+    _logger.info("Executing task : {}".format(task))
 
     # default is to work in results_dir
     wdir = results_dir
@@ -1426,37 +1157,18 @@ def main(jobnum, args):
     args.jobnum = jobnum
 
     try:
-        for task in tasks:
-            os.chdir(wdir)
+        os.chdir(wdir)
 
-            if task in ['extract_coord']:
-                # Equivalent of rsp1
-                _logger.info('Running on a single RA/DEC position')
-                if args.target_ra is None or args.target_dec is None:
-                    raise Exception('To run on a specific position, please '
-                                    'specify target_ra and target_dec of the'
-                                    ' position')
-                run_star_photometry(args.target_ra, args.target_dec,
-                                    args.starid, args)
-
-            if task in ['extract_stars', 'all']:
-                os.chdir(wdir)
-                # Equivalent of rsetstar
-                _logger.info('Extracting all shuffle stars')
-                run_shuffle_photometry(args)
-                _logger.info('Finished star extraction')
-            if task in ['get_g_band_throughput', 'all']:
-                os.chdir(wdir)
-                _logger.info('Getting g-band photometry')
-                get_g_band_throughput(args)
-
-            if task in ['mk_sed_throughput_curve', 'all']:
-                os.chdir(wdir)
-                _logger.info('Creating SED throughput curve')
-                mk_sed_throughput_curve(args)
-
-            if task in ['fit_throughput_curve', 'all']:
-                pass
+        if task == 'setup_flim':
+            _logger.info('Setting up flux limit calculation')
+            setup_fluxlim(args)
+            _logger.info('Done setting up flux limit calculation')
+        elif task == 'calc_flim':
+            _logger.info('Starting flux limit calculation')
+            calc_fluxlim(args)
+            _logger.info('Finished flux limit calculation')
+        else:
+            raise Exception('Unknown task %s' % task)
     except Exception as e:
         _logger.exception(e)
 
@@ -1466,10 +1178,35 @@ def main(jobnum, args):
         _logger.info("Done.")
 
 
-def run():
-    argv = None
-    if argv is None:
-        argv = sys.argv
+def setup_logging(logfile):
+    '''
+    Setup the logging and prepare it for use with multiprocessing
+    '''
+
+    # Setup the logging
+    fmt = '%(asctime)s %(levelname)-8s %(threadName)12s %(funcName)15s(): ' \
+        '%(message)s'
+    formatter = logging.Formatter(fmt, datefmt='%m-%d %H:%M:%S')
+    _logger.setLevel(logging.DEBUG)
+
+    cHndlr = logging.StreamHandler()
+    cHndlr.setLevel(logging.DEBUG)
+    cHndlr.setFormatter(formatter)
+
+    _logger.addHandler(cHndlr)
+
+    fHndlr = logging.FileHandler(logfile, mode='w')
+    fHndlr.setLevel(logging.DEBUG)
+    fHndlr.setFormatter(formatter)
+
+    _logger.addHandler(fHndlr)
+
+    # Wrap the log handlers with the MPHandler, this is essential for the use
+    # of multiprocessing, otherwise, tasks will hang.
+    mplog.install_mp_handler(_logger)
+
+
+def fluxlim_entrypoint():
 
     # Here we create another external argument parser, this checks if we
     # are supposed to run in multi-threaded mode.
@@ -1487,27 +1224,7 @@ def run():
 
     args, remaining_argv = parser.parse_known_args()
 
-    # Setup the logging
-    fmt = '%(asctime)s %(levelname)-8s %(threadName)12s %(funcName)15s(): ' \
-        '%(message)s'
-    formatter = logging.Formatter(fmt, datefmt='%m-%d %H:%M:%S')
-    _logger.setLevel(logging.DEBUG)
-
-    cHndlr = logging.StreamHandler()
-    cHndlr.setLevel(logging.DEBUG)
-    cHndlr.setFormatter(formatter)
-
-    _logger.addHandler(cHndlr)
-
-    fHndlr = logging.FileHandler(args.logfile, mode='w')
-    fHndlr.setLevel(logging.DEBUG)
-    fHndlr.setFormatter(formatter)
-
-    _logger.addHandler(fHndlr)
-
-    # Wrap the log handlers with the MPHandler, this is essential for the use
-    # of multiprocessing, otherwise, tasks will hang.
-    mplog.install_mp_handler(_logger)
+    setup_logging(args.logfile)
 
     # We found a -M flag with a command file, now loop over it, we parse
     # the command line parameters for each call, and intialize the args
@@ -1546,7 +1263,7 @@ def run():
 
             main_args = parseArgs(largs)
 
-            pool.add_task(main, c, copy.copy(main_args))
+            pool.add_task(main, c, copy.copy(main_args), 'calc_flim')
 
         # Wait for all tasks to complete
         pool.wait_completion()
@@ -1560,8 +1277,31 @@ def run():
         # so process normally
         args = parseArgs(remaining_argv)
 
-        sys.exit(main(1, args))
+        sys.exit(main(1, args, 'calc_flim'))
+
+
+def setup_fluxlim_entrypoint():
+    '''
+    Entrypoint to run the flux limit calculation for one night / shot
+    combination
+
+    '''
+    # Here we create another external argument parser, this checks if we
+    # are supposed to run in multi-threaded mode.
+
+    # First check if we should loop over an input file
+    parser = AP(description='Test', formatter_class=ap_RDHF, add_help=False)
+    parser.add_argument('-l', '--logfile', type=str, default='vdrp.log',
+                        help='Logfile to write to.')
+
+    args, remaining_argv = parser.parse_known_args()
+
+    setup_logging(args.logfile)
+
+    args = parseArgs(remaining_argv)
+
+    sys.exit(main(1, args, 'setup_flim'))
 
 
 if __name__ == "__main__":
-    run()
+    setup_fluxlim_entrypoint()

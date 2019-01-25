@@ -1,0 +1,28 @@
+dir1=$(pwd)
+resdir2=$dir1"/spec"
+ra=$1
+dec=$2
+rap=$3
+wv=$4
+wr=$5
+f1=$6
+f2=$7
+fw=$8
+wc=$9
+sig=${10}
+step=${11}
+nstep=${12}
+ifit1=${13}
+#mkdir -p /tmp/ras$7_$6
+#cd /tmp/ras$7_$6
+rm -rf $7_$6
+mkdir -p $7_$6
+cd $7_$6
+~gebhardt/bin/rgetsp1f $1 $2 $3 4500 1000 $7_$6
+~gebhardt/bin/fitradecsp << eof
+$1 $2 ${11} ${12} $4 3 ${13}
+eof
+# the 3 is for the fill, the 8 is for the S/N
+awk '{if($9>0) print ra0,dec0,$1,$3*$8/($9*3.)*8.,$5*$8/($9*3.)*8.,$8,$9,f1o}' f1o=$f1 ra0=$ra dec0=$dec spec.out > $resdir2/$7_$6.spec
+cd ..
+rm -rf $7_$6

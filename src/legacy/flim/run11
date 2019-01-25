@@ -1,0 +1,4 @@
+wave=$1
+ra=$2
+dec=$3
+awk '{if($3==wave0) print 3600.*($1-ra0)*cos(dec0/57.3),3600*($2-dec0),$4,$5}' ra0=$ra dec0=$dec wave0=$wave all.spec > w$wave.j4

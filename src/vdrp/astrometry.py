@@ -64,24 +64,7 @@ from vdrp import utils
 from vdrp.daophot import DAOPHOT_ALS
 from vdrp.utils import read_radec, write_radec
 from vdrp.fplane_client import retrieve_fplane
-
-
-class VdrpInfo(OrderedDict):
-    def __init__(self, *args, **kwargs):
-        super(VdrpInfo, self).__init__(*args, **kwargs)
-
-    def save(self, dir, filename='vdrp_info.pickle'):
-        # save arguments for the execution
-        with open(os.path.join(dir, filename), 'wb') as f:
-            pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
-
-    @classmethod
-    def read(cls, dir, filename='vdrp_info.pickle'):
-        if os.path.exists(os.path.join(dir, filename)):
-            with open(os.path.join(dir, filename), 'rb') as f:
-                return pickle.load(f)
-        else:
-            return VdrpInfo()
+from vdrp.vdrp_helpers import VdrpInfo
 
 
 def getDefaults():
@@ -1777,8 +1760,8 @@ def mk_dithall(wdir, active_slots, reduction_dir, night, shotid, subdir="."):
         exposures = np.sort(exposures)
         for exp in exposures:
             pattern = os.path.join(reduction_dir,
-                "{}/virus/virus0000{}/{}/virus/CoFeS*"
-                      .format(night, shotid, exp))
+                                   "{}/virus/virus0000{}/{}/virus/CoFeS*"
+                                   .format(night, shotid, exp))
             logging.info("    using CoFes*fits files {}..."
                          .format(pattern))
             CoFeS = glob.glob(pattern)
