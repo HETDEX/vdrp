@@ -48,16 +48,16 @@ class DithAllFile():
     def where(self, cond):
 
         res = DithAllFile()
-        res.ra = self.ra(np.where(cond))
-        res.dec = self.dec(np.where(cond))
-        res.ifuslot = self.ifuslot(np.where(cond))
-        res.x = self.x(np.where(cond))
-        res.y = self.y(np.where(cond))
-        res.x_fp = self.x_fp(np.where(cond))
-        res.y_fp = self.y_fp(np.where(cond))
-        res.filename = self.filename(np.where(cond))
-        res.shotname = self.shotname(np.where(cond))
-        res.expname = self.expname(np.where(cond))
+        res.ra = self.ra[np.where(cond])
+        res.dec = self.dec[np.where(cond])
+        res.ifuslot = self.ifuslot[np.where(cond])
+        res.x = self.x[np.where(cond])
+        res.y = self.y[np.where(cond])
+        res.x_fp = self.x_fp[np.where(cond])
+        res.y_fp = self.y_fp[np.where(cond])
+        res.filename = self.filename[np.where(cond])
+        res.shotname = self.shotname[np.where(cond])
+        res.expname = self.expname[np.where(cond])
 
         return res
 
