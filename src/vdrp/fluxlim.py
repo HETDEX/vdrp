@@ -177,7 +177,7 @@ def setup_fluxlim(args):
 
     ifus = np.unique(dithall.ifuslot)
 
-    with open('flim%sv%s', 'w') as f:
+    with open('flim%s' % nightshot, 'w') as f:
 
         for ifu in ifus:
             ifu_dith = dithall.where(dithall.ifuslot == ifu)
@@ -189,7 +189,7 @@ def setup_fluxlim(args):
 
             fname = ifu_dith.filename[sortidx][0]
 
-            f.write('vdrp_calc_flim %.7f %f %s %s'
+            f.write('vdrp_calc_flim %.7f %f %s %s\n'
                     % (ra_mean, dec_mean, nightshot,
                        '_'.join(fname.split('_')[0:4])))
 
