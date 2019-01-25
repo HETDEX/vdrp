@@ -912,7 +912,7 @@ def run_fit2d(ra, dec, starobs, seeing, outname):
         with open('fwhm.use', 'w') as f:
             f.write('%f\n' % seeing)
 
-    vp.call_fit2d(utils._vdrp_bindir, ra, dec, outname)
+    vp.call_fit2d(vp._vdrp_bindir, ra, dec, outname)
 
 
 def run_sumlineserr(specfiles):
@@ -935,7 +935,7 @@ def run_sumlineserr(specfiles):
             f.write('%s %s %s %s %s %s %s %s\n' %
                     (spf, d[0], d[1], d[2], d[3], d[4], d[5], d[6]))
 
-    run_command(utils._vdrp_bindir + '/sumlineserr')
+    run_command(vp._vdrp_bindir + '/sumlineserr')
 
 
 def run_fitem(wl, outname):
@@ -967,7 +967,7 @@ def run_fitem(wl, outname):
             f.write('%s %s %s %s %s\n' %
                     (d[0], d[2], d[4], d[1], d[3]))
 
-    vp.call_fitem(utils._vdrp_bindir, wl)
+    vp.call_fitem(vp._vdrp_bindir, wl)
 
     shutil.move('fitghsp.in', outname+'spece.dat')
     shutil.move('pgplot.ps', outname+'_2dn.ps')
@@ -993,7 +993,7 @@ def run_getsdss(filename, sdss_file):
     shutil.copy2(sdss_file, 'sdssg.dat')
     shutil.copy2(filename, 's1')
 
-    run_command(utils._vdrp_bindir + '/getsdssg')
+    run_command(vp._vdrp_bindir + '/getsdssg')
 
     return float(np.loadtxt('out'))
 
@@ -1015,7 +1015,7 @@ def run_biwt(data, outfile):
         for d in data:
             f.write('%f\n' % d)
 
-    run_command(utils._vdrp_bindir + '/biwt', 'tp.dat\n1\n')
+    run_command(vp._vdrp_bindir + '/biwt', 'tp.dat\n1\n')
 
     os.remove('tp.dat')
 
@@ -1049,7 +1049,7 @@ def run_combsed(sedlist, sigmacut, rmscut, outfile, plotfile=None):
 
     input = '{:f} {:f}\n'
     print('combsed', input.format(sigmacut, rmscut))
-    run_command(utils._vdrp_bindir + '/combsed',
+    run_command(vp._vdrp_bindir + '/combsed',
                 input.format(sigmacut, rmscut))
 
     shutil.move('comb.out', outfile)
@@ -1071,7 +1071,7 @@ def run_combsed(sedlist, sigmacut, rmscut, outfile, plotfile=None):
                                 di[1], df[2], df[3]))
             f2.write('%s\n' % outfile)
 
-        run_command(utils._vdrp_bindir + '/plotseda', '/vcps\n')
+        run_command(vp._vdrp_bindir + '/plotseda', '/vcps\n')
 
         shutil.move('pgplot.ps', plotfile)
 
