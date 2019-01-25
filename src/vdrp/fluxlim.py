@@ -1206,7 +1206,7 @@ def setup_logging(logfile):
     mplog.install_mp_handler(_logger)
 
 
-def fluxlim_entrypoint():
+def calc_fluxlim_entrypoint():
 
     # Here we create another external argument parser, this checks if we
     # are supposed to run in multi-threaded mode.
