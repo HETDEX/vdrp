@@ -1,5 +1,5 @@
 import threading
-import multiprocessing.Pool
+import multiprocessing.pool
 import Queue
 import time
 
