@@ -18,7 +18,7 @@ class DithAll():
         self.x_fp = x_fp
         self.y_fp = y_fp
         self.filename = filename
-        self.shotname = timestamp
+        self.timestamp = timestamp
         self.expname = expname
 
 
@@ -41,7 +41,7 @@ class DithAllFile():
         if filename is not None:
             self.ra, self.dec, self.x, self.y, self.x_fp, self.y_fp = \
                 np.loadtxt(filename, unpack=True, usecols=[0, 1, 3, 4, 5, 6])
-            self.ifuslot, self.fname, self.timestamp, self.expname = \
+            self.ifuslot, self.filename, self.timestamp, self.expname = \
                 np.loadtxt(filename, unpack=True,
                            dtype='U50', usecols=[2, 7, 8, 9])
 
@@ -56,15 +56,16 @@ class DithAllFile():
         res.x_fp = self.x_fp[np.where(cond)]
         res.y_fp = self.y_fp[np.where(cond)]
         res.filename = self.filename[np.where(cond)]
-        res.shotname = self.shotname[np.where(cond)]
+        res.timestamp = self.timestamp[np.where(cond)]
         res.expname = self.expname[np.where(cond)]
 
         return res
 
     def __getitem__(self, idx):
-        return DithAll(self.ra[idx], self.dec[idx], self.x[idx],
-                       self.y[idx], self.filename[idx], self.shotname[idx],
-                       self.expname[idx])
+        return DithAll(self.ra[idx], self.dec[idx], self.ifuslot[idx],
+                       self.x[idx], self.y[idx], self.x_fp[idx],
+                       self.y_fp[idx], self.filename[idx],
+                       self.timestamp[idx], self.expname[idx])
 
     def __len__(self):
         return len(self.ra)

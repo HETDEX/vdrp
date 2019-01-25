@@ -655,7 +655,7 @@ def extract_star_spectrum(starobs, args, wl, wlr, prefix=''):
         fpath = '%s/%s/virus/virus%07d/%s/virus/%s' \
             % (args.multifits_dir, s.night, int(s.shot),
                s.expname, s.fname) + '.fits'
-        vp.call_imextsp(args.bin_dir, fpath, s.ifuslot, wl, wlr,
+        vp.call_imextsp(fpath, s.ifuslot, wl, wlr,
                         get_throughput_file(args.tp_dir, s.night+'v'+s.shot),
                         args.norm_dir+'/'+s.fname+".norm",
                         prefix+'tmp%d.dat' % s.num)
@@ -1174,35 +1174,33 @@ def run_star_photometry(nightshot, ra, dec, starid, args):
 
         # Call rspstar
         # Get fwhm and relative normalizations
-        vp.call_getnormexp(args.bin_dir, nightshot)
+        vp.call_getnormexp(nightshot)
 
         specfiles = extract_star_spectrum(starobs, args,
                                           args.extraction_wl,
                                           args.extraction_wlrange)
 
-        vp.call_sumsplines(args.bin_dir, len(starobs))
+        vp.call_sumsplines(len(starobs))
 
         apply_factor_spline(len(nshots))
 
-        vp.call_fitonevp(args.bin_dir, args.extraction_wl,
-                         nightshot+'_'+str(starid))
+        vp.call_fitonevp(args.extraction_wl, nightshot+'_'+str(starid))
 
         average_spectra(specfiles, starobs, args.average_wl,
                         args.average_wlrange)
 
         get_structaz(starobs, args.multifits_dir)
 
-        run_fit2d(args.bin_dir, ra, dec, starobs, args.seeing,
-                  starname + '.ps')
+        run_fit2d(ra, dec, starobs, args.seeing, starname + '.ps')
 
         # Save the out2 file created by fit2d
         shutil.copy2('out2', 'sp%d_out2.dat' % starid)
 
-        vp.call_mkimage(args.bin_dir, ra, dec, starobs)
+        vp.call_mkimage(ra, dec, starobs)
 
-        run_sumlineserr(args.bin_dir, specfiles)
+        run_sumlineserr(specfiles)
 
-        run_fitem(args.bin_dir, args.extraction_wl, starname)
+        run_fitem(args.extraction_wl, starname)
 
         # Extract full spectrum
 
@@ -1211,7 +1209,7 @@ def run_star_photometry(nightshot, ra, dec, starid, args):
                                            args.full_extraction_wlrange,
                                            prefix='f')
 
-        run_sumlineserr(args.bin_dir, fspecfiles)
+        run_sumlineserr(fspecfiles)
 
         indata = np.loadtxt('splines.out', dtype='U50',
                             usecols=[0, 1, 2, 3, 4])
@@ -1220,7 +1218,7 @@ def run_star_photometry(nightshot, ra, dec, starid, args):
             for d in indata:
                 f.write('%s %s %s %s %s\n' % (d[0], d[2], d[4], d[1], d[3]))
 
-        vp.call_sumspec(args.bin_dir, starname)
+        vp.call_sumspec(starname)
 
         mind = args.shot_search_radius
         for o in starobs:
@@ -1283,8 +1281,7 @@ def get_g_band_throughput(args):
             _logger.warn('No spectral data for %d found!' % s.starid)
             continue
         starobs = read_data('sp%d.obsdata' % s.starid)
-        g_flx = run_getsdss(args.bin_dir, 'sp%d_100.dat' % s.starid,
-                            args.sdss_filter_file)
+        g_flx = run_getsdss('sp%d_100.dat' % s.starid, args.sdss_filter_file)
         sdss_flx = 5.048e-9*(10**(-0.4*s.mag_g))/(6.626e-27) / \
             (3.e18/4680.)*360.*5.e5*100
 
@@ -1295,7 +1292,7 @@ def get_g_band_throughput(args):
         if len(starobs) > 15 and dflx > 0.02 and dflx < 0.21:
             flxdata.append(dflx)
 
-    run_biwt(args.bin_dir, flxdata, 'tp.biwt')
+    run_biwt(flxdata, 'tp.biwt')
 
 
 def mk_sed_throughput_curve(args):
@@ -1345,7 +1342,7 @@ def mk_sed_throughput_curve(args):
                      'generation')
         return
 
-    run_combsed(args.bin_dir, sedlist, args.sed_sigma_cut, args.sed_rms_cut,
+    run_combsed(sedlist, args.sed_sigma_cut, args.sed_rms_cut,
                 '%ssedtp.dat' % nightshot, '%ssedtpa.ps' % nightshot)
 
     data = np.loadtxt('%ssedtp.dat' % nightshot)
