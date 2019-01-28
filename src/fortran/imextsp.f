@@ -414,7 +414,8 @@ c - include the relative dither normalization first:
 c         ytp=ytp*xrelnorm
          yf2f=max(yf2f,0.)
          yfrac=yfp*ytp
-         if(yerr2.gt.5000.or.yerr.gt.5000) yflag=0
+c         if(yerr2.gt.5000.or.yerr.gt.5000) yflag=0
+         if(yerr2.gt.5000) yflag=0
          if(wave(i).lt.waved(3).or.wave(i).gt.waved(n-3)) yflag=0
          if(yfp.gt.0.and.yflag.gt.0.and.
      $        yp.lt.1e7.and.yp.gt.-1e3) then

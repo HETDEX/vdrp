@@ -29,6 +29,7 @@
 
       nt=0
       do i=1,na
+c         print *,ara(i),adec(i)
          call fit2d(ara(i),adec(i),ntf,sflux,sfluxe,raf,decf,
      $        xw,weight,iflag,fadcw,az,chi,amps,sumrata)
          if(ifit1.ge.0) then
@@ -343,11 +344,12 @@ c            fweight2(i,na)=x4*x6
 
       as=10.
       ae=2000.
-      ae=xfmax*2.
+      ae=xfmax*5.
       chimin=1e10
-      do ia=1,100
-         at=as+(ae-as)/float(100-1)*float(ia-1)
-        call getchifib(0.,0.,at,ntf,xr,xd,sflux,xw,sfluxe,
+      na=500
+      do ia=1,na
+         at=as+(ae-as)/float(na-1)*float(ia-1)
+         call getchifib(0.,0.,at,ntf,xr,xd,sflux,xw,sfluxe,
      $        iflag,da,gausa,chi,0,sumrat)
          if(chi.lt.chimin) then
             chimin=chi
@@ -495,7 +497,7 @@ c- now get area covered with fibers
          sumf1=0.
          sumf2=0.
          nfull=100
-         sigfull=6.
+         sigfull=5.
          xs=xrs-sigfull*rsig
          xe=xrs+sigfull*rsig
          ys=xds-sigfull*rsig
@@ -519,9 +521,9 @@ c- now get area covered with fibers
          enddo
          sumrat=sumf1/sumf2
          sumrata(ia)=sumrat
-         do i=1,n
-            fadc(i,ia)=fadc(i,ia)/sumrat
-         enddo
+c         do i=1,n
+c            fadc(i,ia)=fadc(i,ia)/sumrat
+c         enddo
       enddo
 
       return
@@ -553,6 +555,9 @@ c- now get area covered with fibers
          gsum(i)=0.
          gnw(i)=0.
       enddo
+      do i=1,ntf
+         gna(i)=0.
+      enddo
 
       nw=5
       wv(1)=3500.
@@ -572,6 +577,7 @@ cc   gna is normalized counts for each
             sumg=sumg+gna0(i)
          endif
       enddo
+      if(ng.eq.0) goto 866
       do i=1,ng
          gna(i)=gna(i)/sumg
       enddo
@@ -588,6 +594,7 @@ c - first get normalization for each wavelength
                x1=wa(il,i)
                call xlinint(x1,nw,wv,wn,fadc)
                gnw(i)=gnw(i)+gna0(il)*fadc
+c               gnw(i,il)=gnw(i,il)+gna0(il)*fadc
             enddo
          endif
       enddo
@@ -605,6 +612,8 @@ c - get the weighted sum
                x1=wa(il,i)
                call xlinint(x1,nw,wv,wn,fadc)
                n=n+1
+c               gn=gn0/fadc/gnw(n,il)
+c               gn2=gn0/fadc/gnw(n,il)
                gn=gn0/fadc/gnw(n)
                gn2=gn0/fadc/gnw(n)
                x(n)=x1
@@ -662,6 +671,7 @@ c         spec(i,8)=fac2
          call xlinint(wa(1,i),nw,wv,sumrata,wgeom)
          spec(i,9)=wgeom
       enddo
+ 866  continue
       return
       end
 
