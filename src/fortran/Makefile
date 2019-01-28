@@ -20,7 +20,7 @@ BINARIES = ampnorm combsed fit2d fit2dc fit2dfix \
 	immodfb immosaic2c immosaic2d immosaicv improc imrebin imrep2 imrepe \
 	imrepftf imreplace imrepm imrepskyres imrepwv imrot imsect imshift2 \
 	imsmline imstat imsum imtwifib imzerofib iso mk2dsp mkimage mkimage3d \
-	mkranem plotadc plotbias plotfall plotfall183 \
+	mklistfl mkranem plotadc plotbias plotfall plotfall183 \
 	plotfall183b plotfl plotftf plotftf1 plotfwhm plotgn3 plotgp plotherr3 \
 	plotherr3b plothist plothista plothist2 plothistamp plothistampa \
 	plothistcos plothistnoise plothistsky plothisttp plotillum plotline \
