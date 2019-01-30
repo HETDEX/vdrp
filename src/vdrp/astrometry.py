@@ -73,7 +73,7 @@ def getDefaults():
     defaults["use_tmp"] = "False"
     defaults["remove_tmp"] = "True"
     defaults["logfile"] = "astrometry.log"
-    defaults["reduction_dir"] = "/work/04287/mxhf/maverick/red1/reductions/"
+    defaults["reduction_dir"] = "/work/03946/hetdex/maverick/red1/reductions/"
     defaults["cofes_vis_vmin"] = -15.
     defaults["cofes_vis_vmax"] = 25.
     defaults["daophot_sigma"] = 2
