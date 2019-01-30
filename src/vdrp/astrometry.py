@@ -269,18 +269,18 @@ def parseArgs(args):
     args.offset_exposure_indices = [int(t) for t in
                                     args.offset_exposure_indices.split(",")]
 
-    args.daophot_opt = utils.mangle_confgig_pathname(args.daophot_opt)
+    args.daophot_opt = utils.mangle_config_pathname(args.daophot_opt)
     args.daophot_phot_psf = \
-        utils.mangle_confgig_pathname(args.daophot_phot_psf)
+        utils.mangle_config_pathname(args.daophot_phot_psf)
     args.daophot_photo_opt = \
-        utils.mangle_confgig_pathname(args.daophot_photo_opt)
+        utils.mangle_config_pathname(args.daophot_photo_opt)
     args.daophot_allstar_opt = \
-        utils.mangle_confgig_pathname(args.daophot_allstar_opt)
-    args.mktot_ifu_grid = utils.mangle_confgig_pathname(args.mktot_ifu_grid)
-    args.fplane_txt = utils.mangle_confgig_pathname(args.fplane_txt)
-    args.shuffle_cfg = utils.mangle_confgig_pathname(args.shuffle_cfg)
-    args.ixy_dir = utils.mangle_confgig_pathname(args.ixy_dir)
-    args.addin_dir = utils.mangle_confgig_pathname(args.addin_dir)
+        utils.mangle_config_pathname(args.daophot_allstar_opt)
+    args.mktot_ifu_grid = utils.mangle_config_pathname(args.mktot_ifu_grid)
+    args.fplane_txt = utils.mangle_config_pathname(args.fplane_txt)
+    args.shuffle_cfg = utils.mangle_config_pathname(args.shuffle_cfg)
+    args.ixy_dir = utils.mangle_config_pathname(args.ixy_dir)
+    args.addin_dir = utils.mangle_config_pathname(args.addin_dir)
 
     return args
 
