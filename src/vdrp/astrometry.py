@@ -102,7 +102,7 @@ def getDefaults():
     defaults["add_radec_angoff_trial"] = \
         "1.35,1.375,1.4,1.425,1.45,1.475,1.5,1.525,1.55,1.575,1.6"
     defaults["add_radec_angoff_trial_dir"] = "add_radec_angoff_trial"
-    defaults["getoff2_radii"] = 11., 5., 3.
+    defaults["getoff2_radii"] = '11., 5., 3.'
     defaults["mkmosaic_angoff"] = 1.8
     defaults["task"] = "all"
     defaults["offset_exposure_indices"] = "1,2,3"
