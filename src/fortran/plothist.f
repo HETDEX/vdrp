@@ -43,7 +43,7 @@ c      call pglabel('','Number','')
 c      call pglabel('DARKTIME-EXPTIME (sec)','Number','')
 c      call pglabel('FP Center Accuracy (arcsec)','Number','')
 c      call pglabel('FWHM (arcsec)','Number','')
-      call pglabel('X','Number','')
+      call pglabel('Normalized response at 4540 AA','Number','')
 c      call pglabel('sqrt(x\U2\D+y\U2\D)','Number','')
 
       call pgend

@@ -38,6 +38,7 @@
       parameter(nmax=10000)
       real w(nmax),f(8,nmax),fout(8,nmax)
 
+<<<<<<< HEAD
       do i=1,n
          do j=1,8
             fout(j,i)=f(j,i)
@@ -94,6 +95,31 @@ c         if(f(1,i).eq.0) fout(8,i)=2.*f(8,jnear)
             if(f(1,i).eq.0) fout(7,i)=4.*f(7,jnear)
             if(f(1,i).eq.0) fout(8,i)=4.*f(8,jnear)
          endif
+=======
+      jnear=1
+      do i=1,n
+         diff=1e10
+         do j=1,n
+            if(f(1,j).ne.0) then
+               d=abs(w(i)-w(j))
+               if(d.lt.diff) then
+                  diff=d
+                  jnear=j
+               endif
+            endif
+         enddo
+         fout(1,i)=f(1,jnear)
+         fout(2,i)=f(2,jnear)
+         fout(3,i)=f(3,i)
+         fout(4,i)=f(4,i)
+         fout(5,i)=f(5,i)
+         fout(6,i)=f(6,jnear)
+         fout(7,i)=f(7,jnear)
+         fout(8,i)=f(8,jnear)
+         if(f(1,i).eq.0) fout(6,i)=2.*f(6,jnear)
+         if(f(1,i).eq.0) fout(7,i)=2.*f(7,jnear)
+         if(f(1,i).eq.0) fout(8,i)=2.*f(8,jnear)
+>>>>>>> 2034f374fa690ed0c3cb1710a119dc2395d1a6c9
       enddo
       
       return

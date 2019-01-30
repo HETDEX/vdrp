@@ -210,7 +210,10 @@ c- now get the atmospheric distortion correction to each fiber
      $        fadcw(1),fadcw(2),fadcw(3),fadcw(4),fadcw(5)
       enddo
       close(11)
-      print *,"Fiber coverage: ",sumg/atb
+      open(unit=11,file="fac2.out",status="unknown")
+      write(11,*) sumrat,atb/sumd
+      close(11)
+      print *,"Fiber coverage: ",sumrat,atb/sumd
 
       ymax=ymax*1.5
       call pgbegin(0,'?',1,1)

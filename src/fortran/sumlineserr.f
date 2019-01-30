@@ -21,6 +21,7 @@ c      fcut=0.06
          ysum3(i)=0.
          gsum(i)=0.
          gnw(i)=0.
+         gna(i)=0.
       enddo
       nw=5
       wv(1)=3500.
@@ -121,7 +122,6 @@ c - get the straight sum
 
       open(unit=11,file='splines.out',status='unknown')
       do i=1,n
-c         facu=1./gsum(i)*1.3
          facu=1./gsum(i)
          xs1=sqrt(ysume(i)*facu)
          xs2=sqrt(ysum2e(i)*facu)

@@ -1,6 +1,7 @@
 
       parameter(nmax=10000)
       real x(nmax),y(nmax),ye(nmax),ya(nmax,100),xin(100)
+      real xf(nmax),yf(nmax)
       real yel(nmax),yeu(nmax),ydiff(nmax),ydiffn(nmax),ysum(nmax)
       character file1*80,file2*80,c1*8
 
@@ -26,6 +27,8 @@
 
       ymin=-100.
       ymax=250.
+      ymin=0.5
+      ymax=1.15
       call pgsls(1)
       call pgslw(1)
 
@@ -46,6 +49,10 @@
             n=n+1
             x(n)=x1
             y(n)=x2
+            if(il.eq.1) then
+               yf(n)=y(n)
+            endif
+            y(n)=y(n)/yf(n)
             if(y(n).gt.ylocut.and.y(n).lt.yhicut) then
                ysum(n)=ysum(n)+y(n)
                ymaxs=max(ymaxs,ysum(n))
@@ -104,13 +111,13 @@ c         print *,i,x(i),ysum(i)
 c         ysum(i)=ysum(i)-frac
       enddo
       close(11)
-      call pgline(n,x,ysum)
+c      call pgline(n,x,ysum)
       print *,frac,xb
       write(c1,1001) frac
  1001 format(f8.1)
       call pgsch(1.5)
       call pgslw(2)
-      call pgmtxt('B',-1.4,0.5,0.5,c1)
+c      call pgmtxt('B',-1.4,0.5,0.5,c1)
 
       call pgend
 
