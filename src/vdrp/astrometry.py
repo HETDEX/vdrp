@@ -111,6 +111,7 @@ def getDefaults():
     # for fibcoords
     defaults["ixy_dir"] = "$config/"
     defaults["addin_dir"] = "$config/"
+    defaults["parangle"] = -999999.
 
     return defaults
 
@@ -236,6 +237,9 @@ def parseArgs(args):
     parser.add_argument("--dither_offsets", type=str,
                         help="List of x,y tuples that define the "
                         "dither offsets.")
+    parser.add_argument("--parangle", type=float,
+                        help="Optional parangle to use if the one found"
+                        "in the header is unknown (-999999.).")
     # for fibcoords
     parser.add_argument("--ixy_dir", type=str)
     parser.add_argument("--shifts_dir", type=str)
@@ -663,7 +667,7 @@ def get_track(wdir, reduction_dir, night, shotid):
     return track
 
 
-def get_ra_dec_orig(wdir, reduction_dir, night, shotid):
+def get_ra_dec_orig(wdir, reduction_dir, night, shotid, user_pa=-999999.):
     """
     Reads first of the many multi* file'd headers to get
     the RA, DEC, PA guess from the telescope.
@@ -690,6 +694,8 @@ def get_ra_dec_orig(wdir, reduction_dir, night, shotid):
     ra0 = h["TRAJRA"]
     dec0 = h["TRAJDEC"]
     pa0 = h["PARANGLE"]
+    if pa0 < -999990.:  # Unknown value in header, use optional user value
+        pa0 = user_pa
     logging.info("Original RA,DEC,PA = {},{},{}".format(ra0, dec0, pa0))
 
     if vdrp_info is not None:
@@ -1995,7 +2001,7 @@ def main(args):
                 # Retrieve original RA DEC from one of the multi files.
                 # store in radec.orig
                 get_ra_dec_orig(wdir, args.reduction_dir, args.night,
-                                args.shotid)
+                                args.shotid, args.parangle)
 
             if task in ["redo_shuffle", "all"]:
                 # Rerun shuffle to get IFU stars
