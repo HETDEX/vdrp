@@ -171,7 +171,7 @@ def setup_fluxlim(args):
             fname = ifu_dith.filename[sortidx][0]
 
             f.write('vdrp_calc_flim %.7f %.7f %s %s %s\n'
-                    % (ra_mean, dec_mean, args.night, args.shot,
+                    % (ra_mean, dec_mean, args.night, args.shotid,
                        '_'.join(fname.split('_')[0:4])))
 
 
