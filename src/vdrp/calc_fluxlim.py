@@ -225,7 +225,7 @@ def extract_fluxlim_spectra(args):
         The arguments structure
     """
 
-    curdir = os.path.curdir
+    curdir = os.path.abspath(os.path.curdir)
     cosd = np.cos(args.dec / 57.3)
     rstart = args.ra - 35./3600./cosd
     dstart = args.dec - 35./3600.
@@ -248,7 +248,8 @@ def extract_fluxlim_spectra(args):
             dec = dstart + d_off/3600.
             counter += 1
 
-            wdir = curdir + '%s_%d' % (args.nightshot, counter)
+            wdir = curdir + '/%s_%d' % (args.nightshot, counter)
+            _logger.info('Creating workdir %s' % wdir)
             if not os.path.exists(wdir):
                 os.mkdir(wdir)
             os.chdir(wdir)
@@ -260,7 +261,7 @@ def extract_fluxlim_spectra(args):
                 os.chdir(curdir)
                 if not args.debug:
                     os.rmdir(wdir)
-                return
+                continue
 
             # Call rspstar
             # Get fwhm and relative normalizations

@@ -251,15 +251,14 @@ def run_fitradecsp(ra, dec, step, nstep, w_center, w_range, ifit1,
 
     with open('list', 'w') as f:
         for st, sp in zip(starobs, specfiles):
-            f.write('%s %.7f %.7f %.6f %s\n' % sp, st.ra, st.dec,
-                    st.structaz, st.expname)
+            f.write('%s %.7f %.7f %.6f %s\n' % (sp, st.ra, st.dec,
+                    st.structaz, st.expname))
 
     input = '{ra:f} {dec:f} {step:d} {nstep:d} {wcen:f} {wr:f} {ifit1:d}\n'
 
-    run_command(_vdrp_bindir + '/fitem', input.format(ra=ra, dec=dec,
-                                                      step=step, nstep=nstep,
-                                                      wcen=w_center,
-                                                      wr=w_range, ifit1=ifit1))
+    run_command(_vdrp_bindir + '/fitradecsp',
+                input.format(ra=ra, dec=dec, step=step, nstep=nstep,
+                             wcen=w_center, wr=w_range, ifit1=ifit1))
 
 
 def call_mkimage3d():
