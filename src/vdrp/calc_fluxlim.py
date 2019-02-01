@@ -192,6 +192,8 @@ def parseArgs(argv):
     # args.fplane_txt = utils.mangle_config_pathname(args.fplane_txt)
     # args.shuffle_cfg = utils.mangle_config_pathname(args.shuffle_cfg)
 
+    args.nightshot = '%sv%s' % (args.night, args.shot)
+
     return args
 
 
