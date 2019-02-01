@@ -256,10 +256,9 @@ def run_fitradecsp(ra, dec, step, nstep, w_center, w_range, ifit1,
 
     input = '{ra:f} {dec:f} {step:d} {nstep:d} {wcen:f} {wr:f} {ifit1:d}\n'
 
-    run_command(_vdrp_bindir + '/fitem', input.format(ra=ra, dec=dec,
-                                                      step=step, nstep=nstep,
-                                                      wcen=w_center,
-                                                      wr=w_range, ifit1=ifit1))
+    run_command(_vdrp_bindir + '/fitradecsp',
+                input.format(ra=ra, dec=dec, step=step, nstep=nstep,
+                             wcen=w_center, wr=w_range, ifit1=ifit1))
 
 
 def call_mkimage3d():

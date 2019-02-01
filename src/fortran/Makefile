@@ -11,9 +11,9 @@ HOSTLIBS= -L$(LIBDIR) -lm -lnumrec -lquest -lgcv -llinpack -lpgplot \
 
 BINARIES = ampnorm combsed fit2d fit2dc fit2dfix \
 	fit2dfw fit2dpsf fitem fitema fitemfull fitemmc fitems fitonesig \
-	fitonesiga fitonev fitoneva fitonevp fitonevs fitpoly ftoa ftoaq getflim \
-	getflim2 getfwhm getnormexp getsignif getsdssg ima imaddem \
-	imaddemn imadderr imar imarfib imarftf imars imarsp imarsp2 \
+	fitonesiga fitonev fitoneva fitonevp fitonevs fitpoly fitradecsp \
+	ftoa ftoaq getflim 	getflim2 getfwhm getnormexp getsignif getsdssg ima \
+	imaddem imaddemn imadderr imar imarfib imarftf imars imarsp imarsp2 \
 	imarsp3 imarsqrt imarsvlt imbin imbox2 imbox2sig imboxrow imcheckv imcmb \
 	imcmbs imconv imdao imdump imext3d imextnm imextnmq imextsp imextsp2d \
 	imextspsig imextspsky imflip imflip2 imhist immask immaskcol imminmax \
