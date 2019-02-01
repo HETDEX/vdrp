@@ -177,7 +177,7 @@ def parseArgs(argv):
                         help='Declination.')
     parser.add_argument('night', metavar='night', type=str,
                         help='Night of observation (e.g. 20180611).')
-    parser.add_argument('shot', metavar='shot', type=str,
+    parser.add_argument('shotid', metavar='shotid', type=str,
                         help='Shotname of observation (e.g. 021).')
     parser.add_argument('fname', metavar='fname', type=str,
                         help='Basename of the multifits file.')
@@ -192,7 +192,7 @@ def parseArgs(argv):
     # args.fplane_txt = utils.mangle_config_pathname(args.fplane_txt)
     # args.shuffle_cfg = utils.mangle_config_pathname(args.shuffle_cfg)
 
-    args.nightshot = '%sv%s' % (args.night, args.shot)
+    args.nightshot = '%sv%s' % (args.night, args.shotid)
 
     return args
 
