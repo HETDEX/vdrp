@@ -232,7 +232,7 @@ def extract_fluxlim_spectra(args):
 
     wave_min = args.extraction_wl - args.extraction_wlrange
     wave_max = args.extraction_wl + args.extraction_wlrange
-    n_wave = ((wave_max - wave_min) / 2.) + 1
+    n_wave = int((wave_max - wave_min) / 2.) + 1
 
     allspec = np.zeros((n_wave, 70*70, 4))
 
