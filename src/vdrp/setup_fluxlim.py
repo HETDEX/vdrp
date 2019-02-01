@@ -184,7 +184,7 @@ def setup_fluxlim_entrypoint():
     # Here we create another external argument parser, this checks if we
     # are supposed to run in multi-threaded mode.
 
-    args = parseArgs(sys.argv)
+    args = parseArgs(sys.argv[1:])
 
     mplog.setup_mp_logging(args.logfile)
 
