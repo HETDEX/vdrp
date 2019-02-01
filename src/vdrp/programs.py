@@ -234,3 +234,37 @@ def call_getnormexp(nightshot):
     input = '{name:s}\n'
 
     run_command(_vdrp_bindir + '/getnormexp', input.format(name=nightshot))
+
+
+def run_fitradecsp(ra, dec, step, nstep, w_center, w_range, ifit1,
+                   starobs, specfiles):
+    """
+    Setup and call fitradecsp. This creates a file called spec.out
+
+    Parameters
+    ----------
+    starobs : list
+        List of StarObservation structures one for each fiber
+    specfiles : list
+        List of filename of the different spec files
+    """
+
+    with open('list', 'w') as f:
+        for st, sp in zip(starobs, specfiles):
+            f.write('%s %.7f %.7f %.6f %s\n' % sp, st.ra, st.dec,
+                    st.structaz, st.expname)
+
+    input = '{ra:f} {dec:f} {step:d} {nstep:d} {wcen:f} {wr:f} {ifit1:d}\n'
+
+    run_command(_vdrp_bindir + '/fitem', input.format(ra=ra, dec=dec,
+                                                      step=step, nstep=nstep,
+                                                      wcen=w_center,
+                                                      wr=w_range, ifit1=ifit1))
+
+
+def call_mkimage3d():
+    """
+    Run the mkimage3d command, creating an output file called image3d.fits
+    """
+
+    run_command(_vdrp_bindir + '/mkimage3d')

@@ -27,7 +27,7 @@ def createDir(directory):
         if not os.path.exists(directory):
             os.makedirs(directory)
     except OSError:
-        _logger.error('Creating directory. ' +  directory)
+        _logger.error('Creating directory. ' + directory)
 
 
 def read_radec(filename):
@@ -634,6 +634,7 @@ def write_conf_file(fname):
 
     from vdrp.astrometry import getDefaults as ast_getDefaults
     from vdrp.photometry import getDefaults as tp_getDefaults
+    from vdrp.calc_fluxlim import getDefaults as fl_getDefaults
 
     # Now read the packaged config file
     with open(configdir() + '/vdrp.config', 'r') as _in:
@@ -642,6 +643,7 @@ def write_conf_file(fname):
     defaults = {}
     ast_defaults = ast_getDefaults()
     tp_defaults = tp_getDefaults()
+    fl_defaults = fl_getDefaults()
 
     for k in ast_defaults:
         defaults['ast_'+k] = ast_defaults[k]
@@ -652,6 +654,11 @@ def write_conf_file(fname):
         defaults['tp_'+k] = tp_defaults[k]
         if 'tp_'+k not in cfgtxt:
             print('Throughput parameter %s is missing in config file!' % k)
+
+    for k in fl_defaults:
+        defaults['fl_'+k] = fl_defaults[k]
+        if 'fl_'+k not in cfgtxt:
+            print('Fluxlim parameter %s is missing in config file!' % k)
 
     with open(fname, 'w') as _out:
         _out.write(cfgtxt.format(**defaults))

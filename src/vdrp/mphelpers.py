@@ -2,6 +2,9 @@ import threading
 import multiprocessing.pool
 import Queue
 import time
+import logging
+
+_logger = logging.getLogger()
 
 
 class ThreadWorker(threading.Thread):

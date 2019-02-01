@@ -519,7 +519,7 @@ def apply_factor_spline(factor):
             f.write('%f %f\n' % (w, fl*1.e17 / factor))
 
 
-def get_star_spectrum_data(ra, dec, args):
+def get_star_spectrum_data(ra, dec, args, multi_shot=False):
     """
     This extracts the data about the different observations of the same star
     on different ifus.
@@ -557,7 +557,7 @@ def get_star_spectrum_data(ra, dec, args):
     night = night[w_s]
     shot = shot[w_s]
 
-    if not args.multi_shot:  # rsp1b mode
+    if not multi_shot:  # rsp1b mode
         w = (night == args.night) & (shot == args.shotid)
         night = night[w]
         shot = shot[w]
@@ -1165,7 +1165,8 @@ def run_star_photometry(nightshot, ra, dec, starid, args):
         os.chdir(stardir)
 
         # Extract data like the data in l1
-        starobs, nshots = get_star_spectrum_data(ra, dec, args)
+        starobs, nshots = get_star_spectrum_data(ra, dec, args,
+                                                 args.multi_shot)
 
         if not len(starobs):
             _logger.warn('No shots found, skipping!')

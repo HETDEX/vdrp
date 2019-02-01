@@ -5,6 +5,9 @@ import logging
 import sys
 import traceback
 import Queue
+import logging
+
+_logger = logging.getLogger()
 
 
 def install_mp_handler(logger=None):
@@ -93,3 +96,31 @@ class MultiProcessingHandler(logging.Handler):
 
             self.sub_handler.close()
             logging.Handler.close(self)
+
+
+def setup_mp_logging(logfile):
+    '''
+    Setup the logging and prepare it for use with multiprocessing
+    '''
+
+    # Setup the logging
+    fmt = '%(asctime)s %(levelname)-8s %(threadName)12s %(funcName)15s(): ' \
+        '%(message)s'
+    formatter = logging.Formatter(fmt, datefmt='%m-%d %H:%M:%S')
+    _logger.setLevel(logging.DEBUG)
+
+    cHndlr = logging.StreamHandler()
+    cHndlr.setLevel(logging.DEBUG)
+    cHndlr.setFormatter(formatter)
+
+    _logger.addHandler(cHndlr)
+
+    fHndlr = logging.FileHandler(logfile, mode='w')
+    fHndlr.setLevel(logging.DEBUG)
+    fHndlr.setFormatter(formatter)
+
+    _logger.addHandler(fHndlr)
+
+    # Wrap the log handlers with the MPHandler, this is essential for the use
+    # of multiprocessing, otherwise, tasks will hang.
+    install_mp_handler(_logger)
