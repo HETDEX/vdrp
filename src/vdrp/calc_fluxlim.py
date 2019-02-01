@@ -360,7 +360,7 @@ def main(jobnum, args):
 
     # default is to work in results_dir
     # Create a temporary directory
-    tmp_dir = os.path.join(cwd, args.nighthot + '_' + args.fname)
+    tmp_dir = os.path.join(cwd, args.nightshot + '_' + args.fname)
     _logger.info("Tempdir is {}".format(tmp_dir))
     _logger.info("Copying over prior data (if any)...")
     dir_util.copy_tree(results_dir, tmp_dir)
