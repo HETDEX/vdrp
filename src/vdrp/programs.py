@@ -254,7 +254,7 @@ def run_fitradecsp(ra, dec, step, nstep, w_center, w_range, ifit1,
             f.write('%s %.7f %.7f %.6f %s\n' % (sp, st.ra, st.dec,
                     st.structaz, st.expname))
 
-    input = '{ra:f} {dec:f} {step:d} {nstep:d} {wcen:f} {wr:f} {ifit1:d}\n'
+    input = '{ra:.5f} {dec:.5f} {step:d} {nstep:d} {wcen:f} {wr:f} {ifit1:d}\n'
 
     run_command(_vdrp_bindir + '/fitradecsp',
                 input.format(ra=ra, dec=dec, step=step, nstep=nstep,
@@ -265,5 +265,10 @@ def call_mkimage3d():
     """
     Run the mkimage3d command, creating an output file called image3d.fits
     """
+
+    print(os.path.exists('./image3d.fits'))
+    if os.path.exists('./image3d.fits'):
+        os.remove('./image3d.fits')
+    print(os.path.exists('./image3d.fits'))
 
     run_command(_vdrp_bindir + '/mkimage3d')

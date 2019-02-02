@@ -519,7 +519,7 @@ def apply_factor_spline(factor):
             f.write('%f %f\n' % (w, fl*1.e17 / factor))
 
 
-def get_star_spectrum_data(ra, dec, args, multi_shot=False):
+def get_star_spectrum_data(ra, dec, args, multi_shot=False, dithall=None):
     """
     This extracts the data about the different observations of the same star
     on different ifus.
@@ -536,31 +536,34 @@ def get_star_spectrum_data(ra, dec, args, multi_shot=False):
         The arguments structure
     """
 
-    # First find matching shots
-    _logger.info('Reading radec file %s' % args.radec_file)
+    if multi_shot:
+        # First find matching shots
+        _logger.info('Reading radec file %s' % args.radec_file)
 
-    night, shot = np.loadtxt(args.radec_file, unpack=True, dtype='U50',
-                             usecols=[0, 1])
-    ra_shot, dec_shot = np.loadtxt(args.radec_file, unpack=True,
-                                   usecols=[2, 3])
+        night, shot = np.loadtxt(args.radec_file, unpack=True, dtype='U50',
+                                 usecols=[0, 1])
+        ra_shot, dec_shot = np.loadtxt(args.radec_file, unpack=True,
+                                       usecols=[2, 3])
 
-    _logger.info('Searching for shots within %f arcseconds of %f %f'
-                 % (args.shot_search_radius, ra, dec))
-    # First find shots overlapping with the RA/DEC coordinates
-    w_s = np.where(((np.sqrt((np.cos(dec/57.3)*(ra_shot-ra))**2
-                             + (dec_shot-dec)**2)*3600.)
-                    < args.shot_search_radius))[0]
+        _logger.info('Searching for shots within %f arcseconds of %f %f'
+                     % (args.shot_search_radius, ra, dec))
+        # First find shots overlapping with the RA/DEC coordinates
+        w_s = np.where(((np.sqrt((np.cos(dec/57.3)*(ra_shot-ra))**2
+                                 + (dec_shot-dec)**2)*3600.)
+                        < args.shot_search_radius))[0]
 
-    if not len(np.where(w_s)[0]):
-        raise NoShotsException('No shots found!')
+        if not len(np.where(w_s)[0]):
+            raise NoShotsException('No shots found!')
 
-    night = night[w_s]
-    shot = shot[w_s]
+        night = night[w_s]
+        shot = shot[w_s]
 
-    if not multi_shot:  # rsp1b mode
-        w = (night == args.night) & (shot == args.shotid)
-        night = night[w]
-        shot = shot[w]
+    else:
+        #w = (night == args.night) & (shot == args.shotid)
+        #night = night[w]
+        #shot = shot[w]
+        night = [args.night]
+        shot = [args.shotid]
 
     night_shots = []
     starobs = []
@@ -569,21 +572,24 @@ def get_star_spectrum_data(ra, dec, args, multi_shot=False):
     _logger.info('Found %d shots' % len(shot))
 
     for n, s in zip(night, shot):
-        dithall_file = args.dithall_dir+'/'+n+'v'+s+'/dithall.use'
-        try:
-            dithall = DithAllFile(dithall_file)
+        if multi_shot or dithall is None:            
+            dithall_file = args.dithall_dir+'/'+n+'v'+s+'/dithall.use'
+            _logger.info('Reading dithall file %s' % dithall_file)
+            try:
+                dithall = DithAllFile(dithall_file)
 
-        except Exception as e:
-            _logger.warn('Failed to read %s' % dithall_file)
-            _logger.exception(e)
-            continue
+            except Exception as e:
+                _logger.warn('Failed to read %s' % dithall_file)
+                _logger.exception(e)
+                continue
 
+        _logger.info('Filtering dithall file')
         filtered = dithall.where(((np.sqrt((np.cos(dec/57.3)
                                             * (dithall.ra-ra))**2
                                            + (dithall.dec-dec)**2) * 3600.)
                                   < args.ifu_search_radius))
 
-        _logger.info('Found %d fibers' % len(w))
+        _logger.info('Found %d fibers' % len(filtered))
 
         for d in filtered:
 

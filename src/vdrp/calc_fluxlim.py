@@ -236,7 +236,19 @@ def extract_fluxlim_spectra(args):
     wave_max = args.extraction_wl + args.extraction_wlrange
     n_wave = int((wave_max - wave_min) / 2.) + 1
 
-    allspec = np.zeros((n_wave, args.ra_range*args.dec_range, 4))
+    allspec = np.full((n_wave, 70*70, 4), -9999.)
+
+    dithall_file = args.dithall_dir+'/'+args.night + 'v' \
+        + args.shotid+'/dithall.use'
+
+    _logger.info('Reading dithall file %s' % dithall_file)
+    try:
+        dithall = DithAllFile(dithall_file)
+
+    except Exception as e:
+        _logger.warn('Failed to read %s' % dithall_file)
+        _logger.exception(e)
+        return
 
     counter = 0
     # This counter tracks the number of extracted spectra
@@ -250,13 +262,16 @@ def extract_fluxlim_spectra(args):
             dec = dstart + d_off/3600.
             counter += 1
 
+            _logger.info('Working at #%d %f %f' % (counter, ra, dec))
+
             wdir = curdir + '/%s_%d' % (args.nightshot, counter)
             _logger.info('Creating workdir %s' % wdir)
             if not os.path.exists(wdir):
                 os.mkdir(wdir)
             os.chdir(wdir)
 
-            starobs, _ = phot.get_star_spectrum_data(ra, dec, args, False)
+            starobs, _ = phot.get_star_spectrum_data(ra, dec, args,
+                                                     False, dithall)
 
             if not len(starobs):
                 _logger.warn('No shots found, skipping!')
@@ -282,36 +297,61 @@ def extract_fluxlim_spectra(args):
 
             # Now produce the final output
 
+            if not os.path.exists('spec.out'):
+                _logger.warn('fitradecsp failed!')
+                os.chdir(curdir)
+                if not args.debug:
+                    shutil.rmtree(wdir)
+                continue
+
             specdata = np.loadtxt('spec.out')
 
-            w = np.where(specdata[8] > 0)
+            w = np.where(specdata[:, 8] > 0)[0]
 
-            allspec[:, speccounter, 0] = np.full_like(allspec[0, :, 0],
+            print(ra, args.ra)
+            print(dec, args.dec)
+            print(3600. * (ra-args.ra) * cosdec)
+            print(3600. * (dec-args.dec))
+            allspec[:, speccounter, 0] = np.full_like(allspec[:, 0, 0],
                                                       3600. * (ra-args.ra)
                                                       * cosdec)
-            allspec[:, speccounter, 1] = np.full_like(allspec[0, :, 0],
+            allspec[:, speccounter, 1] = np.full_like(allspec[:, 0, 0],
                                                       3600. * (dec-args.dec))
-            allspec[:, speccounter, 2] = specdata[w][2]*specdata[w][7] \
-                / (specdata[w][8] * 3.) * 8.
-            allspec[:, speccounter, 3] = specdata[w][4]*specdata[w][7] \
-                / (specdata[w][8] * 3.) * 8
+            allspec[:, speccounter, 2] = np.full_like(allspec[:, 0, 0], -9999.)
+            allspec[:, speccounter, 3] = np.full_like(allspec[:, 0, 0], -9999.)
+            allspec[w, speccounter, 2] = specdata[w, 2]*specdata[w, 7] \
+                / (specdata[w, 8] * 3.) * 8.
+            allspec[w, speccounter, 3] = specdata[w, 4]*specdata[w, 7] \
+                / (specdata[w, 8] * 3.) * 8
+            # allspec[:, speccounter, 2] = specdata[2][w]*specdata[7][w] \
+            #     / (specdata[8][w] * 3.) * 8.
+            # allspec[:, speccounter, 3] = specdata[4][w]*specdata[7][w] \
+            #     / (specdata[8][w] * 3.) * 8
 
             speccounter += 1
 
     # Now write all the spec files and the list.
+    os.chdir(curdir)
 
     with open('list', 'w') as f:
         for i in range(0, n_wave):
             wl = int(wave_min + i*2.)
 
-            np.savetxt('w%d.j4' % wl, allspec[i])
+            w = np.where(allspec[i, :, 2] > -9000.)
+            np.savetxt('w%d.j4' % wl, allspec[i, w[0], :],
+                       fmt="%.5f %.5f %.3f %.3f")
+
             f.write('%s' % 'w%d.j4\n' % wl)
 
     vp.call_mkimage3d()
 
     update_im3d_header(args.ra, args.dec)
 
-    shutil.move('image3d.fits', args.results_dir)
+    outname = args.results_dir + '/' + args.nightshot + '_' \
+        + args.fname + '.fits'
+    if os.path.exists(outname):
+        os.remove(outname)
+    shutil.move('image3d.fits', outname)
 
 
 def update_im3d_header(ra, dec):
@@ -320,24 +360,24 @@ def update_im3d_header(ra, dec):
     """
     with fits.open('image3d.fits', 'update') as hdu:
 
-        hdu.header['OBJECT'] = 'CAT'
-        hdu.header['CRVAL1'] = ra
-        hdu.header['CRVAL2'] = dec
-        hdu.header['CRVAL3'] = 3470.0
-        hdu.header['CDELT3'] = 2.0
-        hdu.header['CTYPE1'] = 'RA---TAN'
-        hdu.header['CTYPE2'] = 'DEC--TAN'
-        hdu.header['CTYPE3'] = 'Wave'
-        hdu.header['CD1_1'] = 0.0002777
-        hdu.header['CD1_2'] = 0
-        hdu.header['CD2_2'] = 0.0002777
-        hdu.header['CD2_1'] = 0
-        hdu.header['CRPIX1'] = 35.0
-        hdu.header['CRPIX2'] = 35.0
-        hdu.header['CRPIX3'] = 1
-        hdu.header['CUNIT1'] = 'deg'
-        hdu.header['CUNIT2'] = 'deg'
-        hdu.header['EQUINOX'] = 2000
+        hdu[0].header['OBJECT'] = 'CAT'
+        hdu[0].header['CRVAL1'] = ra
+        hdu[0].header['CRVAL2'] = dec
+        hdu[0].header['CRVAL3'] = 3470.0
+        hdu[0].header['CDELT3'] = 2.0
+        hdu[0].header['CTYPE1'] = 'RA---TAN'
+        hdu[0].header['CTYPE2'] = 'DEC--TAN'
+        hdu[0].header['CTYPE3'] = 'Wave'
+        hdu[0].header['CD1_1'] = 0.0002777
+        hdu[0].header['CD1_2'] = 0
+        hdu[0].header['CD2_2'] = 0.0002777
+        hdu[0].header['CD2_1'] = 0
+        hdu[0].header['CRPIX1'] = 35.0
+        hdu[0].header['CRPIX2'] = 35.0
+        hdu[0].header['CRPIX3'] = 1
+        hdu[0].header['CUNIT1'] = 'deg'
+        hdu[0].header['CUNIT2'] = 'deg'
+        hdu[0].header['EQUINOX'] = 2000
 
 
 vdrp_info = None
