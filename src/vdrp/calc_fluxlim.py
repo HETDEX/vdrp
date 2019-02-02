@@ -78,6 +78,8 @@ def getDefaults():
     defaults['tp_dir'] = '/work/00115/gebhardt/maverick/detect/tp/'
     defaults['norm_dir'] = '/work/00115/gebhardt/maverick/getampnorm/all/'
 
+    defaults['ra_range'] = 70
+    defaults['dec_range'] = 70
     defaults['radec_file'] = '/work/00115/gebhardt/maverick/getfib/radec.all'
     defaults['ifu_search_radius'] = 2.5
     defaults['shot_search_radius'] = 600.
@@ -234,7 +236,7 @@ def extract_fluxlim_spectra(args):
     wave_max = args.extraction_wl + args.extraction_wlrange
     n_wave = int((wave_max - wave_min) / 2.) + 1
 
-    allspec = np.zeros((n_wave, 70*70, 4))
+    allspec = np.zeros((n_wave, args.ra_range*args.dec_range, 4))
 
     counter = 0
     # This counter tracks the number of extracted spectra
@@ -242,9 +244,9 @@ def extract_fluxlim_spectra(args):
 
     cosdec = np.cos(args.dec/57.3)
 
-    for r_off in range(0, 70):
+    for r_off in range(0, args.ra_range):
         ra = rstart + r_off/3600./cosd
-        for d_off in range(0, 70):
+        for d_off in range(0, args.dec_range):
             dec = dstart + d_off/3600.
             counter += 1
 
@@ -302,7 +304,7 @@ def extract_fluxlim_spectra(args):
         for i in range(0, n_wave):
             wl = int(wave_min + i*2.)
 
-            np.savetxt(allspec[i], 'w%d.j4' % wl)
+            np.savetxt('w%d.j4' % wl, allspec[i])
             f.write('%s' % 'w%d.j4\n' % wl)
 
     vp.call_mkimage3d()
