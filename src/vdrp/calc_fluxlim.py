@@ -201,25 +201,10 @@ def parseArgs(argv):
 
 def calc_fluxlim(args):
     """
-    Equivalent of the rflim0 script.
+    Equivalent of the rflim0 script and of mklistfl and the rspfl3f scripts.
 
-    Calculate the flux limit for a given night and shot.
-
-    Paramters
-    ---------
-    args : struct
-        The arguments structure
-    """
-
-    extract_fluxlim_spectra(args)
-
-
-def extract_fluxlim_spectra(args):
-    """
-    Equivalent of mklistfl and the rspfl3f script.
-
-    Calculate the flux limit for a given ra / dec position by looping over a
-    70 x 70 arcsecond grid
+    Calculate the flux limit for a given night and shot, looping over a
+    (by default) 70 x 70 arcsecond grid
 
     Paramters
     ---------
@@ -270,35 +255,35 @@ def extract_fluxlim_spectra(args):
                 os.mkdir(wdir)
             os.chdir(wdir)
 
-            starobs, _ = phot.get_star_spectrum_data(ra, dec, args,
-                                                     False, dithall)
+            try:
+                starobs, _ = phot.get_star_spectrum_data(ra, dec, args,
+                                                         False, dithall)
 
-            if not len(starobs):
-                _logger.warn('No shots found, skipping!')
-                os.chdir(curdir)
-                if not args.debug:
-                    os.rmdir(wdir)
-                continue
+                if not len(starobs):
+                    raise Exception('No shots found, skipping!')
 
-            # Call rspstar
-            # Get fwhm and relative normalizations
-            vp.call_getnormexp(args.nightshot)
+                # Call rspstar
+                # Get fwhm and relative normalizations
+                vp.call_getnormexp(args.nightshot)
 
-            specfiles = phot.extract_star_spectrum(starobs, args,
-                                                   args.extraction_wl,
-                                                   args.extraction_wlrange)
+                specfiles = phot.extract_star_spectrum(starobs, args,
+                                                       args.extraction_wl,
+                                                       args.extraction_wlrange)
 
-            phot.get_structaz(starobs, args.multifits_dir)
+                phot.get_structaz(starobs, args.multifits_dir)
 
-            vp.run_fitradecsp(ra, dec, args.fitradec_step,
-                              args.fitradec_nsteps, args.fitradec_w_center,
-                              args.fitradec_w_range, args.fitradec_ifit1,
-                              starobs, specfiles)
+                vp.run_fitradecsp(ra, dec, args.fitradec_step,
+                                  args.fitradec_nsteps, args.fitradec_w_center,
+                                  args.fitradec_w_range, args.fitradec_ifit1,
+                                  starobs, specfiles)
 
-            # Now produce the final output
+                # Now produce the final output
 
-            if not os.path.exists('spec.out'):
-                _logger.warn('fitradecsp failed!')
+                if not os.path.exists('spec.out'):
+                    raise Exception('fitradecsp failed!')
+
+            except Exception as e:
+                _logger.error(e.message)
                 os.chdir(curdir)
                 if not args.debug:
                     shutil.rmtree(wdir)
@@ -308,10 +293,6 @@ def extract_fluxlim_spectra(args):
 
             w = np.where(specdata[:, 8] > 0)[0]
 
-            print(ra, args.ra)
-            print(dec, args.dec)
-            print(3600. * (ra-args.ra) * cosdec)
-            print(3600. * (dec-args.dec))
             allspec[:, speccounter, 0] = np.full_like(allspec[:, 0, 0],
                                                       3600. * (ra-args.ra)
                                                       * cosdec)
@@ -323,10 +304,6 @@ def extract_fluxlim_spectra(args):
                 / (specdata[w, 8] * 3.) * 8.
             allspec[w, speccounter, 3] = specdata[w, 4]*specdata[w, 7] \
                 / (specdata[w, 8] * 3.) * 8
-            # allspec[:, speccounter, 2] = specdata[2][w]*specdata[7][w] \
-            #     / (specdata[8][w] * 3.) * 8.
-            # allspec[:, speccounter, 3] = specdata[4][w]*specdata[7][w] \
-            #     / (specdata[8][w] * 3.) * 8
 
             speccounter += 1
 

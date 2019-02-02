@@ -559,9 +559,6 @@ def get_star_spectrum_data(ra, dec, args, multi_shot=False, dithall=None):
         shot = shot[w_s]
 
     else:
-        #w = (night == args.night) & (shot == args.shotid)
-        #night = night[w]
-        #shot = shot[w]
         night = [args.night]
         shot = [args.shotid]
 
@@ -572,7 +569,7 @@ def get_star_spectrum_data(ra, dec, args, multi_shot=False, dithall=None):
     _logger.info('Found %d shots' % len(shot))
 
     for n, s in zip(night, shot):
-        if multi_shot or dithall is None:            
+        if multi_shot or dithall is None:
             dithall_file = args.dithall_dir+'/'+n+'v'+s+'/dithall.use'
             _logger.info('Reading dithall file %s' % dithall_file)
             try:
