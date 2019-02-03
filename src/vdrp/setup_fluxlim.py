@@ -26,6 +26,7 @@ import numpy as np
 import vdrp.mplog as mplog
 import vdrp.utils as utils
 from vdrp.containers import DithAllFile
+import vdrp.jobsplitter as vj
 
 
 _baseDir = os.getcwd()
@@ -101,6 +102,13 @@ def parseArgs(argv):
             if config.has_option('FluxLim', bf):
                 defaults[bf] = config.getboolean('FluxLim', bf)
 
+    # Now setup the defaults for the jobsplitter
+    job_defaults = vj.getDefaults()
+
+    # Update them for fluxlim
+    job_defaults['cores'] = 1
+    job_defaults['threads'] = 1
+
     # Parse rest of arguments
     # Don't suppress add_help here so it will handle -h
 
@@ -108,6 +116,8 @@ def parseArgs(argv):
     parser = AP(parents=[conf_parser])
 
     parser.set_defaults(**defaults)
+    parser.set_defaults(**job_defaults)
+
     parser.add_argument("--logfile", type=str,
                         help="Filename for log file.")
 
@@ -126,6 +136,9 @@ def parseArgs(argv):
                         help='Night of observation (e.g. 20180611).')
     parser.add_argument('shotid', metavar='shotid', type=str,
                         help='Shot ID (e.g. 017).')
+
+    # Add the jobsplitter arguments
+    vj.get_arguments(parser)
 
     args = parser.parse_args(remaining_argv)
 
@@ -158,7 +171,9 @@ def setup_fluxlim(args):
 
     ifus = np.unique(dithall.ifuslot)
 
-    with open('flim%s' % nightshot, 'w') as f:
+    fname = 'flim%s' % nightshot
+
+    with open(fname, 'w') as f:
 
         for ifu in ifus:
             ifu_dith = dithall.where(dithall.ifuslot == ifu)
@@ -173,6 +188,11 @@ def setup_fluxlim(args):
             f.write('vdrp_calc_flim %.7f %.7f %s %s %s\n'
                     % (ra_mean, dec_mean, args.night, args.shotid,
                        '_'.join(fname.split('_')[0:4])))
+
+    # Now prepare the job splitter for it
+    args.cmdfile = fname
+
+    vj.main(args)
 
 
 def setup_fluxlim_entrypoint():

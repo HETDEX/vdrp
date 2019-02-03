@@ -91,6 +91,9 @@ def getDefaults():
     defaults['fitradec_w_range'] = 3.
     defaults['fitradec_ifit1'] = 1
 
+    defaults['fill'] = 3.
+    defaults['sn'] = 8.
+
     return defaults
 
 
@@ -148,6 +151,10 @@ def parseArgs(argv):
     parser.add_argument("--norm_dir", type=str, help="Directory "
                         "with the amplifier normalization files")
 
+    parser.add_argument("--ra_range", type=int, help="Width in RA"
+                        " direction for search grid in asec")
+    parser.add_argument("--dec_range", type=int, help="Width in DEC"
+                        " direction for search grid in asec")
     parser.add_argument("--radec_file", type=str, help="Filename of file with "
                         "RA DEC PA positions for all shots")
     parser.add_argument("--ifu_search_radius", type=float, help="Radius for "
@@ -169,6 +176,8 @@ def parseArgs(argv):
                         " range for fitradecsp call")
     parser.add_argument("--fitradec_ifit1", type=float, help="fit flag"
                         " for fitradecsp call")
+    parser.add_argument("--fill", type=float, help="Fill value")
+    parser.add_argument("--sn", type=float, help="SNR value")
 
     # Boolean paramters
 
@@ -301,11 +310,15 @@ def calc_fluxlim(args):
             allspec[:, speccounter, 2] = np.full_like(allspec[:, 0, 0], -9999.)
             allspec[:, speccounter, 3] = np.full_like(allspec[:, 0, 0], -9999.)
             allspec[w, speccounter, 2] = specdata[w, 2]*specdata[w, 7] \
-                / (specdata[w, 8] * 3.) * 8.
+                / (specdata[w, 8] * args.fill) * args.sn
             allspec[w, speccounter, 3] = specdata[w, 4]*specdata[w, 7] \
-                / (specdata[w, 8] * 3.) * 8
+                / (specdata[w, 8] * args.fill) * args.sn
 
             speccounter += 1
+
+            os.chdir(curdir)
+            if not args.debug:
+                shutil.rmtree(wdir)
 
     # Now write all the spec files and the list.
     os.chdir(curdir)
@@ -383,7 +396,7 @@ def main(jobnum, args):
     tmp_dir = os.path.join(cwd, args.nightshot + '_' + args.fname)
     _logger.info("Tempdir is {}".format(tmp_dir))
     _logger.info("Copying over prior data (if any)...")
-    dir_util.copy_tree(results_dir, tmp_dir)
+    # dir_util.copy_tree(results_dir, tmp_dir)
     # set working directory to tmp_dir
     wdir = tmp_dir
 
@@ -409,6 +422,8 @@ def main(jobnum, args):
     finally:
         os.chdir(args.curdir)
         vdrp_info.save(wdir)
+        if not args.debug:
+            shutil.rmtree(wdir)
         _logger.info("Done.")
 
 

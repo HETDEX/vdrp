@@ -106,9 +106,9 @@ def create_job_file(fname, commands, maxjobs, jobspernode, args):
 
     runtime = args.runtime
     ncores = args.threads * args.cores
-    if ncores > 20:
-        print('Would require %d cores, oversubscribing node!')
-        ncores = 20
+    if ncores > 24:
+        print('Would require %d cores, oversubscribing node!' % ncores)
+        ncores = 24
     job_c = 0
     batch_c = 1
 
@@ -151,7 +151,7 @@ def create_job_file(fname, commands, maxjobs, jobspernode, args):
                                      runtime=runtime,
                                      workdir='./'))
         debug = ''
-        if args.debug:
+        if args.debug_job:
             debug = '-d'
         sf.write(pyslurm.format(workdir='./',
                                 ncores=args.threads*args.cores,
@@ -163,6 +163,52 @@ def create_job_file(fname, commands, maxjobs, jobspernode, args):
 #                                    workdir='./'))
 
         sf.write(slurm_footer)
+
+
+def getDefaults():
+    '''
+    Get the defaults for the argument parser. Separating this out
+    from the get_arguments routine allows us to use different defaults
+    when using the jobsplitter from within a differen script.
+    '''
+    defaults = {}
+
+    defaults['nodes'] = 1
+    defaults['jobs'] = 24
+    defaults['threads'] = 5
+    defaults['cores'] = 4
+    defaults['runtime'] = '00:30:00'
+    defaults['queue'] = 'normal'
+
+
+def get_arguments(parser):
+    '''
+    Add command line arguments for the jobsplitter, this function can be
+    called from another tool, adding job splitter support.
+
+    Parameters
+    ----------
+    parser : argparse.ArgumentParser
+    '''
+
+    parser.add_argument('--nodes', '-n', type=int,
+                        help='Number of nodes to use per job')
+    parser.add_argument('--jobs', '-j', type=int,
+                        help='Number of jobs to schedule per node')
+    parser.add_argument('--threads', '-t', type=int,
+                        help='Number of threads to use per python process')
+    parser.add_argument('--cores', '-c', type=int,
+                        help='Number of jobs to schedule per node')
+    parser.add_argument('--runtime', '-r', type=str,
+                        help='Expected runtime of slurm job')
+    parser.add_argument('--queue', '-q', type=str,
+                        help='Slurm queue to use.')
+    parser.add_argument('--py_env', '-p', type=str,
+                        help='Use a specific pyenv environment')
+    parser.add_argument('--debug_job', '-d', action="store_true",
+                        help='Keep pylauncher workdir after completion')
+
+    return parser
 
 
 def parse_args(argv):
@@ -182,22 +228,12 @@ def parse_args(argv):
 
     p = AP(formatter_class=AHF)
 
-    p.add_argument('--nodes', '-n', type=int, default=1,
-                   help='Number of nodes to use per job')
-    p.add_argument('--jobs', '-j', type=int, default=20,
-                   help='Number of jobs to schedule per node')
-    p.add_argument('--threads', '-t', type=int, default=5,
-                   help='Number of threads to use per python process')
-    p.add_argument('--cores', '-c', type=int, default=4,
-                   help='Number of jobs to schedule per node')
-    p.add_argument('--runtime', '-r', type=str, default='00:30:00',
-                   help='Expected runtime of slurm job')
-    p.add_argument('--queue', '-q', type=str, default='vis',
-                   help='Slurm queue to use.')
-    p.add_argument('--py_env', '-p', type=str,
-                   help='Use a specific pyenv environment')
-    p.add_argument('--debug', '-d', action="store_true",
-                   help='Keep pylauncher workdir after completion')
+    defaults = getDefaults()
+
+    p.set_defaults(**defaults)
+
+    p = get_arguments(p)
+
     p.add_argument('cmdfile', type=str, help="""Input commands file""")
 
     return p.parse_args(args=argv)
