@@ -183,11 +183,11 @@ def setup_fluxlim(args):
             ra_mean = aps.biweight_location(ifu_dith.ra[sortidx][0:2])
             dec_mean = aps.biweight_location(ifu_dith.dec[sortidx][0:2])
 
-            fname = ifu_dith.filename[sortidx][0]
+            ixyname = ifu_dith.filename[sortidx][0]
 
             f.write('vdrp_calc_flim %.7f %.7f %s %s %s\n'
                     % (ra_mean, dec_mean, args.night, args.shotid,
-                       '_'.join(fname.split('_')[0:4])))
+                       '_'.join(ixyname.split('_')[0:4])))
 
     # Now prepare the job splitter for it
     args.cmdfile = fname

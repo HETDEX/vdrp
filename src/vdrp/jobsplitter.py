@@ -180,6 +180,8 @@ def getDefaults():
     defaults['runtime'] = '00:30:00'
     defaults['queue'] = 'normal'
 
+    return defaults
+
 
 def get_arguments(parser):
     '''
@@ -197,7 +199,7 @@ def get_arguments(parser):
                         help='Number of jobs to schedule per node')
     parser.add_argument('--threads', '-t', type=int,
                         help='Number of threads to use per python process')
-    parser.add_argument('--cores', '-c', type=int,
+    parser.add_argument('--cores', '-C', type=int,
                         help='Number of jobs to schedule per node')
     parser.add_argument('--runtime', '-r', type=str,
                         help='Expected runtime of slurm job')
