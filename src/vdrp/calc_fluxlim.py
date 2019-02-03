@@ -395,6 +395,8 @@ def main(jobnum, args):
     # Create a temporary directory
     tmp_dir = os.path.join(cwd, args.nightshot + '_' + args.fname)
     _logger.info("Tempdir is {}".format(tmp_dir))
+    if not os.path.exists(tmp_dir):
+        os.mkdir(tmp_dir)
     _logger.info("Copying over prior data (if any)...")
     # dir_util.copy_tree(results_dir, tmp_dir)
     # set working directory to tmp_dir
