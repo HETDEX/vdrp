@@ -187,7 +187,7 @@ def setup_fluxlim(args, rargs):
             ixyname = ifu_dith.filename[sortidx][0]
 
             if '-l' not in rargs:
-                rargs.appen('-l')
+                rargs.append('-l')
                 rargs.append('%s_%s_%s.log'
                              % (args.night, args.shotid,
                                 '_'.join(ixyname.split('_')[0:4])))
