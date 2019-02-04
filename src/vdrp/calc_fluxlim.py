@@ -69,8 +69,6 @@ def getDefaults():
     defaults["remove_tmp"] = True
     defaults["debug"] = False
 
-    defaults['fluxlim_logfile'] = 'fluxlim.log'
-
     defaults['dithall_dir'] = '/work/00115/gebhardt/maverick/detect/'
     defaults['multifits_dir'] = '/work/03946/hetdex/maverick/red1/reductions/'
     defaults['tp_dir'] = '/work/00115/gebhardt/maverick/detect/tp/'
@@ -137,8 +135,6 @@ def parseArgs(argv):
     parser = AP(parents=[conf_parser])
 
     parser.set_defaults(**defaults)
-    parser.add_argument("--fluxlim_logfile", type=str,
-                        help="Filename for log file.")
 
     parser.add_argument("--dithall_dir", type=str, help="Base directory "
                         "used to find the dithall.use files")
