@@ -188,7 +188,7 @@ def setup_fluxlim(args, rargs):
 
             logstr = ''
             if '-l' not in rargs:
-                logstr = '-l %s_%s_%s.log'  \
+                logstr = '--fluxlim_logfile %s_%s_%s.log'  \
                     % (args.night, args.shotid,
                        '_'.join(ixyname.split('_')[0:4]))
 
