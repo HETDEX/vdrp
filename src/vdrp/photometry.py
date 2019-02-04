@@ -1252,28 +1252,28 @@ def run_star_photometry(nightshot, ra, dec, starid, args):
         # Finally save the results to the results_dir
 
         _logger.info('Saving data for %s' % starname)
-        shutil.copy2(os.path.join(starobs, starname+'.ps'), args.results_dir)
-        shutil.copy2(os.path.join(starobs, starname+'_2d.res'),
+        shutil.copy2(os.path.join(stardir, starname+'.ps'), args.results_dir)
+        shutil.copy2(os.path.join(stardir, starname+'_2d.res'),
                      args.results_dir)
-        shutil.copy2(os.path.join(starobs, starname+'_2dn.ps'),
+        shutil.copy2(os.path.join(stardir, starname+'_2dn.ps'),
                      args.results_dir)
-        shutil.copy2(os.path.join(starobs, starname+'spec.dat'),
+        shutil.copy2(os.path.join(stardir, starname+'spec.dat'),
                      args.results_dir)
-        shutil.copy2(os.path.join(starobs, starname+'spec.res'),
+        shutil.copy2(os.path.join(stardir, starname+'spec.res'),
                      args.results_dir)
-        shutil.copy2(os.path.join(starobs, starname+'spece.dat'),
+        shutil.copy2(os.path.join(stardir, starname+'spece.dat'),
                      args.results_dir)
-        shutil.copy2(os.path.join(starobs, starname+'specf.dat'),
+        shutil.copy2(os.path.join(stardir, starname+'specf.dat'),
                      args.results_dir)
-        shutil.copy2(os.path.join(starobs, starname+'tot.ps'),
+        shutil.copy2(os.path.join(stardir, starname+'tot.ps'),
                      args.results_dir)
-        shutil.copy2(os.path.join(starobs, 'sp%d_2.dat') % starid,
+        shutil.copy2(os.path.join(stardir, 'sp%d_2.dat') % starid,
                      args.results_dir)
-        shutil.copy2(os.path.join(starobs, 'sp%d_100.dat') % starid,
+        shutil.copy2(os.path.join(stardir, 'sp%d_100.dat') % starid,
                      args.results_dir)
-        shutil.copy2(os.path.join(starobs, 'sp%d.obsdata') % starid,
+        shutil.copy2(os.path.join(stardir, 'sp%d.obsdata') % starid,
                      args.results_dir)
-        shutil.copy2(os.path.join(starobs, 'sp%d_out2.dat') % starid,
+        shutil.copy2(os.path.join(stardir, 'sp%d_out2.dat') % starid,
                      args.results_dir)
 
         _logger.info('Finished star extraction for %s' % starname)
