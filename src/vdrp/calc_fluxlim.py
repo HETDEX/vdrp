@@ -330,7 +330,6 @@ def calc_fluxlim(args, workdir):
             wl = int(wave_min + i*2.)
 
             w = np.where(allspec[i, :, 2] > -9000.)
-            _logger.info('Writing %d values for wl %f' % (len(w[0]), wl))
             if len(w[0]):
                 np.savetxt(os.path.join(workdir, 'w%d.j4' % wl),
                            allspec[i, w[0], :], fmt="%.5f %.5f %.3f %.3f")

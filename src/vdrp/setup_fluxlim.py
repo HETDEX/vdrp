@@ -186,6 +186,12 @@ def setup_fluxlim(args, rargs):
 
             ixyname = ifu_dith.filename[sortidx][0]
 
+            if '-l' not in rargs:
+                rargs.appen('-l')
+                rargs.append('%s_%s_%s.log'
+                             % (args.night, args.shotid,
+                                '_'.join(ixyname.split('_')[0:4])))
+
             f.write('vdrp_calc_flim %s %.7f %.7f %s %s %s\n'
                     % (' '.join(rargs), ra_mean, dec_mean, args.night,
                        args.shotid, '_'.join(ixyname.split('_')[0:4])))

@@ -95,12 +95,8 @@ def main(args):
     # Now the maximum number of jobs per node
     max_jobs_per_node = int(args.max_jobs_per_node * effective_cores_per_node)
 
-    print(max_jobs_per_node)
-
     # And the maximum number of jobs per slurm file
     max_jobs_per_file = int(args.nodes * max_jobs_per_node)
-
-    print(max_jobs_per_file)
 
     # First find the number of files we need
     n_files = n_needed(n_cmds, max_jobs_per_file)
