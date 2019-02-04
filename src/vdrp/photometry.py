@@ -1247,7 +1247,7 @@ def run_star_photometry(nightshot, ra, dec, starid, args):
         copy_stardata(starname, starid, stardir)
 
         _logger.info('Saving star data for %d' % starid)
-        save_data(stardir, os.path.join(starobs, 'sp%d.obsdata' % starid))
+        save_data(starobs, os.path.join(stardir, 'sp%d.obsdata' % starid))
 
         # Finally save the results to the results_dir
 
