@@ -158,8 +158,11 @@ def create_job_file(fname, commands, n_nodes, jobs_per_file, jobs_per_node,
     fn, _ = os.path.splitext(fname)
 
     if args.threading:
-        parname = '%s.params' % fn
+        param_c = 1
+        parname = '%s_%d.params' % (fn, param_c)
         pf = open(parname, 'w')
+        # Count the number of jobs scheduled per node
+        node_c = 1
 
     with open(fname, 'w') as fout:
         # Loop over all jobs that should go into this file
@@ -173,6 +176,18 @@ def create_job_file(fname, commands, n_nodes, jobs_per_file, jobs_per_node,
             if args.threading:
                 # We use threading, so we write a parameter file
                 pf.write('%s\n' % cmd.split(' ', 1)[1])
+                node_c += 1
+
+                if node_c > jobs_per_node:
+                    # Start a new job file
+                    taskname = cmd.split()[0]
+                    fout.write('%s --mcores %d -M %s\n'
+                               % (taskname, nthreads, parname))
+                    pf.close()
+                    param_c += 1
+                    parname = '%s_%d.params' % (fn, param_c)
+                    pf = open(parname, 'w')
+                    node_c = 1
             else:
                 fout.write('%s\n' % cmd)
 
