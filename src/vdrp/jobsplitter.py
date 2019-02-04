@@ -198,8 +198,8 @@ def create_job_file(fname, commands, n_nodes, jobs_per_file, jobs_per_node,
             # Write the command line in case of threading
             pf.close()
             taskname = cmd.split()[0]
-            fout.write('%s --mcores %d -M %s\n'
-                       % (taskname, nthreads, parname))
+            fout.write('%s -l %s_%d.log --mcores %d -M %s\n'
+                       % (taskname, fn, param_c, nthreads, parname))
 
     # Now write the corresponding slurm file
 
