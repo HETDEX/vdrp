@@ -1188,7 +1188,7 @@ def run_star_photometry(nightshot, ra, dec, starid, args):
 
         # Call rspstar
         # Get fwhm and relative normalizations
-        vp.call_getnormexp(nightshot, stardir, stardir)
+        vp.call_getnormexp(nightshot, stardir)
 
         specfiles = extract_star_spectrum(starobs, args,
                                           args.extraction_wl,
@@ -1197,7 +1197,7 @@ def run_star_photometry(nightshot, ra, dec, starid, args):
 
         vp.call_sumsplines(len(starobs), stardir)
 
-        apply_factor_spline(len(nshots), stardir, stardir)
+        apply_factor_spline(len(nshots), stardir)
 
         vp.call_fitonevp(args.extraction_wl, nightshot+'_'+str(starid),
                          stardir)
