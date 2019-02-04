@@ -978,9 +978,12 @@ def run_fitem(wl, outname, wdir):
 
     vp.call_fitem(wl, wdir)
 
-    shutil.move(os.path.join(wdir, 'fitghsp.in'), outname+'spece.dat')
-    shutil.move(os.path.join(wdir, 'pgplot.ps'), outname+'_2dn.ps')
-    shutil.move(os.path.join(wdir, 'lines.out'), outname+'_2d.res')
+    shutil.move(os.path.join(wdir, 'fitghsp.in'),
+                os.path.join(wdir, outname+'spece.dat'))
+    shutil.move(os.path.join(wdir, 'pgplot.ps'),
+                os.path.join(wdir, outname+'_2dn.ps'))
+    shutil.move(os.path.join(wdir, 'lines.out'),
+                os.path.join(wdir, outname+'_2d.res'))
 
 
 def run_getsdss(filename, sdss_file, wdir):
