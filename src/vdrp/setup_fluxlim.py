@@ -107,7 +107,7 @@ def parseArgs(argv):
 
     # Update them for fluxlim
     job_defaults['cores'] = 1
-    job_defaults['threads'] = 1
+    job_defaults['threads'] = 24
 
     # Parse rest of arguments
     # Don't suppress add_help here so it will handle -h

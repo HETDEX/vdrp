@@ -208,7 +208,7 @@ def parseArgs(argv):
     return args
 
 
-def calc_fluxlim(args):
+def calc_fluxlim(args, workdir):
     """
     Equivalent of the rflim0 script and of mklistfl and the rspfl3f scripts.
 
@@ -221,7 +221,8 @@ def calc_fluxlim(args):
         The arguments structure
     """
 
-    curdir = os.path.abspath(os.path.curdir)
+    # curdir = os.path.abspath(os.path.curdir)
+    curdir = workdir
     cosd = np.cos(args.dec / 57.3)
     rstart = args.ra - 35./3600./cosd
     dstart = args.dec - 35./3600.
@@ -295,7 +296,7 @@ def calc_fluxlim(args):
                 _logger.error(e.message)
                 os.chdir(curdir)
                 if not args.debug:
-                    shutil.rmtree(wdir)
+                    shutil.rmtree(wdir, ignore_errors=True)
                 continue
 
             specdata = np.loadtxt('spec.out')
@@ -318,7 +319,7 @@ def calc_fluxlim(args):
 
             os.chdir(curdir)
             if not args.debug:
-                shutil.rmtree(wdir)
+                shutil.rmtree(wdir, ignore_errors=True)
 
     # Now write all the spec files and the list.
     os.chdir(curdir)
@@ -370,30 +371,20 @@ def update_im3d_header(ra, dec):
         hdu[0].header['EQUINOX'] = 2000
 
 
-vdrp_info = None
+# vdrp_info = None
 
 
 def main(jobnum, args):
     """
     Main function.
     """
-    global vdrp_info
-
-    # Create results directory for given night and shot
-    cwd = _baseDir
-    results_dir = cwd
-    utils.createDir(results_dir)
-    args.results_dir = results_dir
-
-    # save arguments for the execution
-    with open(os.path.join(results_dir, 'args.pickle'), 'wb') as f:
-        pickle.dump(args, f, pickle.HIGHEST_PROTOCOL)
+    # global vdrp_info
 
     # _logger.info("Executing task : {}".format(task))
 
     # default is to work in results_dir
     # Create a temporary directory
-    tmp_dir = os.path.join(cwd, args.nightshot + '_' + args.fname)
+    tmp_dir = os.path.join(args.curdir, args.nightshot + '_' + args.fname)
     _logger.info("Tempdir is {}".format(tmp_dir))
     if not os.path.exists(tmp_dir):
         os.mkdir(tmp_dir)
@@ -404,11 +395,10 @@ def main(jobnum, args):
 
     _logger.info("Configuration {}.".format(args.config_source))
 
-    vdrp_info = VdrpInfo.read(wdir)
-    vdrp_info.night = args.night
-    vdrp_info.shotid = args.shotid
+    # vdrp_info = VdrpInfo.read(wdir)
+    # vdrp_info.night = args.night
+    # vdrp_info.shotid = args.shotid
 
-    args.curdir = os.path.abspath(os.path.curdir)
     args.wdir = wdir
     args.jobnum = jobnum
 
@@ -416,16 +406,16 @@ def main(jobnum, args):
         os.chdir(wdir)
 
         _logger.info('Starting flux limit calculation')
-        calc_fluxlim(args)
+        calc_fluxlim(args, wdir)
         _logger.info('Finished flux limit calculation')
     except Exception as e:
         _logger.exception(e)
 
     finally:
         os.chdir(args.curdir)
-        vdrp_info.save(wdir)
+        # vdrp_info.save(wdir)
         if not args.debug:
-            shutil.rmtree(wdir)
+            shutil.rmtree(wdir, ignore_errors=True)
         _logger.info("Done.")
 
 
@@ -447,7 +437,9 @@ def calc_fluxlim_entrypoint():
 
     args, remaining_argv = parser.parse_known_args()
 
+    print('Setting up mplogger')
     mplog.setup_mp_logging(args.logfile)
+    print('Done')
 
     # We found a -M flag with a command file, now loop over it, we parse
     # the command line parameters for each call, and intialize the args
@@ -479,12 +471,26 @@ def calc_fluxlim_entrypoint():
         pool = ThreadPool(args.mcores)
         c = 1
 
+        curdir = os.path.abspath(os.path.curdir)
+
         # For each command line add an entry to the ThreadPool.
         for l in cmdlines:
             largs = copy.copy(remaining_argv)
             largs += l.split()
 
             main_args = parseArgs(largs)
+
+            # Create results directory for given night and shot
+            cwd = _baseDir
+            results_dir = cwd
+            utils.createDir(results_dir)
+            main_args.results_dir = results_dir
+
+            # save arguments for the execution
+            with open(os.path.join(results_dir, 'args.pickle'), 'wb') as f:
+                pickle.dump(main_args, f, pickle.HIGHEST_PROTOCOL)
+
+            main_args.curdir = curdir
 
             pool.add_task(main, c, copy.copy(main_args))
 
@@ -499,6 +505,18 @@ def calc_fluxlim_entrypoint():
         # The first positional argument wasn't an input list,
         # so process normally
         args = parseArgs(remaining_argv)
+        
+        # Create results directory for given night and shot
+        cwd = _baseDir
+        results_dir = cwd
+        utils.createDir(results_dir)
+        args.results_dir = results_dir
+
+        # save arguments for the execution
+        with open(os.path.join(results_dir, 'args.pickle'), 'wb') as f:
+            pickle.dump(args, f, pickle.HIGHEST_PROTOCOL)
+
+        args.curdir = os.path.abspath(os.path.curdir)
 
         sys.exit(main(1, args))
 

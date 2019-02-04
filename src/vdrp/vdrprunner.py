@@ -48,6 +48,8 @@ def VDRPLauncher(commandfile, **kwargs):
                                                            stampdir=workdir),
             debug=debug),
         debug=debug, **kwargs)
+    print('Running job')
+    print(job)
     job.run()
     print(job.final_report())
 
@@ -61,6 +63,7 @@ def main(args):
 
     debug = ''
     if args.debug:
+        print('Enabling debugging')
         debug = 'job+host+task+exec+command'
     VDRPLauncher(args.cmdfile, cores=args.cores,
                  workdir=workdir, debug=debug)
@@ -97,6 +100,7 @@ def parse_args(argv):
 
 def run():
 
+    print('Starting vdrp runner')
     args = parse_args(sys.argv[1:])
     main(args)
 
