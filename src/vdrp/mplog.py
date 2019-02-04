@@ -5,7 +5,7 @@ import logging
 import sys
 import traceback
 import Queue
-import logging
+
 
 _logger = logging.getLogger()
 

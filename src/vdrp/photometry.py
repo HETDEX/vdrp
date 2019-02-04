@@ -500,7 +500,7 @@ def get_throughput_file(path, shotname):
         return path + '/' + "tpavg.dat"
 
 
-def apply_factor_spline(factor):
+def apply_factor_spline(factor, wdir):
     """
     Equivalent of the rawksp[12] scripts
 
@@ -511,10 +511,13 @@ def apply_factor_spline(factor):
     ----------
     factor : int
         The factor to apply.
+    wdir : str
+        Name of the work directory
     """
-    wave, flx = np.loadtxt('splines.out', unpack=True, usecols=[0, 2])
+    wave, flx = np.loadtxt(os.path.join(wdir, 'splines.out'), unpack=True,
+                           usecols=[0, 2])
 
-    with open('fitghsp.in', 'w') as f:
+    with open(os.path.join(wdir, 'fitghsp.in'), 'w') as f:
         for w, fl in zip(wave, flx):
             f.write('%f %f\n' % (w, fl*1.e17 / factor))
 
@@ -628,7 +631,7 @@ def get_star_spectrum_data(ra, dec, args, multi_shot=False, dithall=None):
     return starobs, np.unique(night_shots)
 
 
-def extract_star_spectrum(starobs, args, wl, wlr, prefix=''):
+def extract_star_spectrum(starobs, args, wl, wlr, wdir, prefix=''):
     """
     Equivalent of the rextsp[1] and parts of the rsp1b scripts.
 
@@ -641,6 +644,8 @@ def extract_star_spectrum(starobs, args, wl, wlr, prefix=''):
         List with StarObservation objects.
     args : struct
         The arguments structure
+    wdir : str
+        Name of the work directory
     prefix : str (optional)
         Optional prefix for the output filenames.
 
@@ -661,12 +666,12 @@ def extract_star_spectrum(starobs, args, wl, wlr, prefix=''):
         vp.call_imextsp(fpath, s.ifuslot, wl, wlr,
                         get_throughput_file(args.tp_dir, s.night+'v'+s.shot),
                         args.norm_dir+'/'+s.fname+".norm",
-                        prefix+'tmp%d.dat' % s.num)
+                        prefix+'tmp%d.dat' % s.num, wdir)
         specfiles.append(prefix+'tmp%d.dat' % s.num)
     return specfiles
 
 
-def get_shuffle_stars(nightshot, args):
+def get_shuffle_stars(nightshot, args, wdir):
     """
     Rerun shuffle and find the all stars for a given night / shot.
 
@@ -678,11 +683,11 @@ def get_shuffle_stars(nightshot, args):
         The script parameter namespace
     """
 
-    astrom.get_ra_dec_orig('./', args.multifits_dir, args.night, args.shotid)
-    track = astrom.get_track('./', args.multifits_dir, args.night, args.shotid)
+    astrom.get_ra_dec_orig(wdir, args.multifits_dir, args.night, args.shotid)
+    track = astrom.get_track(wdir, args.multifits_dir, args.night, args.shotid)
 
     ra, dec, _ = \
-        utils.read_radec("radec.orig")
+        utils.read_radec(os.path.join(wdir, "radec.orig"))
 
     # Try to run shuffle using different catalogs, we need SDSS for SED
     # fitting, the others can be used for throughput calculation
@@ -690,17 +695,17 @@ def get_shuffle_stars(nightshot, args):
 
         stars = []
 
-        astrom.redo_shuffle('./', ra, dec, track,
+        astrom.redo_shuffle(wdir, ra, dec, track,
                             args.acam_magadd, args.wfs1_magadd,
                             args.wfs2_magadd, args.shuffle_cfg,
                             args.fplane_txt, args.night, catalog=cat)
 
         c = 1
         try:
-            indata_str = np.loadtxt('shout.ifustars', dtype='U50',
-                                    usecols=[0, 1])
-            indata_flt = np.loadtxt('shout.ifustars', dtype=float,
-                                    usecols=[2, 3, 4, 5, 6, 7, 8])
+            indata_str = np.loadtxt(os.path.join(wdir, 'shout.ifustars'),
+                                    dtype='U50', usecols=[0, 1])
+            indata_flt = np.loadtxt(os.path.join(wdir, 'shout.ifustars'),
+                                    dtype=float, usecols=[2, 3, 4, 5, 6, 7, 8])
             for ds, df in zip(indata_str, indata_flt):
                 star = ShuffleStar(20000 + c, ds[0], ds[1], df[0], df[1],
                                    df[2], df[3], df[4], df[5], df[6], cat)
@@ -756,7 +761,7 @@ def average_spectrum(spec, wlmin, wlmax):
     return avg, norm, uncert
 
 
-def average_spectra(specfiles, starobs, wl, wlrange):
+def average_spectra(specfiles, starobs, wl, wlrange, wdir):
     """
     Average all observed spectra and fill in the corresponding entries in the
     StarObservation class.
@@ -778,10 +783,10 @@ def average_spectra(specfiles, starobs, wl, wlrange):
     wlmin = wl - wlrange
     wlmax = wl + wlrange
 
-    with open('spavg.all', 'w') as f:
+    with open(os.path.join(wdir, 'spavg.all'), 'w') as f:
         for spf, obs in zip(specfiles, starobs):
             sp = Spectrum()
-            sp.read(spf)
+            sp.read(os.path.join(wdir, spf))
             obs.avg, obs.avg_norm, obs.avg_error = \
                 average_spectrum(sp, wlmin, wlmax)
 
@@ -823,7 +828,7 @@ def get_structaz(starobs, path):
             obs.structaz = az_avg
 
 
-def get_sedfits(starobs, args):
+def get_sedfits(starobs, args, wdir):
     """
     Run quick_fit to generate the SED fits, if available.
 
@@ -842,8 +847,8 @@ def get_sedfits(starobs, args):
         import stellarSEDfits.quick_fit as qf
         from argparse import Namespace
         qf_args = Namespace()
-        qf_args.filename = 'qf.ifus'
-        qf_args.outfolder = './'
+        qf_args.filename = os.path.join(wdir, 'qf.ifus')
+        qf_args.outfolder = wdir
         qf_args.ebv = args.quick_fit_ebv
         qf_args.make_plot = args.quick_fit_plot
         qf_args.wave_init = args.quick_fit_wave_init
@@ -852,7 +857,7 @@ def get_sedfits(starobs, args):
 
         have_stars = False
 
-        with open('qf.ifus', 'w') as f:
+        with open(os.path.join(wdir, 'qf.ifus'), 'w') as f:
             for s in starobs:
                 if s.catalog != 'SDSS':
                     _logger.info('Skipping %s star %d, currently only SDSS'
@@ -867,8 +872,9 @@ def get_sedfits(starobs, args):
         if have_stars:
             qf.main(qf_args)
             for s in starobs:
-                fitsedname = '%s_%s.txt' % (s.shotid, s.shuffleid)
-                sedname = 'sp%d_fitsed.dat' % s.starid
+                fitsedname = os.path.join(wdir, '%s_%s.txt'
+                                          % (s.shotid, s.shuffleid))
+                sedname = os.path.join(wdir, 'sp%d_fitsed.dat' % s.starid)
                 if not os.path.exists(fitsedname):
                     _logger.warn('No sed fit found for star %d' % s.starid)
                     continue
@@ -879,14 +885,14 @@ def get_sedfits(starobs, args):
                      'pre-existing SED fits')
         for s in starobs:
             fitsedname = '%s_%s.txt' % (s.shotid, s.shuffleid)
-            sedname = 'sp%d_fitsed.dat' % s.starid
+            sedname = os.path.join('sp%d_fitsed.dat' % s.starid)
             if not os.path.exists(os.path.join(args.sed_fit_dir, fitsedname)):
                 _logger.warn('No sed fit found for star %d' % s.starid)
                 continue
             shutil.copy2(os.path.join(args.sed_fit_dir, fitsedname), sedname)
 
 
-def run_fit2d(ra, dec, starobs, seeing, outname):
+def run_fit2d(ra, dec, starobs, seeing, outname, wdir):
     """
     Prepare input files for running fit2d, and run it.
 
@@ -904,21 +910,21 @@ def run_fit2d(ra, dec, starobs, seeing, outname):
         Output filename.
 
     """
-    with open('in', 'w') as f:
+    with open(os.path.join(wdir, 'in'), 'w') as f:
         for obs in starobs:
             f.write('%f %f %f %f %s %s %s %s %f %f\n'
                     % (obs.ra, obs.dec, obs.avg, obs.avg_norm, obs.shotname,
                        obs.night, obs.shot, obs.expname, obs.structaz,
                        obs.avg_error))
-    if not os.path.exists('fwhm.use'):
+    if not os.path.exists(os.path.join(wdir, 'fwhm.use')):
         _logger.warn('No fwhm from getnormexp found, using default')
-        with open('fwhm.use', 'w') as f:
+        with open(os.path.join(wdir, 'fwhm.use'), 'w') as f:
             f.write('%f\n' % seeing)
 
-    vp.call_fit2d(ra, dec, outname)
+    vp.call_fit2d(ra, dec, outname, wdir)
 
 
-def run_sumlineserr(specfiles):
+def run_sumlineserr(specfiles, wdir):
     """
     Prepare input and run sumlineserr. It sums a set of spectra, and then bins
     to 100AA bins. Used for SED fitting.
@@ -930,18 +936,18 @@ def run_sumlineserr(specfiles):
 
     """
 
-    indata = np.loadtxt('out2d', dtype='U50', ndmin=2,
+    indata = np.loadtxt(os.path.join(wdir, 'out2d'), dtype='U50', ndmin=2,
                         usecols=[8, 9, 10, 11, 12, 13, 14])
 
-    with open('list2', 'w') as f:
+    with open(os.path.join(wdir, 'list2'), 'w') as f:
         for spf, d in zip(specfiles, indata):
             f.write('%s %s %s %s %s %s %s %s\n' %
                     (spf, d[0], d[1], d[2], d[3], d[4], d[5], d[6]))
 
-    run_command(vp._vdrp_bindir + '/sumlineserr')
+    run_command(vp._vdrp_bindir + '/sumlineserr', wdir=wdir)
 
 
-def run_fitem(wl, outname):
+def run_fitem(wl, outname, wdir):
     """
     Prepare input file for fitem, and run it.
 
@@ -962,22 +968,22 @@ def run_fitem(wl, outname):
         Parameters of the line fit
     """
 
-    indata = np.loadtxt('splines.out', dtype='U50',
+    indata = np.loadtxt(os.path.join(wdir, 'splines.out'), dtype='U50',
                         usecols=[0, 1, 2, 3, 4])
 
-    with open('fitghsp.in', 'w') as f:
+    with open(os.path.join(wdir, 'fitghsp.in'), 'w') as f:
         for d in indata:
             f.write('%s %s %s %s %s\n' %
                     (d[0], d[2], d[4], d[1], d[3]))
 
-    vp.call_fitem(wl)
+    vp.call_fitem(wl, wdir)
 
-    shutil.move('fitghsp.in', outname+'spece.dat')
-    shutil.move('pgplot.ps', outname+'_2dn.ps')
-    shutil.move('lines.out', outname+'_2d.res')
+    shutil.move(os.path.join(wdir, 'fitghsp.in'), outname+'spece.dat')
+    shutil.move(os.path.join(wdir, 'pgplot.ps'), outname+'_2dn.ps')
+    shutil.move(os.path.join(wdir, 'lines.out'), outname+'_2d.res')
 
 
-def run_getsdss(filename, sdss_file):
+def run_getsdss(filename, sdss_file, wdir):
     """
     Run getsdss on filename. Equivalent to rsdss file.
 
@@ -993,15 +999,16 @@ def run_getsdss(filename, sdss_file):
     The flux in the g-Band.
 
     """
-    shutil.copy2(sdss_file, 'sdssg.dat')
-    shutil.copy2(filename, 's1')
+    shutil.copy2(os.path.join(wdir, sdss_file),
+                 os.path.join(wdir, 'sdssg.dat'))
+    shutil.copy2(os.path.join(wdir, filename), os.path.join(wdir, 's1'))
 
-    run_command(vp._vdrp_bindir + '/getsdssg')
+    run_command(vp._vdrp_bindir + '/getsdssg', wdir=wdir)
 
-    return float(np.loadtxt('out'))
+    return float(np.loadtxt(os.path.join(wdir, 'out')))
 
 
-def run_biwt(data, outfile):
+def run_biwt(data, outfile, wdir):
     """
     Calculate biweight of the supplied data.
 
@@ -1014,18 +1021,18 @@ def run_biwt(data, outfile):
     -------
     n, biwt, error
     """
-    with open('tp.dat', 'w') as f:
+    with open(os.path.join(wdir, 'tp.dat'), 'w') as f:
         for d in data:
             f.write('%f\n' % d)
 
-    run_command(vp._vdrp_bindir + '/biwt', 'tp.dat\n1\n')
+    run_command(vp._vdrp_bindir + '/biwt', 'tp.dat\n1\n', wdir=wdir)
 
-    os.remove('tp.dat')
+    os.remove(os.path.join(wdir, 'tp.dat'))
 
-    shutil.move('biwt.out', outfile)
+    shutil.move(os.path.join(wdir, 'biwt.out'), os.path.join(wdir, outfile))
 
 
-def run_combsed(sedlist, sigmacut, rmscut, outfile, plotfile=None):
+def run_combsed(sedlist, sigmacut, rmscut, outfile, wdir, plotfile=None):
     """
 
 
@@ -1046,24 +1053,26 @@ def run_combsed(sedlist, sigmacut, rmscut, outfile, plotfile=None):
     -------
     n, biwt, error
     """
-    with open('list', 'w') as f:
+    with open(os.path.join(wdir, 'list'), 'w') as f:
         for l in sedlist:
             f.write('%s\n' % l)
 
     input = '{:f} {:f}\n'
-    print('combsed', input.format(sigmacut, rmscut))
     run_command(vp._vdrp_bindir + '/combsed',
-                input.format(sigmacut, rmscut))
+                input.format(sigmacut, rmscut), wdir=wdir)
 
-    shutil.move('comb.out', outfile)
+    shutil.move(os.path.join(wdir, 'comb.out'), os.path.join(wdir, outfile))
 
     if plotfile is not None:
 
-        fdata = np.loadtxt('out', dtype=float,
+        fdata = np.loadtxt(os.path.join(wdir, 'out'), dtype=float,
                            usecols=[1, 2, 4, 5])
-        idata = np.loadtxt('out', dtype=int, usecols=[0, 3])
+        idata = np.loadtxt(os.path.join(wdir, 'out'), dtype=int,
+                           usecols=[0, 3])
 
-        with open('in', 'w') as f, open('in2', 'w') as f2:
+        f_in = os.path.join(wdir, 'in')
+        f_in2 = os.path.join(wdir, 'in2')
+        with open(f_in, 'w') as f, open(f_in2, 'w') as f2:
             for di, df, sf in zip(idata, fdata, sedlist):
                 if di[1] == 0:
                     f.write('%s %d %f %f %d %f %f\n'
@@ -1074,12 +1083,13 @@ def run_combsed(sedlist, sigmacut, rmscut, outfile, plotfile=None):
                                 di[1], df[2], df[3]))
             f2.write('%s\n' % outfile)
 
-        run_command(vp._vdrp_bindir + '/plotseda', '/vcps\n')
+        run_command(vp._vdrp_bindir + '/plotseda', '/vcps\n', wdir=wdir)
 
-        shutil.move('pgplot.ps', plotfile)
+        shutil.move(os.path.join(wdir, 'pgplot.ps'),
+                    os.path.join(wdir, plotfile))
 
 
-def copy_stardata(starname, starid):
+def copy_stardata(starname, starid, wdir):
     """
     Copies the result files from workdir results_dir as done by rspstar.
 
@@ -1094,11 +1104,13 @@ def copy_stardata(starname, starid):
 
     """
 
-    shutil.copy2(starname+'specf.dat', 'sp%d_2.dat' % starid)
-    shutil.copy2('sumspec.out', 'sp%d_100.dat' % starid)
+    shutil.copy2(os.path.join(wdir, starname+'specf.dat'),
+                 os.path.join(wdir, 'sp%d_2.dat' % starid))
+    shutil.copy2(os.path.join(wdir, 'sumspec.out'),
+                 os.path.join(wdir, 'sp%d_100.dat' % starid))
 
 
-def run_shuffle_photometry(args):
+def run_shuffle_photometry(args, wdir):
     """
     Equivalent of the rsetstar script. Find all shuffle stars observed
     for the night / shot given on the command line, and the loop over all
@@ -1112,7 +1124,7 @@ def run_shuffle_photometry(args):
     """
     nightshot = args.night + 'v' + args.shotid
 
-    stars = get_shuffle_stars(nightshot, args)
+    stars = get_shuffle_stars(nightshot, args, wdir)
 
     # Parallelize the star extraction. Create a MPPool with
     # shuffle_cores processes
@@ -1162,10 +1174,9 @@ def run_star_photometry(nightshot, ra, dec, starid, args):
         # Create the workdirectory for this star
         # curdir = os.path.abspath(os.path.curdir)
         curdir = args.wdir
-        stardir = curdir + '/' + starname
+        stardir = os.path.join(curdir, starname)
         if not os.path.exists(stardir):
             os.mkdir(stardir)
-        os.chdir(stardir)
 
         # Extract data like the data in l1
         starobs, nshots = get_star_spectrum_data(ra, dec, args,
@@ -1173,56 +1184,58 @@ def run_star_photometry(nightshot, ra, dec, starid, args):
 
         if not len(starobs):
             _logger.warn('No shots found, skipping!')
-            os.chdir(curdir)
             return
 
         # Call rspstar
         # Get fwhm and relative normalizations
-        vp.call_getnormexp(nightshot)
+        vp.call_getnormexp(nightshot, stardir, stardir)
 
         specfiles = extract_star_spectrum(starobs, args,
                                           args.extraction_wl,
-                                          args.extraction_wlrange)
+                                          args.extraction_wlrange,
+                                          stardir)
 
-        vp.call_sumsplines(len(starobs))
+        vp.call_sumsplines(len(starobs), stardir)
 
-        apply_factor_spline(len(nshots))
+        apply_factor_spline(len(nshots), stardir, stardir)
 
-        vp.call_fitonevp(args.extraction_wl, nightshot+'_'+str(starid))
+        vp.call_fitonevp(args.extraction_wl, nightshot+'_'+str(starid),
+                         stardir)
 
         average_spectra(specfiles, starobs, args.average_wl,
-                        args.average_wlrange)
+                        args.average_wlrange, stardir)
 
         get_structaz(starobs, args.multifits_dir)
 
-        run_fit2d(ra, dec, starobs, args.seeing, starname + '.ps')
+        run_fit2d(ra, dec, starobs, args.seeing, starname + '.ps', stardir)
 
         # Save the out2 file created by fit2d
-        shutil.copy2('out2', 'sp%d_out2.dat' % starid)
+        shutil.copy2(os.path.join(stardir, 'out2'),
+                     os.path.join(stardir, 'sp%d_out2.dat') % starid)
 
-        vp.call_mkimage(ra, dec, starobs)
+        vp.call_mkimage(ra, dec, starobs, stardir)
 
-        run_sumlineserr(specfiles)
+        run_sumlineserr(specfiles, stardir)
 
-        run_fitem(args.extraction_wl, starname)
+        run_fitem(args.extraction_wl, starname, stardir)
 
         # Extract full spectrum
 
         fspecfiles = extract_star_spectrum(starobs, args,
                                            args.full_extraction_wl,
                                            args.full_extraction_wlrange,
-                                           prefix='f')
+                                           stardir, prefix='f')
 
-        run_sumlineserr(fspecfiles)
+        run_sumlineserr(fspecfiles, stardir)
 
-        indata = np.loadtxt('splines.out', dtype='U50',
+        indata = np.loadtxt(os.path.join(stardir, 'splines.out'), dtype='U50',
                             usecols=[0, 1, 2, 3, 4])
 
-        with open(starname + 'specf.dat', 'w') as f:
+        with open(os.path.join(stardir, starname + 'specf.dat'), 'w') as f:
             for d in indata:
                 f.write('%s %s %s %s %s\n' % (d[0], d[2], d[4], d[1], d[3]))
 
-        vp.call_sumspec(starname)
+        vp.call_sumspec(starname, stardir)
 
         mind = args.shot_search_radius
         for o in starobs:
@@ -1231,28 +1244,37 @@ def run_star_photometry(nightshot, ra, dec, starid, args):
 
         _logger.info('Closest fiber is %.5f arcseconds away' % mind)
 
-        copy_stardata(starname, starid)
+        copy_stardata(starname, starid, stardir)
 
         _logger.info('Saving star data for %d' % starid)
-        save_data(starobs, 'sp%d.obsdata' % starid)
+        save_data(starobs, os.path.join(starobs, 'sp%d.obsdata' % starid))
 
         # Finally save the results to the results_dir
 
         _logger.info('Saving data for %s' % starname)
-        shutil.copy2(starname+'.ps', args.results_dir)
-        shutil.copy2(starname+'_2d.res', args.results_dir)
-        shutil.copy2(starname+'_2dn.ps', args.results_dir)
-        shutil.copy2(starname+'spec.dat', args.results_dir)
-        shutil.copy2(starname+'spec.res', args.results_dir)
-        shutil.copy2(starname+'spece.dat', args.results_dir)
-        shutil.copy2(starname+'specf.dat', args.results_dir)
-        shutil.copy2(starname+'tot.ps', args.results_dir)
-        shutil.copy2('sp%d_2.dat' % starid, args.results_dir)
-        shutil.copy2('sp%d_100.dat' % starid, args.results_dir)
-        shutil.copy2('sp%d.obsdata' % starid, args.results_dir)
-        shutil.copy2('sp%d_out2.dat' % starid, args.results_dir)
-
-        os.chdir(curdir)
+        shutil.copy2(os.path.join(starobs, starname+'.ps'), args.results_dir)
+        shutil.copy2(os.path.join(starobs, starname+'_2d.res'),
+                     args.results_dir)
+        shutil.copy2(os.path.join(starobs, starname+'_2dn.ps'),
+                     args.results_dir)
+        shutil.copy2(os.path.join(starobs, starname+'spec.dat'),
+                     args.results_dir)
+        shutil.copy2(os.path.join(starobs, starname+'spec.res'),
+                     args.results_dir)
+        shutil.copy2(os.path.join(starobs, starname+'spece.dat'),
+                     args.results_dir)
+        shutil.copy2(os.path.join(starobs, starname+'specf.dat'),
+                     args.results_dir)
+        shutil.copy2(os.path.join(starobs, starname+'tot.ps'),
+                     args.results_dir)
+        shutil.copy2(os.path.join(starobs, 'sp%d_2.dat') % starid,
+                     args.results_dir)
+        shutil.copy2(os.path.join(starobs, 'sp%d_100.dat') % starid,
+                     args.results_dir)
+        shutil.copy2(os.path.join(starobs, 'sp%d.obsdata') % starid,
+                     args.results_dir)
+        shutil.copy2(os.path.join(starobs, 'sp%d_out2.dat') % starid,
+                     args.results_dir)
 
         _logger.info('Finished star extraction for %s' % starname)
     except Exception as e:
@@ -1273,19 +1295,22 @@ def get_g_band_throughput(args):
 
     nightshot = args.night + 'v' + args.shotid
 
-    _logger.info('Reading %s.shstars in %s'
-                 % (nightshot, os.path.abspath(os.path.curdir)))
+    wdir = args.wdir
 
-    stars = read_data('%s.shstars' % nightshot)
+    _logger.info('Reading %s.shstars in %s'
+                 % (nightshot, wdir))
+
+    stars = read_data(os.path.join(wdir, '%s.shstars') % nightshot)
 
     flxdata = []
 
     for s in stars:
-        if not os.path.exists('sp%d.obsdata' % s.starid):
+        if not os.path.exists(os.path.join(wdir, 'sp%d.obsdata' % s.starid)):
             _logger.warn('No spectral data for %d found!' % s.starid)
             continue
-        starobs = read_data('sp%d.obsdata' % s.starid)
-        g_flx = run_getsdss('sp%d_100.dat' % s.starid, args.sdss_filter_file)
+        starobs = read_data(os.path.join(wdir, 'sp%d.obsdata' % s.starid))
+        g_flx = run_getsdss('sp%d_100.dat' % s.starid, args.sdss_filter_file,
+                            wdir)
         sdss_flx = 5.048e-9*(10**(-0.4*s.mag_g))/(6.626e-27) / \
             (3.e18/4680.)*360.*5.e5*100
 
@@ -1296,7 +1321,7 @@ def get_g_band_throughput(args):
         if len(starobs) > 15 and dflx > 0.02 and dflx < 0.21:
             flxdata.append(dflx)
 
-    run_biwt(flxdata, 'tp.biwt')
+    run_biwt(flxdata, 'tp.biwt', wdir)
 
 
 def mk_sed_throughput_curve(args):
@@ -1312,20 +1337,22 @@ def mk_sed_throughput_curve(args):
 
     nightshot = args.night + 'v' + args.shotid
 
-    _logger.info('Reading %s.shstars in %s'
-                 % (nightshot, os.path.abspath(os.path.curdir)))
+    wdir = args.wdir
 
-    stars = read_data('%s.shstars' % nightshot)
+    _logger.info('Reading %s.shstars in %s'
+                 % (nightshot, wdir))
+
+    stars = read_data(os.path.join(wdir, '%s.shstars' % nightshot))
 
     sedlist = []
 
-    get_sedfits(stars, args)
+    get_sedfits(stars, args, wdir)
 
     for s in stars:
-        if not os.path.exists('sp%s_100.dat' % s.starid):
+        if not os.path.exists(os.path.join(wdir, 'sp%s_100.dat' % s.starid)):
             _logger.info('No star data found for sp%s_100.dat' % s.starid)
             continue
-        sedname = 'sp%d_fitsed.dat' % s.starid
+        sedname = os.path.join(wdir, 'sp%d_fitsed.dat' % s.starid)
 
         if not os.path.exists(sedname):
             _logger.warn('No sed fit found for star %d' % s.starid)
@@ -1336,8 +1363,8 @@ def mk_sed_throughput_curve(args):
 
         sedcgs = seddata[1][1:]/6.626e-27/(3.e18/seddata[0][1:])*360.*5.e5*100.
 
-        np.savetxt('sp%dsed.dat' % s.starid, zip(seddata[0][1:],
-                                                 seddata[1][1:]/sedcgs))
+        np.savetxt(os.path.join(wdir, 'sp%dsed.dat' % s.starid),
+                   zip(seddata[0][1:], seddata[1][1:]/sedcgs))
 
         sedlist.append('sp%dsed.dat' % s.starid)
 
@@ -1347,28 +1374,32 @@ def mk_sed_throughput_curve(args):
         return
 
     run_combsed(sedlist, args.sed_sigma_cut, args.sed_rms_cut,
-                '%ssedtp.dat' % nightshot, '%ssedtpa.ps' % nightshot)
+                '%ssedtp.dat' % nightshot, wdir, '%ssedtpa.ps' % nightshot)
 
-    data = np.loadtxt('%ssedtp.dat' % nightshot)
+    data = np.loadtxt(os.path.join(wdir, '%ssedtp.dat' % nightshot))
 
-    with open('%sfl.dat' % nightshot, 'w') as f:
+    with open(os.path.join(wdir, '%sfl.dat' % nightshot), 'w') as f:
         for d in data:
             f.write('%f %f\n' % (d[0], 6.626e-27*(3.e18/d[0])/360.
                                  / 5.e5/d[1]*250.))
 
-    with open('offsets.dat', 'w') as off:
+    with open(os.path.join(wdir, 'offsets.dat'), 'w') as off:
         for star in stars:
             use_star = False
-            if not os.path.exists('sp%s_100.dat' % star.starid):
+            if not os.path.exists(os.path.join(wdir, 'sp%s_100.dat'
+                                               % star.starid)):
+                _logger.debug('sp%s_100.dat not found!' % star.starid)
                 continue
-            with open('sp%s_100.dat' % star.starid, 'r') as f:
+            with open(os.path.join(wdir, 'sp%s_100.dat'
+                                   % star.starid), 'r') as f:
                 for l in f.readlines():
                     w, v = l.split()
                     if w.strip().startswith('4540') and float(v) > 10000.:
                         use_star = True
                         break
             if use_star:
-                with open('sp%d_out2.dat' % star.starid, 'r') as f:
+                with open(os.path.join(wdir, 'sp%d_out2.dat'
+                                       % star.starid), 'r') as f:
                     line = f.readline()
                     vals = line.split()
                     if float(vals[3]) > -0.5 and float(vals[3]) < 0.5 and \
@@ -1428,7 +1459,7 @@ def main(jobnum, args):
 
     try:
         for task in tasks:
-            os.chdir(wdir)
+            # os.chdir(wdir)
 
             if task in ['extract_coord']:
                 # Equivalent of rsp1
@@ -1441,18 +1472,18 @@ def main(jobnum, args):
                                     args.starid, args)
 
             if task in ['extract_stars', 'all']:
-                os.chdir(wdir)
+                # os.chdir(wdir)
                 # Equivalent of rsetstar
                 _logger.info('Extracting all shuffle stars')
-                run_shuffle_photometry(args)
+                run_shuffle_photometry(args, wdir)
                 _logger.info('Finished star extraction')
             if task in ['get_g_band_throughput', 'all']:
-                os.chdir(wdir)
+                # os.chdir(wdir)
                 _logger.info('Getting g-band photometry')
                 get_g_band_throughput(args)
 
             if task in ['mk_sed_throughput_curve', 'all']:
-                os.chdir(wdir)
+                # os.chdir(wdir)
                 _logger.info('Creating SED throughput curve')
                 mk_sed_throughput_curve(args)
 
@@ -1462,7 +1493,7 @@ def main(jobnum, args):
         _logger.exception(e)
 
     finally:
-        os.chdir(args.curdir)
+        # os.chdir(args.curdir)
         vdrp_info.save(wdir)
         _logger.info("Done.")
 

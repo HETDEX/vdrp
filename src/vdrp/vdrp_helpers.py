@@ -36,7 +36,7 @@ def read_data(filename):
         return pickle.load(f)
 
 
-def run_command(cmd, input=None):
+def run_command(cmd, input=None, wdir=None):
     """
     Run and fortran command sending the optional input string on stdin.
 
@@ -49,7 +49,7 @@ def run_command(cmd, input=None):
     """
     _logger.info('Running %s' % cmd)
     _logger.debug('Command params are %s' % input)
-    proc = subprocess.Popen(cmd, stdin=subprocess.PIPE,
+    proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, cwd=wdir,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     so, _ = proc.communicate(input=input)

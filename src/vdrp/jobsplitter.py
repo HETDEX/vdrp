@@ -40,7 +40,7 @@ pyenv shell {pyenv_env:}
 '''
 
 pyslurm = '''module load pylauncher
-vdrp_runner -c {ncores:d} {debug:s} {runfile}
+vdrp_runner -c {nthreads:d} {debug:s} {runfile}
 '''
 
 shslurm = '''module load launcher
@@ -62,6 +62,16 @@ echo " "
 '''
 
 
+def n_needed(njobs, limit):
+    needed = 1
+    if njobs > limit:
+        needed = njobs / limit
+        if njobs % limit:
+            needed += 1
+
+    return needed
+
+
 def main(args):
 
     commands = []
@@ -77,65 +87,103 @@ def main(args):
 
     fname, fext = os.path.splitext(args.cmdfile)
 
-    nc = len(commands)
+    n_cmds = len(commands)
 
-    nfiles = int(nc / args.jobs / args.nodes + 1)
-    jobsperfile = int(nc / nfiles + 1)
-    jobspernode = int(nc / nfiles / args.nodes + 1)
+    # Calculate the number of usable cores per node
+    effective_cores_per_node = int(args.cores_per_node / args.cores_per_job)
 
-    print('Found %d commands' % nc)
-    print('Splitting them onto %d nodes' % args.nodes)
-    print('Running %d jobs per python instance in %d threads'
-          % (jobspernode, args.threads))
-    print('Resulting in %d jobfiles' % nfiles)
+    # Now the maximum number of jobs per node
+    max_jobs_per_node = int(args.max_jobs_per_node * effective_cores_per_node)
+
+    print(max_jobs_per_node)
+
+    # And the maximum number of jobs per slurm file
+    max_jobs_per_file = int(args.nodes * max_jobs_per_node)
+
+    print(max_jobs_per_file)
+
+    # First find the number of files we need
+    n_files = n_needed(n_cmds, max_jobs_per_file)
+    # And the resulting number of jobs per file
+    jobs_per_file = n_needed(n_cmds, n_files)
+
+    # Next check the number of nodes we need
+    n_nodes = n_needed(jobs_per_file, effective_cores_per_node)
+    # Now see if we have enough nodes, if we just fill them up
+    if n_nodes > args.nodes:
+        # We need more nodes than we are allowed to use
+        # so limit it to the number of allocated nodes
+        n_nodes = args.nodes
+
+    # Finally distribute the jobs over the nodes
+    jobs_per_node = n_needed(jobs_per_file, n_nodes)
+
+    print('Found %d commands' % n_cmds)
+    print('Splitting them onto %d nodes' % n_nodes)
+    print('Running %d jobs per node%s'
+          % (jobs_per_node, ' using threading' if args.threading else ''))
+    print('Resulting in %d jobfiles' % n_files)
 
     file_c = 1
 
-    while file_c <= nfiles:
+    while file_c <= n_files:
 
         if not len(commands):
             raise Exception('Found fewer commands than expected!')
 
         cmd_file = '%s_%d%s' % (fname, file_c, fext)
-        create_job_file(cmd_file, commands, jobsperfile, jobspernode, args)
+        create_job_file(cmd_file, commands, n_nodes, jobs_per_file,
+                        jobs_per_node, args)
 
         file_c += 1
 
 
-def create_job_file(fname, commands, maxjobs, jobspernode, args):
+def create_job_file(fname, commands, n_nodes, jobs_per_file, jobs_per_node,
+                    args):
 
     runtime = args.runtime
-    ncores = args.threads * args.cores
-    if ncores > 24:
-        print('Would require %d cores, oversubscribing node!' % ncores)
-        ncores = 24
-    job_c = 0
-    batch_c = 1
+    nthreads = 1
+    if args.threading:
+        nthreads = args.cores_per_node / args.cores_per_job
+        if args.cores_per_node % args.cores_per_job:
+            nthreads += 1
+        if nthreads > args.cores_per_node:
+            print('Would require %d cores, oversubscribing node!' % nthreads)
+            nthreads = args.cores_per_node
+
+    curdir = os.getcwd()
+
+    job_c = 1
 
     fn, _ = os.path.splitext(fname)
 
+    if args.threading:
+        parname = '%s.params' % fn
+        pf = open(parname, 'w')
+
     with open(fname, 'w') as fout:
+        # Loop over all jobs that should go into this file
+        while job_c <= jobs_per_file:
 
-        subname = '%s.params' % (fn)
-        min_t = 0
+            if not len(commands):
+                break
+            # Get the next command
+            cmd = commands.pop(0)
 
-        with open(subname, 'w') as jf:
+            if args.threading:
+                # We use threading, so we write a parameter file
+                pf.write('%s\n' % cmd.split(' ', 1)[1])
+            else:
+                fout.write('%s\n' % cmd)
 
-            while job_c < maxjobs:
-                if not len(commands):
-                    break
-                cmd = commands.pop(0)
-                jf.write('%s\n' % cmd.split(' ', 1)[1])
+            job_c += 1
 
-                if (job_c+1) % jobspernode == 0 or (job_c+2) == maxjobs \
-                   or len(commands) == 0:
-                    taskname = cmd.split()[0]
-                    fout.write('%s -l %s --mcores %d -M %s[%d:%d]\n'
-                               % (taskname, '%s_%d.log' % (fn, batch_c),
-                                  args.threads, subname, min_t, job_c+1))
-                    batch_c += 1
-                    min_t = job_c+1
-                job_c += 1
+        if args.threading:
+            # Write the command line in case of threading
+            pf.close()
+            taskname = cmd.split()[0]
+            fout.write('%s --mcores %d -M %s\n'
+                       % (taskname, nthreads, parname))
 
     # Now write the corresponding slurm file
 
@@ -146,15 +194,15 @@ def create_job_file(fname, commands, maxjobs, jobspernode, args):
 
         sf.write(slurm_header.format(pyenv=pyenvstr,
                                      jobname=fn,
-                                     nnodes=args.nodes,
-                                     ntasks=20*args.nodes,
+                                     nnodes=n_nodes,
+                                     ntasks=args.cores_per_node * n_nodes,
                                      runtime=runtime,
-                                     workdir='./'))
+                                     workdir=curdir))
         debug = ''
         if args.debug_job:
             debug = '-d'
-        sf.write(pyslurm.format(workdir='./',
-                                ncores=args.threads*args.cores,
+        sf.write(pyslurm.format(workdir=curdir,
+                                nthreads=nthreads,
                                 debug=debug,
                                 runfile=fname))
 #        else:
@@ -173,10 +221,10 @@ def getDefaults():
     '''
     defaults = {}
 
-    defaults['nodes'] = 1
-    defaults['jobs'] = 24
-    defaults['threads'] = 5
-    defaults['cores'] = 4
+    defaults['nodes'] = 5
+    defaults['max_jobs_per_node'] = 96
+    defaults['cores_per_node'] = 24
+    defaults['cores_per_job'] = 1
     defaults['runtime'] = '00:30:00'
     defaults['queue'] = 'normal'
 
@@ -194,13 +242,16 @@ def get_arguments(parser):
     '''
 
     parser.add_argument('--nodes', '-n', type=int,
-                        help='Number of nodes to use per job')
-    parser.add_argument('--jobs', '-j', type=int,
-                        help='Number of jobs to schedule per node')
-    parser.add_argument('--threads', '-t', type=int,
-                        help='Number of threads to use per python process')
-    parser.add_argument('--cores', '-C', type=int,
-                        help='Number of jobs to schedule per node')
+                        help='Maximum number of nodes to use per job')
+    parser.add_argument('--max_jobs_per_node', '-j', type=int,
+                        help='Maximum number of jobs to schedule per node')
+    parser.add_argument('--threading', '-t', action='store_true',
+                        help='Run one python process per node, and use'
+                        'threading.')
+    parser.add_argument('--cores_per_node', type=int,
+                        help='Number of cores in one node')
+    parser.add_argument('--cores_per_job', type=int,
+                        help='Number of cores used by one job.')
     parser.add_argument('--runtime', '-r', type=str,
                         help='Expected runtime of slurm job')
     parser.add_argument('--queue', '-q', type=str,

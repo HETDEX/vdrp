@@ -28,15 +28,13 @@ try:
 except ImportError:
     import pickle
 
-from distutils import dir_util
-
 import vdrp.mplog as mplog
 import vdrp.utils as utils
 import vdrp.photometry as phot
 import vdrp.programs as vp
 
-from vdrp.mphelpers import MPPool, ThreadPool
-from vdrp.vdrp_helpers import VdrpInfo, save_data, read_data, run_command
+from vdrp.mphelpers import ThreadPool
+# from vdrp.vdrp_helpers import VdrpInfo, save_data, read_data, run_command
 from vdrp.containers import DithAllFile
 
 
@@ -274,22 +272,23 @@ def calc_fluxlim(args, workdir):
 
                 # Call rspstar
                 # Get fwhm and relative normalizations
-                vp.call_getnormexp(args.nightshot)
+                vp.call_getnormexp(args.nightshot, wdir)
 
                 specfiles = phot.extract_star_spectrum(starobs, args,
                                                        args.extraction_wl,
-                                                       args.extraction_wlrange, wdir)
+                                                       args.extraction_wlrange,
+                                                       wdir)
 
                 phot.get_structaz(starobs, args.multifits_dir)
 
                 vp.run_fitradecsp(ra, dec, args.fitradec_step,
                                   args.fitradec_nsteps, args.fitradec_w_center,
                                   args.fitradec_w_range, args.fitradec_ifit1,
-                                  starobs, specfiles)
+                                  starobs, specfiles, wdir)
 
                 # Now produce the final output
 
-                if not os.path.exists('spec.out'):
+                if not os.path.exists(os.path.join(wdir, 'spec.out')):
                     raise Exception('fitradecsp failed!')
 
             except Exception as e:
@@ -300,7 +299,7 @@ def calc_fluxlim(args, workdir):
                     shutil.rmtree(wdir, ignore_errors=True)
                 continue
 
-            specdata = np.loadtxt('spec.out')
+            specdata = np.loadtxt(os.path.join(wdir, 'spec.out'))
 
             w = np.where(specdata[:, 8] > 0)[0]
 
@@ -324,41 +323,40 @@ def calc_fluxlim(args, workdir):
                 shutil.rmtree(wdir, ignore_errors=True)
 
     # Now write all the spec files and the list.
-    os.chdir(curdir)
+    # os.chdir(curdir)
 
-    with open(curdir+'/list', 'w') as f:
+    with open(os.path.join(workdir, 'list'), 'w') as f:
         for i in range(0, n_wave):
             wl = int(wave_min + i*2.)
 
             w = np.where(allspec[i, :, 2] > -9000.)
             _logger.info('Writing %d values for wl %f' % (len(w[0]), wl))
-            _logger.info('Now in %s' % os.path.abspath(os.curdir))
-            _logger.info('Should be in %s', curdir)
             if len(w[0]):
-                np.savetxt(curdir+'/w%d.j4' % wl, allspec[i, w[0], :],
-                           fmt="%.5f %.5f %.3f %.3f")
+                np.savetxt(os.path.join(workdir, 'w%d.j4' % wl),
+                           allspec[i, w[0], :], fmt="%.5f %.5f %.3f %.3f")
             else:
-                with open(curdir+'w%d.j4' % wl, 'w') as ff:
+                with open(os.path.join(workdir, 'w%d.j4' % wl), 'w') as ff:
                     ff.write('')
 
             f.write('%s' % 'w%d.j4\n' % wl)
 
-    vp.call_mkimage3d()
+    vp.call_mkimage3d(workdir)
 
-    update_im3d_header(args.ra, args.dec)
+    update_im3d_header(args.ra, args.dec, workdir)
 
-    outname = args.results_dir + '/' + args.nightshot + '_' \
-        + args.fname + '.fits'
+    outname = os.path.join(args.results_dir,
+                           args.nightshot + '_'
+                           + args.fname + '.fits')
     if os.path.exists(outname):
         os.remove(outname)
-    shutil.move('image3d.fits', outname)
+    shutil.move(os.path.join(workdir, 'image3d.fits'), outname)
 
 
-def update_im3d_header(ra, dec):
+def update_im3d_header(ra, dec, wdir):
     """
     Add header keywords to the image3d.fits
     """
-    with fits.open('image3d.fits', 'update') as hdu:
+    with fits.open(os.path.join(wdir, 'image3d.fits'), 'update') as hdu:
 
         hdu[0].header['OBJECT'] = 'CAT'
         hdu[0].header['CRVAL1'] = ra
@@ -412,7 +410,7 @@ def main(jobnum, args):
     args.jobnum = jobnum
 
     try:
-        os.chdir(wdir)
+        # os.chdir(wdir)
 
         _logger.info('Starting flux limit calculation')
         calc_fluxlim(args, wdir)
@@ -421,7 +419,7 @@ def main(jobnum, args):
         _logger.exception(e)
 
     finally:
-        os.chdir(args.curdir)
+        # os.chdir(args.curdir)
         # vdrp_info.save(wdir)
         if not args.debug:
             _logger.info('Removing workdir %s' % wdir)
@@ -437,9 +435,7 @@ def calc_fluxlim_entrypoint():
     # First check if we should loop over an input file
     parser = AP(description='Test', formatter_class=ap_RDHF, add_help=False)
     # parser.add_argument('args', nargs=ap_remainder)
-    parser.add_argument('-M', '--multi', help='Input filename to loop over, '
-                        'append a range in the format [min:max] to select a '
-                        'subsection of the lines')
+    parser.add_argument('-M', '--multi', help='Input filename to loop over.')
     parser.add_argument('--mcores', type=int, default=1,
                         help='Number of paralles process to execute.')
     parser.add_argument('-l', '--logfile', type=str, default='vdrp.log',
@@ -447,9 +443,7 @@ def calc_fluxlim_entrypoint():
 
     args, remaining_argv = parser.parse_known_args()
 
-    print('Setting up mplogger')
     mplog.setup_mp_logging(args.logfile)
-    print('Done')
 
     # We found a -M flag with a command file, now loop over it, we parse
     # the command line parameters for each call, and intialize the args
@@ -515,7 +509,7 @@ def calc_fluxlim_entrypoint():
         # The first positional argument wasn't an input list,
         # so process normally
         args = parseArgs(remaining_argv)
-        
+
         # Create results directory for given night and shot
         cwd = _baseDir
         results_dir = cwd

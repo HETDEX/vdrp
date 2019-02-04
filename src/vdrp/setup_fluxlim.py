@@ -187,8 +187,8 @@ def setup_fluxlim(args, rargs):
             ixyname = ifu_dith.filename[sortidx][0]
 
             f.write('vdrp_calc_flim %s %.7f %.7f %s %s %s\n'
-                    % (' '.join(rargs), ra_mean, dec_mean, args.night, args.shotid,
-                       '_'.join(ixyname.split('_')[0:4])))
+                    % (' '.join(rargs), ra_mean, dec_mean, args.night,
+                       args.shotid, '_'.join(ixyname.split('_')[0:4])))
 
     # Now prepare the job splitter for it
     args.cmdfile = fname

@@ -703,8 +703,7 @@ def get_ra_dec_orig(wdir, reduction_dir, night, shotid, user_pa=-999999.):
         vdrp_info["orig_dec"] = dec0
         vdrp_info["orig_pa0"] = pa0
 
-    with path.Path(wdir):
-        utils.write_radec(ra0, dec0, pa0, "radec.orig")
+    utils.write_radec(ra0, dec0, pa0, os.path.join(wdir, "radec.orig"))
 
 
 def get_als_files(fp, exp_prefixes):
