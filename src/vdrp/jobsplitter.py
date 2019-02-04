@@ -171,14 +171,19 @@ def create_job_file(fname, commands, n_nodes, jobs_per_file, jobs_per_node,
 
             if args.threading:
                 # We use threading, so we write a parameter file
-                pf.write('%s\n' % cmd.split(' ', 1)[1])
+                cmd_pars = cmd.split()
+                # In case of threading we cannot use individual log files
+                if '-l' in cmd_pars:
+                    cmd_pars.pop(cmd_pars.index('-l')+1)
+                    cmd_pars.pop(cmd_pars.index('-l'))
+                pf.write('%s\n' % ' '.join(cmd_pars[1:]))
                 node_c += 1
 
                 if node_c > jobs_per_node:
                     # Start a new job file
                     taskname = cmd.split()[0]
-                    fout.write('%s --mcores %d -M %s\n'
-                               % (taskname, nthreads, parname))
+                    fout.write('%s -l %s_%d.log --mcores %d -M %s\n'
+                               % (taskname, fn, param_c, nthreads, parname))
                     pf.close()
                     param_c += 1
                     parname = '%s_%d.params' % (fn, param_c)
