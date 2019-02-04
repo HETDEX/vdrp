@@ -7,6 +7,16 @@ import logging
 _logger = logging.getLogger()
 
 
+class ThreadShutDownException():
+
+    pass
+
+
+def shutdownThread():
+
+    raise ThreadShutdownException()
+
+
 class ThreadWorker(threading.Thread):
     """Thread executing tasks from a given tasks queue"""
     def __init__(self, name, tasks):
@@ -18,11 +28,17 @@ class ThreadWorker(threading.Thread):
 
     def run(self):
         threading.current_thread().name = self.name
+        _logger.debug('Starting Thread %s' % self.name)
         while True:
             try:
-                func, args, kargs = self.tasks.get(True, 2.0)
+                func, args, kargs = self.tasks.get(True, 120.0)
+                _logger.debug('Got new task from queue')
+                _logger.debug('There are approx. %d tasks waiting' % self.tasks.qsize())
                 try:
                     func(*args, **kargs)
+                except ThreadShutdownException:
+                    _logger.info('Shutting down thread')
+                    break
                 except Exception as e:
                     print(e)
                 finally:
@@ -64,16 +80,21 @@ class MPWorker(multiprocessing.Process):
 class ThreadPool:
     """Pool of threads consuming tasks from a queue"""
     def __init__(self, num_threads):
-        self.tasks = Queue.Queue(num_threads)
+        self.num_threads = num_threads
+        self.tasks = Queue.Queue()
         for i in range(num_threads):
             ThreadWorker('ThreadWorker%d' % i, self.tasks)
 
     def add_task(self, func, *args, **kargs):
         """Add a task to the queue"""
+        _logger.info('Adding new task to queue')
         self.tasks.put((func, args, kargs))
 
     def wait_completion(self):
         """Wait for completion of all the tasks in the queue"""
+        _logger.info('Job submission complete, adding shutdown jobs')
+        for i in range(self.num_threads):
+            self.add_task(shutdownThread)
         self.tasks.join()
 
 

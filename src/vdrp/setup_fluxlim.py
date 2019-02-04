@@ -140,7 +140,8 @@ def parseArgs(argv):
     # Add the jobsplitter arguments
     vj.get_arguments(parser)
 
-    args = parser.parse_args(remaining_argv)
+    args, remaining_args = parser.parse_known_args(remaining_argv)
+    # args = parser.parse_args(remaining_argv)
 
     args.config_source = config_source
     # should in principle be able to do this with accumulate???
@@ -153,10 +154,10 @@ def parseArgs(argv):
     # args.fplane_txt = utils.mangle_config_pathname(args.fplane_txt)
     # args.shuffle_cfg = utils.mangle_config_pathname(args.shuffle_cfg)
 
-    return args
+    return args, remaining_args
 
 
-def setup_fluxlim(args):
+def setup_fluxlim(args, rargs):
     """
     This is equivalent to the rflim0 and rsetfl scripts.
 
@@ -185,8 +186,8 @@ def setup_fluxlim(args):
 
             ixyname = ifu_dith.filename[sortidx][0]
 
-            f.write('vdrp_calc_flim %.7f %.7f %s %s %s\n'
-                    % (ra_mean, dec_mean, args.night, args.shotid,
+            f.write('vdrp_calc_flim %s %.7f %.7f %s %s %s\n'
+                    % (' '.join(rargs), ra_mean, dec_mean, args.night, args.shotid,
                        '_'.join(ixyname.split('_')[0:4])))
 
     # Now prepare the job splitter for it
@@ -204,7 +205,7 @@ def setup_fluxlim_entrypoint():
     # Here we create another external argument parser, this checks if we
     # are supposed to run in multi-threaded mode.
 
-    args = parseArgs(sys.argv[1:])
+    args, rargs = parseArgs(sys.argv[1:])
 
     mplog.setup_mp_logging(args.logfile)
 
@@ -227,7 +228,7 @@ def setup_fluxlim_entrypoint():
         os.chdir(wdir)
 
         _logger.info('Starting flux limit setup')
-        setup_fluxlim(args)
+        setup_fluxlim(args, rargs)
         _logger.info('Finished flux limit setup')
     except Exception as e:
         _logger.exception(e)

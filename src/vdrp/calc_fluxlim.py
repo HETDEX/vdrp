@@ -263,7 +263,7 @@ def calc_fluxlim(args, workdir):
             _logger.info('Creating workdir %s' % wdir)
             if not os.path.exists(wdir):
                 os.mkdir(wdir)
-            os.chdir(wdir)
+            # os.chdir(wdir)
 
             try:
                 starobs, _ = phot.get_star_spectrum_data(ra, dec, args,
@@ -278,7 +278,7 @@ def calc_fluxlim(args, workdir):
 
                 specfiles = phot.extract_star_spectrum(starobs, args,
                                                        args.extraction_wl,
-                                                       args.extraction_wlrange)
+                                                       args.extraction_wlrange, wdir)
 
                 phot.get_structaz(starobs, args.multifits_dir)
 
@@ -294,8 +294,9 @@ def calc_fluxlim(args, workdir):
 
             except Exception as e:
                 _logger.error(e.message)
-                os.chdir(curdir)
+                # os.chdir(curdir)
                 if not args.debug:
+                    _logger.info('Removing workdir %s' % wdir)
                     shutil.rmtree(wdir, ignore_errors=True)
                 continue
 
@@ -317,20 +318,28 @@ def calc_fluxlim(args, workdir):
 
             speccounter += 1
 
-            os.chdir(curdir)
+            # os.chdir(curdir)
             if not args.debug:
+                _logger.info('Removing workdir %s' % wdir)
                 shutil.rmtree(wdir, ignore_errors=True)
 
     # Now write all the spec files and the list.
     os.chdir(curdir)
 
-    with open('list', 'w') as f:
+    with open(curdir+'/list', 'w') as f:
         for i in range(0, n_wave):
             wl = int(wave_min + i*2.)
 
             w = np.where(allspec[i, :, 2] > -9000.)
-            np.savetxt('w%d.j4' % wl, allspec[i, w[0], :],
-                       fmt="%.5f %.5f %.3f %.3f")
+            _logger.info('Writing %d values for wl %f' % (len(w[0]), wl))
+            _logger.info('Now in %s' % os.path.abspath(os.curdir))
+            _logger.info('Should be in %s', curdir)
+            if len(w[0]):
+                np.savetxt(curdir+'/w%d.j4' % wl, allspec[i, w[0], :],
+                           fmt="%.5f %.5f %.3f %.3f")
+            else:
+                with open(curdir+'w%d.j4' % wl, 'w') as ff:
+                    ff.write('')
 
             f.write('%s' % 'w%d.j4\n' % wl)
 
@@ -415,6 +424,7 @@ def main(jobnum, args):
         os.chdir(args.curdir)
         # vdrp_info.save(wdir)
         if not args.debug:
+            _logger.info('Removing workdir %s' % wdir)
             shutil.rmtree(wdir, ignore_errors=True)
         _logger.info("Done.")
 
