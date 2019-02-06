@@ -129,6 +129,9 @@ def parseArgs(argv):
     parser.add_argument("--logfile", type=str,
                         help="Filename for log file.")
 
+    parser = vspec.get_arguments(parser)
+    parser = get_arguments(parser)
+
     # Boolean paramters
     parser.add_argument("--debug", action='store_true',
                         help="Keep temporary directories")
