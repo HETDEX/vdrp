@@ -25,6 +25,7 @@ import numpy as np
 import vdrp.mplog as mplog
 import vdrp.programs as vp
 import vdrp.spec_extraction as vspec
+import vdrp.star_extraction as vstar
 
 from vdrp.mphelpers import mp_run
 # from vdrp.vdrp_helpers import VdrpInfo, save_data, read_data, run_command
@@ -117,6 +118,7 @@ def parseArgs(argv):
         config.read([args.conf_file])
         defaults.update(dict(config.items("FluxLim")))
         defaults.update(dict(config.items("SpecExtract")))
+        defaults.update(dict(config.items("StarExtract")))
 
     # Parse rest of arguments
     # Don't suppress add_help here so it will handle -h
@@ -129,7 +131,7 @@ def parseArgs(argv):
     parser.add_argument("--logfile", type=str,
                         help="Filename for log file.")
 
-    parser = vspec.get_arguments(parser)
+    parser = vstar.get_arguments(parser)
     parser = get_arguments(parser)
 
     # Boolean paramters
