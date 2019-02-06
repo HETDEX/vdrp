@@ -10,7 +10,7 @@ import os
 def get_mulitfits_file(basedir, night, shot, expname, fname):
 
     fpath = os.path.join(basedir, night, 'virus', 'virus%07d' % shot,
-                         expname, fname+'.fits')
+                         expname, 'virus', fname+'.fits')
     return fpath
 
 

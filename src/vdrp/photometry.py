@@ -194,6 +194,8 @@ def get_arguments(parser):
     parser.add_argument("--wfs2_magadd", type=float,
                         help="do_shuffle wfs2 magadd.")
 
+    return parser
+
 
 def parseArgs(argv):
     """ Parses configuration file and command line arguments.
@@ -239,11 +241,12 @@ def parseArgs(argv):
     parser.add_argument("--logfile", type=str,
                         help="Filename for log file.")
 
-    parser = get_arguments(parser)
     parser = vext.get_arguments(parser)
+    parser = get_arguments(parser)
 
     # Script specific parameters
-    parser.add_argument("-t", "--task", type=str, help="Task to execute.")
+    parser.add_argument("-t", "--task", type=str, default='all', 
+                        help="Task to execute.")
 
     # Boolean paramters
     parser.add_argument("--use_tmp", action='store_true',
@@ -686,9 +689,9 @@ def main(jobnum, args):
     # save arguments for the execution
     # with open(os.path.join(results_dir, 'args.pickle'), 'wb') as f:
     #     pickle.dump(args, f, pickle.HIGHEST_PROTOCOL)
-    argfile = '%fv%f_%f.args.json' % (args.night, args.shoid, time.time())
+    argfile = '%sv%s_%f.args.json' % (args.night, args.shotid, time.time())
     with open(os.path.join(results_dir, argfile), 'w') as f:
-        json.dump(args, f)
+        json.dump(vars(args), f)
 
     tasks = args.task.split(",")
     if args.use_tmp and tasks != ['all'] and tasks != ['extract_coord']:

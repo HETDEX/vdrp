@@ -42,7 +42,7 @@ _logger = logging.getLogger()
 
 def getDefaults():
 
-    defaults = vspec.get_spec_extraction_defaults()
+    defaults = vspec.getDefaults()
 
     defaults['starid'] = 1
 
@@ -68,7 +68,7 @@ def get_arguments(parser):
     parser : argparse.ArgumentParser
     '''
 
-    vspec.get_spec_extraction_arguments(parser)
+    parser = vspec.get_arguments(parser)
 
     parser.add_argument("--extraction_wl", type=float, help="Central "
                         "wavelength for the extraction")
@@ -397,6 +397,7 @@ def extract_star(ra, dec, starid, args, multi_shot=False,
 
         # Extract data like the data in l1
         starobs, nshots = vspec.get_star_spectrum_data(ra, dec, args,
+                                                       (args.night, args.shotid),
                                                        multi_shot,
                                                        dithall=dithall)
 
@@ -415,7 +416,7 @@ def extract_star(ra, dec, starid, args, multi_shot=False,
 
         vp.call_sumsplines(len(starobs), stardir)
 
-        apply_factor_spline(len(nshots), stardir, stardir)
+        apply_factor_spline(len(nshots), stardir)
 
         vp.call_fitonevp(args.extraction_wl, nightshot+'_'+str(starid),
                          stardir)
@@ -465,7 +466,7 @@ def extract_star(ra, dec, starid, args, multi_shot=False,
         copy_stardata(starname, starid, stardir)
 
         _logger.info('Saving star data for %d' % starid)
-        save_data(stardir, os.path.join(starobs, 'sp%d.obsdata' % starid))
+        save_data(stardir, os.path.join(stardir, 'sp%d.obsdata' % starid))
 
         # Finally save the results to the results_dir
 
@@ -517,7 +518,7 @@ def main(jobnum, args):
     #     pickle.dump(args, f, pickle.HIGHEST_PROTOCOL)
     argfile = '%f_%f_%f.args.json' % (args.ra, args.dec, time.time())
     with open(os.path.join(results_dir, argfile), 'w') as f:
-        json.dump(args, f)
+        json.dump(vars(args), f)
 
     # default is to work in results_dir
     wdir = results_dir

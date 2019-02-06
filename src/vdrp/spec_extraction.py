@@ -116,7 +116,7 @@ def get_star_spectrum_data(ra, dec, args, nightshot, multi_shot=False,
         shot = shot[w_s]
 
     else:
-        night, shot = nightshot
+        night, shot = map(list, zip(nightshot))
 
     night_shots = []
     starobs = []
@@ -171,6 +171,7 @@ def get_star_spectrum_data(ra, dec, args, nightshot, multi_shot=False,
                                            int(so.shot), so.expname, so.fname)
 
             if not os.path.exists(fpath):
+                print(fpath)
                 _logger.warn('No fits data found for ifuslot %s in  %sv%s'
                              % (so.ifuslot, so.night, so.shot))
                 continue

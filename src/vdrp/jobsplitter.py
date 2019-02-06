@@ -178,7 +178,7 @@ def create_job_file(fname, commands, n_nodes, jobs_per_file, jobs_per_node,
                     # Start a new job file
                     taskname = cmd.split()[0]
                     fout.write('%s -l %s_%d.log --mcores %d -M %s\n'
-                               % (taskname, fn, param_c, nthreads, parname))
+                               % (taskname, fn, param_c, ncores, parname))
                     pf.close()
                     param_c += 1
                     parname = '%s_%d.params' % (fn, param_c)
@@ -194,7 +194,7 @@ def create_job_file(fname, commands, n_nodes, jobs_per_file, jobs_per_node,
             pf.close()
             taskname = cmd.split()[0]
             fout.write('%s -l %s_%d.log --mcores %d -M %s\n'
-                       % (taskname, fn, param_c, nthreads, parname))
+                       % (taskname, fn, param_c, ncores, parname))
 
     # Now write the corresponding slurm file
 
