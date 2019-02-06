@@ -15,25 +15,18 @@ from argparse import RawDescriptionHelpFormatter as ap_RDHF
 from argparse import ArgumentParser as AP
 
 import os
-import sys
 import ConfigParser
 import logging
 import logging.config
-import copy
 from astropy.io import fits
 import shutil
 import numpy as np
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
 
 import vdrp.mplog as mplog
-import vdrp.utils as utils
-import vdrp.photometry as phot
 import vdrp.programs as vp
+import vdrp.spec_extraction as vspec
 
-from vdrp.mphelpers import ThreadPool
+from vdrp.mphelpers import mp_run
 # from vdrp.vdrp_helpers import VdrpInfo, save_data, read_data, run_command
 from vdrp.containers import DithAllFile
 
@@ -41,25 +34,6 @@ from vdrp.containers import DithAllFile
 _baseDir = os.getcwd()
 
 _logger = logging.getLogger()
-
-# Parallelization code, we supply both a ThreadPool as well as a
-# multiprocessing pool. Both start a given numer of threads/processes,
-# that will work through the supplied tasks, till all are finished.
-#
-# The ThreadPool does not need to start subprocesses, but is limited by
-# the Python Global Interpreter Lock (only one thread can access complex data
-# types at one time). This can potentially slow things down.
-#
-# The MPPool needs to start up the processes, but this is only done once at
-# the initializtion of the pool.
-#
-# The MPPool processes cannot start multiprocessing jobs themselves, so if
-# you need nested parallelization, use the either ThreadPools for all, or
-# Use one and the other.
-
-
-class NoShotsException(Exception):
-    pass
 
 
 def getDefaults():
@@ -215,7 +189,6 @@ def calc_fluxlim(args, workdir):
         The arguments structure
     """
 
-    # curdir = os.path.abspath(os.path.curdir)
     curdir = workdir
     cosd = np.cos(args.dec / 57.3)
     rstart = args.ra - 35./3600./cosd
@@ -260,8 +233,10 @@ def calc_fluxlim(args, workdir):
             # os.chdir(wdir)
 
             try:
-                starobs, _ = phot.get_star_spectrum_data(ra, dec, args,
-                                                         False, dithall)
+                starobs, _ = vspec.get_star_spectrum_data(ra, dec, args,
+                                                          (args.night,
+                                                           args.shotid),
+                                                          False, dithall)
 
                 if not len(starobs):
                     raise Exception('No shots found, skipping!')
@@ -270,12 +245,13 @@ def calc_fluxlim(args, workdir):
                 # Get fwhm and relative normalizations
                 vp.call_getnormexp(args.nightshot, wdir)
 
-                specfiles = phot.extract_star_spectrum(starobs, args,
-                                                       args.extraction_wl,
-                                                       args.extraction_wlrange,
-                                                       wdir)
+                specfiles = \
+                    vspec.extract_star_spectrum(starobs, args,
+                                                args.extraction_wl,
+                                                args.extraction_wlrange,
+                                                wdir)
 
-                phot.get_structaz(starobs, args.multifits_dir)
+                vspec.get_structaz(starobs, args.multifits_dir)
 
                 vp.run_fitradecsp(ra, dec, args.fitradec_step,
                                   args.fitradec_nsteps, args.fitradec_w_center,
@@ -289,7 +265,6 @@ def calc_fluxlim(args, workdir):
 
             except Exception as e:
                 _logger.error(e.message)
-                # os.chdir(curdir)
                 if not args.debug:
                     _logger.info('Removing workdir %s' % wdir)
                     shutil.rmtree(wdir, ignore_errors=True)
@@ -313,13 +288,11 @@ def calc_fluxlim(args, workdir):
 
             speccounter += 1
 
-            # os.chdir(curdir)
             if not args.debug:
                 _logger.info('Removing workdir %s' % wdir)
                 shutil.rmtree(wdir, ignore_errors=True)
 
     # Now write all the spec files and the list.
-    # os.chdir(curdir)
 
     with open(os.path.join(workdir, 'list'), 'w') as f:
         for i in range(0, n_wave):
@@ -339,7 +312,7 @@ def calc_fluxlim(args, workdir):
 
     update_im3d_header(args.ra, args.dec, workdir)
 
-    outname = os.path.join(args.results_dir,
+    outname = os.path.join(os.getcwd(),
                            args.nightshot + '_'
                            + args.fname + '.fits')
     if os.path.exists(outname):
@@ -386,7 +359,7 @@ def main(jobnum, args):
 
     # default is to work in results_dir
     # Create a temporary directory
-    tmp_dir = os.path.join(args.curdir, args.nightshot + '_' + args.fname)
+    tmp_dir = os.path.join(os.getcwd(), args.nightshot + '_' + args.fname)
     _logger.info("Tempdir is {}".format(tmp_dir))
     if not os.path.exists(tmp_dir):
         os.mkdir(tmp_dir)
@@ -414,7 +387,6 @@ def main(jobnum, args):
         _logger.exception(e)
 
     finally:
-        # os.chdir(args.curdir)
         # vdrp_info.save(wdir)
         if not args.debug:
             _logger.info('Removing workdir %s' % wdir)
@@ -440,84 +412,8 @@ def calc_fluxlim_entrypoint():
 
     mplog.setup_mp_logging(args.logfile)
 
-    # We found a -M flag with a command file, now loop over it, we parse
-    # the command line parameters for each call, and intialize the args
-    # namespace for this call.
-    if args.multi:
-        mfile = args.multi.split('[')[0]
-
-        if not os.path.isfile(mfile):
-            raise Exception('%s is not a file?' % mfile)
-
-        try:  # Try to read the file
-            with open(mfile) as f:
-                cmdlines = f.readlines()
-        except Exception as e:
-            print(e)
-            raise Exception('Failed to read input file %s!' % args.multi)
-
-        # Parse the line numbers to evaluate, if any given.
-        if args.multi.find('[') != -1:
-            try:
-                minl, maxl = args.multi.split('[')[1].split(']')[0].split(':')
-            except ValueError:
-                raise Exception('Failed to parse line range, should be of '
-                                'form [min:max]!')
-
-            cmdlines = cmdlines[int(minl):int(maxl)]
-
-        # Create the ThreadPool.
-        pool = ThreadPool(args.mcores)
-        c = 1
-
-        curdir = os.path.abspath(os.path.curdir)
-
-        # For each command line add an entry to the ThreadPool.
-        for l in cmdlines:
-            largs = copy.copy(remaining_argv)
-            largs += l.split()
-
-            main_args = parseArgs(largs)
-
-            # Create results directory for given night and shot
-            cwd = _baseDir
-            results_dir = cwd
-            utils.createDir(results_dir)
-            main_args.results_dir = results_dir
-
-            # save arguments for the execution
-            with open(os.path.join(results_dir, 'args.pickle'), 'wb') as f:
-                pickle.dump(main_args, f, pickle.HIGHEST_PROTOCOL)
-
-            main_args.curdir = curdir
-
-            pool.add_task(main, c, copy.copy(main_args))
-
-        # Wait for all tasks to complete
-        pool.wait_completion()
-
-        sys.exit(0)
-    else:
-        # Parse config file and command line paramters
-        # command line parameters overwrite config file.
-
-        # The first positional argument wasn't an input list,
-        # so process normally
-        args = parseArgs(remaining_argv)
-
-        # Create results directory for given night and shot
-        cwd = _baseDir
-        results_dir = cwd
-        utils.createDir(results_dir)
-        args.results_dir = results_dir
-
-        # save arguments for the execution
-        with open(os.path.join(results_dir, 'args.pickle'), 'wb') as f:
-            pickle.dump(args, f, pickle.HIGHEST_PROTOCOL)
-
-        args.curdir = os.path.abspath(os.path.curdir)
-
-        sys.exit(main(1, args))
+    # Run (if requested) in threaded mode, this function will call sys.exit
+    mp_run(main, args, remaining_argv, parseArgs)
 
 
 if __name__ == "__main__":

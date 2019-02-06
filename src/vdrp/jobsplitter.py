@@ -40,7 +40,7 @@ pyenv shell {pyenv_env:}
 '''
 
 pyslurm = '''module load pylauncher
-vdrp_runner -c {nthreads:d} {debug:s} {runfile}
+vdrp_runner -c {ncores:d} {debug:s} {runfile}
 '''
 
 shslurm = '''module load launcher
@@ -138,14 +138,9 @@ def create_job_file(fname, commands, n_nodes, jobs_per_file, jobs_per_node,
                     args):
 
     runtime = args.runtime
-    nthreads = 1
+    ncores = args.cores_per_job
     if args.threading:
-        nthreads = args.cores_per_node / args.cores_per_job
-        if args.cores_per_node % args.cores_per_job:
-            nthreads += 1
-        if nthreads > args.cores_per_node:
-            print('Would require %d cores, oversubscribing node!' % nthreads)
-            nthreads = args.cores_per_node
+        ncores = args.cores_per_node
 
     curdir = os.getcwd()
 
@@ -218,7 +213,7 @@ def create_job_file(fname, commands, n_nodes, jobs_per_file, jobs_per_node,
         if args.debug_job:
             debug = '-d'
         sf.write(pyslurm.format(workdir=curdir,
-                                nthreads=nthreads,
+                                ncores=ncores,
                                 debug=debug,
                                 runfile=fname))
 #        else:

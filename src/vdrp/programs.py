@@ -30,8 +30,8 @@ def call_imextsp(filename, ifuslot, wl, wlw, tpavg, norm, outfile, wdir):
         The width of the extraction window around wl
     tpavg : float
         Throughput average for the spectrum
-    norm : float
-        Fiber to fiber normaliztion for the spectrum
+    norm : str
+        File with fiber to fiber normaliztion for the spectrum
     outfile : str
         Name of the output filename
     wdir : str

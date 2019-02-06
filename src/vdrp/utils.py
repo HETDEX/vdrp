@@ -622,6 +622,29 @@ def matrixCheby2D_7(x, y):
 
 
 # ---------------------------------------------------------------------
+# Logging utils
+# ---------------------------------------------------------------------
+
+def setup_logging(logger, logfile):
+        # Setup the logging
+    fmt = '%(asctime)s %(levelname)-8s %(threadName)12s %(funcName)15s(): ' \
+        '%(message)s'
+    formatter = logging.Formatter(fmt, datefmt='%m-%d %H:%M:%S')
+    logger.setLevel(logging.DEBUG)
+
+    cHndlr = logging.StreamHandler()
+    cHndlr.setLevel(logging.DEBUG)
+    cHndlr.setFormatter(formatter)
+
+    logger.addHandler(cHndlr)
+
+    fHndlr = logging.FileHandler(logfile, mode='w')
+    fHndlr.setLevel(logging.DEBUG)
+    fHndlr.setFormatter(formatter)
+
+    logger.addHandler(fHndlr)
+
+# ---------------------------------------------------------------------
 #  Config utils
 # ---------------------------------------------------------------------
 
