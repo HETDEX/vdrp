@@ -657,6 +657,8 @@ def write_conf_file(fname):
 
     from vdrp.astrometry import getDefaults as ast_getDefaults
     from vdrp.photometry import getDefaults as tp_getDefaults
+    from vdrp.star_extraction import getDefaults as st_getDefaults
+    from vdrp.spec import getDefaults as sp_getDefaults
     from vdrp.calc_fluxlim import getDefaults as fl_getDefaults
 
     # Now read the packaged config file
@@ -665,6 +667,8 @@ def write_conf_file(fname):
 
     defaults = {}
     ast_defaults = ast_getDefaults()
+    st_defaults = st_getDefaults()
+    sp_defaults = sp_getDefaults()
     tp_defaults = tp_getDefaults()
     fl_defaults = fl_getDefaults()
 
@@ -672,6 +676,18 @@ def write_conf_file(fname):
         defaults['ast_'+k] = ast_defaults[k]
         if 'ast_'+k not in cfgtxt:
             print('Astrometry parameter %s is missing in config file!' % k)
+
+    for k in sp_defaults:
+        defaults['spext_'+k] = sp_defaults[k]
+        if 'sp_'+k not in cfgtxt:
+            print('Spec Extraction parameter %s is missing in config file!'
+                  % k)
+
+    for k in st_defaults:
+        defaults['stext_'+k] = st_defaults[k]
+        if 'st_'+k not in cfgtxt:
+            print('Star Extraction parameter %s is missing in config file!'
+                  % k)
 
     for k in tp_defaults:
         defaults['tp_'+k] = tp_defaults[k]
