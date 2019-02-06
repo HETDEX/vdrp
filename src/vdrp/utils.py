@@ -658,7 +658,7 @@ def write_conf_file(fname):
     from vdrp.astrometry import getDefaults as ast_getDefaults
     from vdrp.photometry import getDefaults as tp_getDefaults
     from vdrp.star_extraction import getDefaults as st_getDefaults
-    from vdrp.spec import getDefaults as sp_getDefaults
+    from vdrp.spec_extraction import getDefaults as sp_getDefaults
     from vdrp.calc_fluxlim import getDefaults as fl_getDefaults
 
     # Now read the packaged config file
