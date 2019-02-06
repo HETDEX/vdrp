@@ -82,9 +82,15 @@ class MPWorker(multiprocessing.Process):
     def run(self):
         while True:
             try:
-                func, args, kargs = self.tasks.get(True, 2.0)
+                func, args, kargs = self.tasks.get(True, 1200.0)
+                _logger.debug('Got new task from queue')
+                _logger.debug('There are approx. %d tasks waiting'
+                              % self.tasks.qsize())
                 try:
                     func(*args, **kargs)
+                except ThreadShutDownException:
+                    _logger.info('Shutting down thread')
+                    break
                 except Exception as e:
                     print(e)
                 finally:
@@ -121,7 +127,8 @@ class ThreadPool:
 class MPPool:
     """Pool of threads consuming tasks from a queue"""
     def __init__(self, jobnum, num_proc):
-        self.tasks = multiprocessing.JoinableQueue(num_proc)
+        self.num_threads = num_threads
+        self.tasks = multiprocessing.JoinableQueue()
         for i in range(num_proc):
             MPWorker('MPWorker%d_%d' % (jobnum, i), self.tasks)
 
@@ -131,6 +138,9 @@ class MPPool:
 
     def wait_completion(self):
         """Wait for completion of all the tasks in the queue"""
+        _logger.info('Job submission complete, adding shutdown jobs')
+        for i in range(self.num_threads):
+            self.add_task(shutdownThread)
         self.tasks.join()
 
 
