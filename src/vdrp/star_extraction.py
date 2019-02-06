@@ -44,6 +44,8 @@ def getDefaults(with_spec_defaults=True):
 
     if with_spec_defaults:
         defaults = vspec.getDefaults()
+    else:
+        defaults = {}
 
     defaults['starid'] = 1
 
