@@ -40,9 +40,10 @@ _baseDir = os.getcwd()
 _logger = logging.getLogger()
 
 
-def getDefaults():
+def getDefaults(with_spec_defaults=True):
 
-    defaults = vspec.getDefaults()
+    if with_spec_defaults:
+        defaults = vspec.getDefaults()
 
     defaults['starid'] = 1
 

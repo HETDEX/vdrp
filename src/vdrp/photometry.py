@@ -245,7 +245,7 @@ def parseArgs(argv):
     parser = get_arguments(parser)
 
     # Script specific parameters
-    parser.add_argument("-t", "--task", type=str, default='all', 
+    parser.add_argument("-t", "--task", type=str, default='all',
                         help="Task to execute.")
 
     # Boolean paramters

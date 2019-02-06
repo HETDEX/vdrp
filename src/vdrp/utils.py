@@ -667,7 +667,7 @@ def write_conf_file(fname):
 
     defaults = {}
     ast_defaults = ast_getDefaults()
-    st_defaults = st_getDefaults()
+    st_defaults = st_getDefaults(False)
     sp_defaults = sp_getDefaults()
     tp_defaults = tp_getDefaults()
     fl_defaults = fl_getDefaults()

@@ -40,21 +40,9 @@ def getDefaults():
 
     defaults = {}
 
-    defaults["remove_tmp"] = True
-    defaults["debug"] = False
-
-    defaults['dithall_dir'] = '/work/00115/gebhardt/maverick/detect/'
-    defaults['multifits_dir'] = '/work/03946/hetdex/maverick/red1/reductions/'
-    defaults['tp_dir'] = '/work/00115/gebhardt/maverick/detect/tp/'
-    defaults['norm_dir'] = '/work/00115/gebhardt/maverick/getampnorm/all/'
-
     defaults['ra_range'] = 70
     defaults['dec_range'] = 70
-    defaults['radec_file'] = '/work/00115/gebhardt/maverick/getfib/radec.all'
-    defaults['ifu_search_radius'] = 2.5
-    defaults['shot_search_radius'] = 600.
-    defaults['extraction_wl'] = 4505.
-    defaults['extraction_wlrange'] = 1035.
+
     defaults['fitradec_step'] = 0
     defaults['fitradec_nsteps'] = 1
     defaults['fitradec_w_center'] = 4505.
@@ -65,6 +53,37 @@ def getDefaults():
     defaults['sn'] = 8.
 
     return defaults
+
+
+def get_arguments(parser):
+    '''
+    Add command line arguments for the photometry routines, this function
+    can be called from another tool.
+
+    Parameters
+    ----------
+    parser : argparse.ArgumentParser
+    '''
+
+    parser.add_argument("--ra_range", type=int, help="Width in RA"
+                        " direction for search grid in asec")
+    parser.add_argument("--dec_range", type=int, help="Width in DEC"
+                        " direction for search grid in asec")
+
+    parser.add_argument("--fitradec_step", type=float, help="Starting step"
+                        " for fitradecsp call")
+    parser.add_argument("--fitradec_nsteps", type=float, help="Number of steps"
+                        " for fitradecsp call")
+    parser.add_argument("--fitradec_w_center", type=float, help="Center wl"
+                        " for fitradecsp call")
+    parser.add_argument("--fitradec_w_range", type=float, help="Wavelength"
+                        " range for fitradecsp call")
+    parser.add_argument("--fitradec_ifit1", type=float, help="fit flag"
+                        " for fitradecsp call")
+    parser.add_argument("--fill", type=float, help="Fill value")
+    parser.add_argument("--sn", type=float, help="SNR value")
+
+    return parser
 
 
 def parseArgs(argv):
@@ -89,6 +108,7 @@ def parseArgs(argv):
     args, remaining_argv = conf_parser.parse_known_args(argv)
 
     defaults = getDefaults()
+    ext_defaults = vspec.getDefaults()
 
     config_source = "Default"
     if args.conf_file:
@@ -96,11 +116,7 @@ def parseArgs(argv):
         config = ConfigParser.SafeConfigParser()
         config.read([args.conf_file])
         defaults.update(dict(config.items("FluxLim")))
-
-        bool_flags = ['remove_tmp']
-        for bf in bool_flags:
-            if config.has_option('FluxLim', bf):
-                defaults[bf] = config.getboolean('FluxLim', bf)
+        defaults.update(dict(config.items("SpecExtract")))
 
     # Parse rest of arguments
     # Don't suppress add_help here so it will handle -h
@@ -109,45 +125,13 @@ def parseArgs(argv):
     parser = AP(parents=[conf_parser])
 
     parser.set_defaults(**defaults)
-
-    parser.add_argument("--dithall_dir", type=str, help="Base directory "
-                        "used to find the dithall.use files")
-    parser.add_argument("--multifits_dir", type=str, help="Directory "
-                        "with the multi extension fits files")
-    parser.add_argument("--tp_dir", type=str, help="Directory "
-                        "with the throughput files")
-    parser.add_argument("--norm_dir", type=str, help="Directory "
-                        "with the amplifier normalization files")
-
-    parser.add_argument("--ra_range", type=int, help="Width in RA"
-                        " direction for search grid in asec")
-    parser.add_argument("--dec_range", type=int, help="Width in DEC"
-                        " direction for search grid in asec")
-    parser.add_argument("--radec_file", type=str, help="Filename of file with "
-                        "RA DEC PA positions for all shots")
-    parser.add_argument("--ifu_search_radius", type=float, help="Radius for "
-                        "search for fibers near a given star.")
-    parser.add_argument("--shot_search_radius", type=float, help="Radius for "
-                        "search for shots near a given star.")
-    parser.add_argument("--extraction_wl", type=float, help="Central "
-                        "wavelength for the extraction")
-    parser.add_argument("--extraction_wlrange", type=float, help="Wavelength "
-                        "range for the extraction")
-
-    parser.add_argument("--fitradec_step", type=float, help="Starting step"
-                        " for fitradecsp call")
-    parser.add_argument("--fitradec_nsteps", type=float, help="Number of steps"
-                        " for fitradecsp call")
-    parser.add_argument("--fitradec_w_center", type=float, help="Center wl"
-                        " for fitradecsp call")
-    parser.add_argument("--fitradec_w_range", type=float, help="Wavelength"
-                        " range for fitradecsp call")
-    parser.add_argument("--fitradec_ifit1", type=float, help="fit flag"
-                        " for fitradecsp call")
-    parser.add_argument("--fill", type=float, help="Fill value")
-    parser.add_argument("--sn", type=float, help="SNR value")
+    parser.set_defaults(**ext_defaults)
+    parser.add_argument("--logfile", type=str,
+                        help="Filename for log file.")
 
     # Boolean paramters
+    parser.add_argument("--debug", action='store_true',
+                        help="Keep temporary directories")
 
     # positional arguments
     parser.add_argument('ra', metavar='ra', type=float,
