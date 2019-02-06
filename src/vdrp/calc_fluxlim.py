@@ -109,7 +109,7 @@ def parseArgs(argv):
     args, remaining_argv = conf_parser.parse_known_args(argv)
 
     defaults = getDefaults()
-    ext_defaults = vspec.getDefaults()
+    ext_defaults = vstar.getDefaults()
 
     config_source = "Default"
     if args.conf_file:
