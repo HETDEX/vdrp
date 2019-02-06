@@ -679,13 +679,13 @@ def write_conf_file(fname):
 
     for k in sp_defaults:
         defaults['spext_'+k] = sp_defaults[k]
-        if 'sp_'+k not in cfgtxt:
+        if 'spext_'+k not in cfgtxt:
             print('Spec Extraction parameter %s is missing in config file!'
                   % k)
 
     for k in st_defaults:
         defaults['stext_'+k] = st_defaults[k]
-        if 'st_'+k not in cfgtxt:
+        if 'stext_'+k not in cfgtxt:
             print('Star Extraction parameter %s is missing in config file!'
                   % k)
 
