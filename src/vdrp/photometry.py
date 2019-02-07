@@ -831,6 +831,8 @@ def run():
                         help='Number of paralles process to execute.')
     parser.add_argument('-l', '--logfile', type=str, default='vdrp.log',
                         help='Logfile to write to.')
+    parser.add_argument('-L', '--loglevel', type=str, default='INFO',
+                        help='Loglevel to use.')
 
     args, remaining_argv = parser.parse_known_args()
 

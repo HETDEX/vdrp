@@ -306,10 +306,12 @@ def fitradec_entrypoint():
                         help='Number of paralles process to execute.')
     parser.add_argument('-l', '--logfile', type=str, default='vdrp.log',
                         help='Logfile to write to.')
+    parser.add_argument('-L', '--loglevel', type=str, default='INFO',
+                        help='Loglevel to use.')
 
     args, remaining_argv = parser.parse_known_args()
 
-    mplog.setup_mp_logging(args.logfile)
+    mplog.setup_mp_logging(args.logfile, args.loglevel)
 
     # Run (if requested) in threaded mode, this function will call sys.exit
     mp_run(main, args, remaining_argv, parseArgs)
