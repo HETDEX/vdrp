@@ -30,7 +30,8 @@ import numpy as np
 import vdrp.mplog as mplog
 import vdrp.astrometry as astrom
 import vdrp.programs as vp
-import vdrp.star_extraction as vext
+import vdrp.star_extraction as vstar
+import vdrp.extraction as vext
 import vdrp.file_tools as vft
 
 from distutils import dir_util
@@ -271,7 +272,6 @@ def parseArgs(argv):
     args, remaining_argv = conf_parser.parse_known_args(argv)
 
     defaults = getDefaults()
-    ext_defaults = vext.getDefaults()
 
     config_source = "Default"
     if args.conf_file:
@@ -545,6 +545,146 @@ def run_combsed(sedlist, sigmacut, rmscut, outfile, wdir, plotfile=None):
                     os.path.join(wdir, plotfile))
 
 
+def extract_star_single_shot(ra, dec, starid, args, dithall=None):
+    """
+    Equivalent of the rsp1a2b script.
+
+    Run the stellar extraction code for a given ra / dec position.
+
+    Parameters
+    ----------
+    ra : float
+        Right Ascension of the star.
+    dec : float
+        Declination of the star.
+    starid : int
+        ID to give to the star / position
+    args : struct
+        The arguments structure
+
+    """
+    try:
+        _logger.info('Starting star extraction')
+
+        nightshot = args.night + 'v' + args.shotid
+        starname = '%s_%d' % (nightshot, starid)
+
+        _logger.info('Extracting star %s' % starname)
+
+        # Create the workdirectory for this star
+        # curdir = os.path.abspath(os.path.curdir)
+        curdir = args.wdir
+        stardir = os.path.join(curdir, starname)
+        if not os.path.exists(stardir):
+            os.mkdir(stardir)
+
+        # Extract data like the data in l1
+        starobs, nshots = vstar.get_star_spectrum_data(ra, dec, args,
+                                                      (args.night,
+                                                       args.shotid),
+                                                      False, dithall=dithall)
+
+        if not len(starobs):
+            _logger.warn('No shots found, skipping!')
+            return
+
+        # Call rspstar
+        # Get fwhm and relative normalizations
+        vp.call_getnormexp(nightshot, stardir)
+
+        specfiles = vstar.extract_star_spectrum(starobs, args,
+                                                args.extraction_wl,
+                                                args.extraction_wlrange,
+                                                stardir)
+
+        vp.call_sumsplines(len(starobs), stardir)
+
+        vstar.apply_factor_spline(len(nshots), stardir)
+
+        vp.call_fitonevp(args.extraction_wl, nightshot+'_'+str(starid),
+                         stardir)
+
+        vstar.average_spectra(specfiles, starobs, args.average_wl,
+                              args.average_wlrange, stardir)
+
+        vext.get_structaz(starobs, args.multifits_dir)
+
+        vstar.run_fit2d(ra, dec, starobs, args.seeing, starname + '.ps',
+                        stardir)
+
+        # Save the out2 file created by fit2d
+        shutil.copy2(os.path.join(stardir, 'out2'),
+                     os.path.join(stardir, 'sp%d_out2.dat') % starid)
+
+        vp.call_mkimage(ra, dec, starobs, stardir)
+
+        vstar.run_sumlineserr(specfiles, stardir)
+
+        vstar.run_fitem(args.extraction_wl, starname, stardir)
+
+        # Extract full spectrum
+
+        fspecfiles = vstar.extract_star_spectrum(starobs, args,
+                                                 args.full_extraction_wl,
+                                                 args.full_extraction_wlrange,
+                                                 stardir, prefix='f')
+
+        vstar.run_sumlineserr(fspecfiles, stardir)
+
+        indata = np.loadtxt(os.path.join(stardir, 'splines.out'), dtype='U50',
+                            usecols=[0, 1, 2, 3, 4])
+
+        with open(os.path.join(stardir, starname + 'specf.dat'), 'w') as f:
+            for d in indata:
+                f.write('%s %s %s %s %s\n' % (d[0], d[2], d[4], d[1], d[3]))
+
+        vp.call_sumspec(starname, stardir)
+
+        mind = args.shot_search_radius
+        for o in starobs:
+            if o.dist < mind:
+                mind = o.dist
+
+        _logger.info('Closest fiber is %.5f arcseconds away' % mind)
+
+        vstar.copy_stardata(starname, starid, stardir)
+
+        _logger.info('Saving star data for %d' % starid)
+        save_data(stardir, os.path.join(stardir, 'sp%d.obsdata' % starid))
+
+        # Finally save the results to the results_dir
+
+        _logger.info('Saving data for %s' % starname)
+
+        shutil.copy2(os.path.join(stardir, starname+'.ps'), args.results_dir)
+        shutil.copy2(os.path.join(stardir, starname+'_2d.res'),
+                     args.results_dir)
+        shutil.copy2(os.path.join(stardir, starname+'_2dn.ps'),
+                     args.results_dir)
+        shutil.copy2(os.path.join(stardir, starname+'spec.dat'),
+                     args.results_dir)
+        shutil.copy2(os.path.join(stardir, starname+'spec.res'),
+                     args.results_dir)
+        shutil.copy2(os.path.join(stardir, starname+'spece.dat'),
+                     args.results_dir)
+        shutil.copy2(os.path.join(stardir, starname+'specf.dat'),
+                     args.results_dir)
+        shutil.copy2(os.path.join(stardir, starname+'tot.ps'),
+                     args.results_dir)
+        shutil.copy2(os.path.join(stardir, starname+'specf.dat'),
+                     os.path.join(args.results_dir, 'sp%d_2.dat' % starid))
+        shutil.copy2(os.path.join(stardir, 'sumspec.out'),
+                     os.path.join(args.results_dir, 'sp%d_100.dat' % starid))
+        shutil.copy2(os.path.join(stardir, 'sp%d.obsdata') % starid,
+                     args.results_dir)
+        shutil.copy2(os.path.join(stardir, 'sp%d_out2.dat') % starid,
+                     args.results_dir)
+
+        _logger.info('Finished star extraction for %s' % starname)
+    except Exception as e:
+        _logger.exception(e)
+
+
 def run_shuffle_photometry(args, wdir):
     """
     Equivalent of the rsetstar script. Find all shuffle stars observed
@@ -582,7 +722,7 @@ def run_shuffle_photometry(args, wdir):
     for star in stars:
 
         # Add all the tasks, they will start right away.
-        pool.add_task(vext.extract_star(star.ra, star.dec, star.starid, args,
+        pool.add_task(vstar.extract_star(star.ra, star.dec, star.starid, args,
                                         dithall=dithall))
 
     # Now wait for all tasks to finish.
@@ -783,7 +923,7 @@ def main(jobnum, args):
                     raise Exception('To run on a specific position, please '
                                     'specify target_ra and target_dec of the'
                                     ' position')
-                vext.run_star_photometry(args.target_ra, args.target_dec,
+                vstar.run_star_photometry(args.target_ra, args.target_dec,
                                          args.starid, args)
 
             if task in ['extract_stars', 'all']:

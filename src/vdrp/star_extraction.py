@@ -386,8 +386,7 @@ def copy_stardata(starname, starid, wdir):
     """
 
 
-def extract_star(ra, dec, starid, args, multi_shot=False,
-                 dithall=None):
+def extract_star(args):
     """
     Equivalent of the rsp1a2b script.
 
@@ -395,12 +394,6 @@ def extract_star(ra, dec, starid, args, multi_shot=False,
 
     Parameters
     ----------
-    ra : float
-        Right Ascension of the star.
-    dec : float
-        Declination of the star.
-    starid : int
-        ID to give to the star / position
     args : struct
         The arguments structure
 
@@ -409,7 +402,7 @@ def extract_star(ra, dec, starid, args, multi_shot=False,
         _logger.info('Starting star extraction')
 
         nightshot = args.night + 'v' + args.shotid
-        starname = '%s_%d' % (nightshot, starid)
+        starname = '%s_%d' % (nightshot, args.starid)
 
         _logger.info('Extracting star %s' % starname)
 
@@ -421,19 +414,13 @@ def extract_star(ra, dec, starid, args, multi_shot=False,
             os.mkdir(stardir)
 
         # Extract data like the data in l1
-        starobs, nshots = vext.get_star_spectrum_data(ra, dec, args,
-                                                      (args.night,
-                                                       args.shotid),
-                                                      multi_shot,
-                                                      dithall=dithall)
+        starobs, nshots = \
+            vext.get_star_spectrum_data(args.ra, args.dec, args,
+                                        (args.night, args.shotid), True)
 
         if not len(starobs):
             _logger.warn('No shots found, skipping!')
             return
-
-        # Call rspstar
-        # Get fwhm and relative normalizations
-        vp.call_getnormexp(nightshot, stardir)
 
         specfiles = vext.extract_star_spectrum(starobs, args,
                                                args.extraction_wl,
@@ -443,84 +430,6 @@ def extract_star(ra, dec, starid, args, multi_shot=False,
         vp.call_sumsplines(len(starobs), stardir)
 
         apply_factor_spline(len(nshots), stardir)
-
-        vp.call_fitonevp(args.extraction_wl, nightshot+'_'+str(starid),
-                         stardir)
-
-        average_spectra(specfiles, starobs, args.average_wl,
-                        args.average_wlrange, stardir)
-
-        vext.get_structaz(starobs, args.multifits_dir)
-
-        run_fit2d(ra, dec, starobs, args.seeing, starname + '.ps', stardir)
-
-        # Save the out2 file created by fit2d
-        shutil.copy2(os.path.join(stardir, 'out2'),
-                     os.path.join(stardir, 'sp%d_out2.dat') % starid)
-
-        vp.call_mkimage(ra, dec, starobs, stardir)
-
-        run_sumlineserr(specfiles, stardir)
-
-        run_fitem(args.extraction_wl, starname, stardir)
-
-        # Extract full spectrum
-
-        fspecfiles = vext.extract_star_spectrum(starobs, args,
-                                                args.full_extraction_wl,
-                                                args.full_extraction_wlrange,
-                                                stardir, prefix='f')
-
-        run_sumlineserr(fspecfiles, stardir)
-
-        indata = np.loadtxt(os.path.join(stardir, 'splines.out'), dtype='U50',
-                            usecols=[0, 1, 2, 3, 4])
-
-        with open(os.path.join(stardir, starname + 'specf.dat'), 'w') as f:
-            for d in indata:
-                f.write('%s %s %s %s %s\n' % (d[0], d[2], d[4], d[1], d[3]))
-
-        vp.call_sumspec(starname, stardir)
-
-        mind = args.shot_search_radius
-        for o in starobs:
-            if o.dist < mind:
-                mind = o.dist
-
-        _logger.info('Closest fiber is %.5f arcseconds away' % mind)
-
-        copy_stardata(starname, starid, stardir)
-
-        _logger.info('Saving star data for %d' % starid)
-        save_data(stardir, os.path.join(stardir, 'sp%d.obsdata' % starid))
-
-        # Finally save the results to the results_dir
-
-        _logger.info('Saving data for %s' % starname)
-
-        shutil.copy2(os.path.join(stardir, starname+'.ps'), args.results_dir)
-        shutil.copy2(os.path.join(stardir, starname+'_2d.res'),
-                     args.results_dir)
-        shutil.copy2(os.path.join(stardir, starname+'_2dn.ps'),
-                     args.results_dir)
-        shutil.copy2(os.path.join(stardir, starname+'spec.dat'),
-                     args.results_dir)
-        shutil.copy2(os.path.join(stardir, starname+'spec.res'),
-                     args.results_dir)
-        shutil.copy2(os.path.join(stardir, starname+'spece.dat'),
-                     args.results_dir)
-        shutil.copy2(os.path.join(stardir, starname+'specf.dat'),
-                     args.results_dir)
-        shutil.copy2(os.path.join(stardir, starname+'tot.ps'),
-                     args.results_dir)
-        shutil.copy2(os.path.join(stardir, starname+'specf.dat'),
-                     os.path.join(args.results_dir, 'sp%d_2.dat' % starid))
-        shutil.copy2(os.path.join(stardir, 'sumspec.out'),
-                     os.path.join(args.results_dir, 'sp%d_100.dat' % starid))
-        shutil.copy2(os.path.join(stardir, 'sp%d.obsdata') % starid,
-                     args.results_dir)
-        shutil.copy2(os.path.join(stardir, 'sp%d_out2.dat') % starid,
-                     args.results_dir)
 
         _logger.info('Finished star extraction for %s' % starname)
     except Exception as e:
