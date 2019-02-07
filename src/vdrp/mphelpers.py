@@ -60,7 +60,7 @@ class ThreadWorker(threading.Thread):
                     _logger.info('Shutting down thread')
                     break
                 except Exception as e:
-                    print(e)
+                    _logger.exception(e)
                 finally:
                     self.tasks.task_done()
             except Queue.Empty:
@@ -68,7 +68,7 @@ class ThreadWorker(threading.Thread):
                       % (time.strftime('%H:%M:%S'), self.name))
                 return
             except Exception as e:
-                print(e)
+                _logger.exception(e)
 
 
 class MPWorker(multiprocessing.Process):
@@ -92,7 +92,7 @@ class MPWorker(multiprocessing.Process):
                     _logger.info('Shutting down thread')
                     break
                 except Exception as e:
-                    print(e)
+                    _logger.exception(e)
                 finally:
                     self.tasks.task_done()
             except Queue.Empty:
@@ -100,8 +100,8 @@ class MPWorker(multiprocessing.Process):
                       % (time.strftime('%H:%M:%S'), self.name))
                 return
             except Exception as e:
-                print(e)
-
+                _logger.exception(e)
+                    
 
 class ThreadPool:
     """Pool of threads consuming tasks from a queue"""
@@ -130,10 +130,12 @@ class MPPool:
         self.num_proc = num_proc
         self.tasks = multiprocessing.JoinableQueue()
         for i in range(num_proc):
+            print('Creating mp workers')
             MPWorker('MPWorker%d_%d' % (jobnum, i), self.tasks)
 
     def add_task(self, func, *args, **kargs):
         """Add a task to the queue"""
+        _logger.info('Adding new task %s to queue' % func)
         self.tasks.put((func, args, kargs))
 
     def wait_completion(self):
@@ -159,7 +161,7 @@ def mp_run(func, args, rargv, parser):
             with open(mfile) as f:
                 cmdlines = f.readlines()
         except Exception as e:
-            print(e)
+            _logger.exception(e)
             raise Exception('Failed to read input file %s!' % args.multi)
 
         # Parse the line numbers to evaluate, if any given.
