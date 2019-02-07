@@ -211,8 +211,8 @@ def calc_fluxlim(args, workdir):
 
     curdir = workdir
     cosd = np.cos(args.dec / 57.3)
-    rstart = args.ra - 35./3600./cosd
-    dstart = args.dec - 35./3600.
+    rstart = args.ra - args.ra_range/2./3600./cosd
+    dstart = args.dec - args.dec_range/2./3600.
 
     wave_min = args.extraction_wl - args.extraction_wlrange
     wave_max = args.extraction_wl + args.extraction_wlrange
@@ -359,6 +359,11 @@ def update_im3d_header(ra, dec, wdir):
         hdu[0].header['CD1_2'] = 0
         hdu[0].header['CD2_2'] = 0.0002777
         hdu[0].header['CD2_1'] = 0
+        hdu[0].header["CD3_3"] = hdu[0].header["CDELT3"]
+        hdu[0].header["CD3_1"] = 0.0
+        hdu[0].header["CD3_2"] = 0.0
+        hdu[0].header["CD2_3"] = 0.0
+        hdu[0].header["CD1_3"] = 0.0
         hdu[0].header['CRPIX1'] = 35.0
         hdu[0].header['CRPIX2'] = 35.0
         hdu[0].header['CRPIX3'] = 1
