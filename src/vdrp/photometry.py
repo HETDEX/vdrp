@@ -722,9 +722,9 @@ def run_shuffle_photometry(args, wdir):
     for star in stars:
 
         # Add all the tasks, they will start right away.
-        pool.add_task(vstar.extract_star_single_shot(star.ra, star.dec,
-                                                     star.starid, args,
-                                                     dithall=dithall))
+        pool.add_task(extract_star_single_shot(star.ra, star.dec,
+                                               star.starid, args,
+                                               dithall=dithall))
 
     # Now wait for all tasks to finish.
     pool.wait_completion()
