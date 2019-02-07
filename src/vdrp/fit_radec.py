@@ -46,20 +46,16 @@ def getDefaults():
 
     defaults['radec_file'] = '/work/00115/gebhardt/maverick/getfib/radec.all'
 
-    defaults['extraction_wl'] = 4505.
-    defaults['extraction_wlrange'] = 1035.
+    defaults['extraction_wl'] = 4500.
+    defaults['extraction_wlrange'] = 1000.
 
-    defaults['ifu_search_radius'] = 4.
+    defaults['ifu_search_radius'] = 3.
     defaults['shot_search_radius'] = 600.
 
     defaults['fitradec_step'] = 0
     defaults['fitradec_nsteps'] = 1
-    defaults['fitradec_w_center'] = 4505.
     defaults['fitradec_w_range'] = 3.
     defaults['fitradec_ifit1'] = 1
-
-    defaults['fill'] = 3.
-    defaults['sn'] = 8.
 
     return defaults
 
@@ -99,14 +95,10 @@ def get_arguments(parser):
                         " for fitradecsp call")
     parser.add_argument("--fitradec_nsteps", type=float, help="Number of steps"
                         " for fitradecsp call")
-    parser.add_argument("--fitradec_w_center", type=float, help="Center wl"
-                        " for fitradecsp call")
     parser.add_argument("--fitradec_w_range", type=float, help="Wavelength"
                         " range for fitradecsp call")
     parser.add_argument("--fitradec_ifit1", type=float, help="fit flag"
                         " for fitradecsp call")
-    parser.add_argument("--fill", type=float, help="Fill value")
-    parser.add_argument("--sn", type=float, help="SNR value")
 
     return parser
 
@@ -152,7 +144,6 @@ def parseArgs(argv):
     parser.add_argument("--logfile", type=str,
                         help="Filename for log file.")
 
-    parser = vext.get_arguments(parser)
     parser = get_arguments(parser)
 
     # Boolean paramters
@@ -233,7 +224,7 @@ def fit_radec(args):
         vext.get_structaz(starobs, args.multifits_dir)
 
         vp.run_fitradecsp(args.ra, args.dec, args.fitradec_step,
-                          args.fitradec_nsteps, args.fitradec_w_center,
+                          args.fitradec_nsteps, args.wl,
                           args.fitradec_w_range, args.fitradec_ifit1,
                           starobs, specfiles, wdir)
 
@@ -263,7 +254,10 @@ def main(jobnum, args):
 
     # default is to work in results_dir
     # Create a temporary directory
-    wdir = os.path.join(os.getcwd(), args.nightshot + '_' + args.specid)
+    args.results_dir = os.path.join(os.getcwd(), 'fitres')
+    if not os.path.exists(args.results_dir):
+        os.mkdir(args.results_dir)
+    wdir = os.path.join(os.getcwd(), args.nightshot + '_' + str(args.specid))
     _logger.info("Tempdir is {}".format(wdir))
     if not os.path.exists(wdir):
         os.mkdir(wdir)
@@ -274,9 +268,6 @@ def main(jobnum, args):
     _logger.info("Configuration {}.".format(args.config_source))
 
     args.wdir = wdir
-
-    # Override the spec flag with the positional parameter
-    args.extraction_wl = args.wl
 
     try:
         _logger.info('Starting spec fit')
