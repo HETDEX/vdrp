@@ -489,10 +489,7 @@ def main(jobnum, args):
         _logger.info("Done.")
 
 
-def run():
-    argv = None
-    if argv is None:
-        argv = sys.argv
+def star_extract_entrypoint():
 
     # Here we create another external argument parser, this checks if we
     # are supposed to run in multi-threaded mode.
@@ -520,4 +517,4 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    star_extract_entrypoint()

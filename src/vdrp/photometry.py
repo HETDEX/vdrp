@@ -579,7 +579,7 @@ def extract_star_single_shot(ra, dec, starid, args, dithall=None):
             os.mkdir(stardir)
 
         # Extract data like the data in l1
-        starobs, nshots = vstar.get_star_spectrum_data(ra, dec, args,
+        starobs, nshots = vext.get_star_spectrum_data(ra, dec, args,
                                                       (args.night,
                                                        args.shotid),
                                                       False, dithall=dithall)
@@ -592,10 +592,10 @@ def extract_star_single_shot(ra, dec, starid, args, dithall=None):
         # Get fwhm and relative normalizations
         vp.call_getnormexp(nightshot, stardir)
 
-        specfiles = vstar.extract_star_spectrum(starobs, args,
-                                                args.extraction_wl,
-                                                args.extraction_wlrange,
-                                                stardir)
+        specfiles = vext.extract_star_spectrum(starobs, args,
+                                               args.extraction_wl,
+                                               args.extraction_wlrange,
+                                               stardir)
 
         vp.call_sumsplines(len(starobs), stardir)
 
@@ -624,10 +624,10 @@ def extract_star_single_shot(ra, dec, starid, args, dithall=None):
 
         # Extract full spectrum
 
-        fspecfiles = vstar.extract_star_spectrum(starobs, args,
-                                                 args.full_extraction_wl,
-                                                 args.full_extraction_wlrange,
-                                                 stardir, prefix='f')
+        fspecfiles = vext.extract_star_spectrum(starobs, args,
+                                                args.full_extraction_wl,
+                                                args.full_extraction_wlrange,
+                                                stardir, prefix='f')
 
         vstar.run_sumlineserr(fspecfiles, stardir)
 
@@ -722,9 +722,8 @@ def run_shuffle_photometry(args, wdir):
     for star in stars:
 
         # Add all the tasks, they will start right away.
-        pool.add_task(extract_star_single_shot(star.ra, star.dec,
-                                               star.starid, args,
-                                               dithall=dithall))
+        pool.add_task(extract_star_single_shot, star.ra, star.dec,
+                      star.starid, args, dithall=dithall)
 
     # Now wait for all tasks to finish.
     pool.wait_completion()
