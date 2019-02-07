@@ -477,7 +477,7 @@ def main(jobnum, args):
     try:
         # Equivalent of rsp1
         _logger.info('Extracting specific RA/DEC position')
-        extract_star(args.ra, args.dec, args.starid, args, True)
+        extract_star(args)
     except Exception as e:
         _logger.exception(e)
 
