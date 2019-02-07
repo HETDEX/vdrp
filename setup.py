@@ -106,6 +106,7 @@ entry_points = {'console_scripts':
                  'vdrp_throughput = vdrp.photometry:run',
                  'vdrp_calc_flim = vdrp.calc_fluxlim:calc_fluxlim_entrypoint',
                  'vdrp_setup_flim = vdrp.setup_fluxlim:setup_fluxlim_entrypoint',
+                 'vdrp_fitradec = vdrp.fit_radec:fitradec_entrypoint',
                  'vdrp_bindir = vdrp.utils:print_bindir',
                  'vdrp_configdir = vdrp.utils:print_configdir',
                  'vdrp_config = vdrp.utils:print_conffile',

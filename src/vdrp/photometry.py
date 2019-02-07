@@ -116,6 +116,27 @@ def getDefaults():
     defaults["shuffle_ifustars_dir"] = \
         '/work/00115/gebhardt/maverick/sci/panacea/test/shifts/'
 
+    # Extraction paramters
+
+    defaults['dithall_dir'] = '/work/00115/gebhardt/maverick/detect/'
+    defaults['multifits_dir'] = '/work/03946/hetdex/maverick/red1/reductions/'
+    defaults['tp_dir'] = '/work/00115/gebhardt/maverick/detect/tp/'
+    defaults['norm_dir'] = '/work/00115/gebhardt/maverick/getampnorm/all/'
+
+    defaults['radec_file'] = '/work/00115/gebhardt/maverick/getfib/radec.all'
+
+    defaults['extraction_wl'] = 4505.
+    defaults['extraction_wlrange'] = 1035.
+    defaults['full_extraction_wl'] = 4500.
+    defaults['full_extraction_wlrange'] = 1000.
+    defaults['average_wl'] = 4500.
+    defaults['average_wlrange'] = 10.
+
+    defaults['ifu_search_radius'] = 4.
+    defaults['shot_search_radius'] = 600.
+
+    defaults['seeing'] = 1.5
+
     # Shuffle parameters
     defaults["acam_magadd"] = 5.
     defaults["wfs1_magadd"] = 5.
@@ -150,6 +171,37 @@ def get_arguments(parser):
     ----------
     parser : argparse.ArgumentParser
     '''
+
+    parser.add_argument("--dithall_dir", type=str, help="Base directory "
+                        "used to find the dithall.use files")
+    parser.add_argument("--multifits_dir", type=str, help="Directory "
+                        "with the multi extension fits files")
+    parser.add_argument("--tp_dir", type=str, help="Directory "
+                        "with the throughput files")
+    parser.add_argument("--norm_dir", type=str, help="Directory "
+                        "with the amplifier normalization files")
+
+    parser.add_argument("--radec_file", type=str, help="Filename of file with "
+                        "RA DEC PA positions for all shots")
+
+    parser.add_argument("--extraction_wl", type=float, help="Central "
+                        "wavelength for the extraction")
+    parser.add_argument("--extraction_wlrange", type=float, help="Wavelength "
+                        "range for the extraction")
+    parser.add_argument("--full_extraction_wl", type=float, help="Central "
+                        "wavelength for the full spectrum extraction")
+    parser.add_argument("--full_extraction_wlrange", type=float,
+                        help="Wavelength range for the full "
+                        "spectrum extraction")
+    parser.add_argument("--average_wl", type=float, help="Central "
+                        "wavelength for the averaging")
+    parser.add_argument("--average_wlrange", type=float, help="Wavelength "
+                        "range for the averaging")
+
+    parser.add_argument("--ifu_search_radius", type=float, help="Radius for "
+                        "search for fibers near a given star.")
+    parser.add_argument("--shot_search_radius", type=float, help="Radius for "
+                        "search for shots near a given star.")
 
     parser.add_argument("--shuffle_cores", type=int,
                         help="Number of multiprocessing cores to use for"
@@ -226,8 +278,6 @@ def parseArgs(argv):
         config_source = args.conf_file
         config = ConfigParser.SafeConfigParser()
         config.read([args.conf_file])
-        defaults.update(dict(config.items("SpecExtract")))
-        defaults.update(dict(config.items("StarExtract")))
         defaults.update(dict(config.items("Photometry")))
 
     # Parse rest of arguments
@@ -237,11 +287,9 @@ def parseArgs(argv):
     parser = AP(parents=[conf_parser])
 
     parser.set_defaults(**defaults)
-    parser.set_defaults(**ext_defaults)
     parser.add_argument("--logfile", type=str,
                         help="Filename for log file.")
 
-    parser = vext.get_arguments(parser)
     parser = get_arguments(parser)
 
     # Script specific parameters

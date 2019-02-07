@@ -25,53 +25,6 @@ _baseDir = os.getcwd()
 _logger = logging.getLogger()
 
 
-def getDefaults():
-
-    defaults = {}
-
-    defaults['dithall_dir'] = '/work/00115/gebhardt/maverick/detect/'
-    defaults['multifits_dir'] = '/work/03946/hetdex/maverick/red1/reductions/'
-    defaults['tp_dir'] = '/work/00115/gebhardt/maverick/detect/tp/'
-    defaults['norm_dir'] = '/work/00115/gebhardt/maverick/getampnorm/all/'
-
-    defaults['radec_file'] = '/work/00115/gebhardt/maverick/getfib/radec.all'
-
-    defaults['ifu_search_radius'] = 4.
-    defaults['shot_search_radius'] = 600.
-
-    return defaults
-
-
-def get_arguments(parser):
-    '''
-    Add command line arguments for the photometry routines, this function
-    can be called from another tool.
-
-    Parameters
-    ----------
-    parser : argparse.ArgumentParser
-    '''
-
-    parser.add_argument("--dithall_dir", type=str, help="Base directory "
-                        "used to find the dithall.use files")
-    parser.add_argument("--multifits_dir", type=str, help="Directory "
-                        "with the multi extension fits files")
-    parser.add_argument("--tp_dir", type=str, help="Directory "
-                        "with the throughput files")
-    parser.add_argument("--norm_dir", type=str, help="Directory "
-                        "with the amplifier normalization files")
-
-    parser.add_argument("--radec_file", type=str, help="Filename of file with "
-                        "RA DEC PA positions for all shots")
-
-    parser.add_argument("--ifu_search_radius", type=float, help="Radius for "
-                        "search for fibers near a given star.")
-    parser.add_argument("--shot_search_radius", type=float, help="Radius for "
-                        "search for shots near a given star.")
-
-    return parser
-
-
 def get_star_spectrum_data(ra, dec, args, nightshot, multi_shot=False,
                            dithall=None):
     """

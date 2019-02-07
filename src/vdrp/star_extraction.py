@@ -28,7 +28,7 @@ import json
 import vdrp.mplog as mplog
 import vdrp.utils as utils
 import vdrp.programs as vp
-import vdrp.spec_extraction as vspec
+import vdrp.extraction as vext
 
 from vdrp.mphelpers import mp_run
 from vdrp.vdrp_helpers import save_data, run_command
@@ -40,14 +40,22 @@ _baseDir = os.getcwd()
 _logger = logging.getLogger()
 
 
-def getDefaults(with_spec_defaults=True):
+def getDefaults():
 
-    if with_spec_defaults:
-        defaults = vspec.getDefaults()
-    else:
-        defaults = {}
+    defaults = {}
 
-    defaults['starid'] = 1
+    defaults['dithall_dir'] = '/work/00115/gebhardt/maverick/detect/'
+    defaults['multifits_dir'] = '/work/03946/hetdex/maverick/red1/reductions/'
+    defaults['tp_dir'] = '/work/00115/gebhardt/maverick/detect/tp/'
+    defaults['norm_dir'] = '/work/00115/gebhardt/maverick/getampnorm/all/'
+
+    defaults['radec_file'] = '/work/00115/gebhardt/maverick/getfib/radec.all'
+
+    defaults['extraction_wl'] = 4505.
+    defaults['extraction_wlrange'] = 1035.
+
+    defaults['ifu_search_radius'] = 4.
+    defaults['shot_search_radius'] = 600.
 
     defaults['extraction_wl'] = 4505.
     defaults['extraction_wlrange'] = 1035.
@@ -71,7 +79,17 @@ def get_arguments(parser):
     parser : argparse.ArgumentParser
     '''
 
-    parser = vspec.get_arguments(parser)
+    parser.add_argument("--dithall_dir", type=str, help="Base directory "
+                        "used to find the dithall.use files")
+    parser.add_argument("--multifits_dir", type=str, help="Directory "
+                        "with the multi extension fits files")
+    parser.add_argument("--tp_dir", type=str, help="Directory "
+                        "with the throughput files")
+    parser.add_argument("--norm_dir", type=str, help="Directory "
+                        "with the amplifier normalization files")
+
+    parser.add_argument("--radec_file", type=str, help="Filename of file with "
+                        "RA DEC PA positions for all shots")
 
     parser.add_argument("--extraction_wl", type=float, help="Central "
                         "wavelength for the extraction")
@@ -86,6 +104,11 @@ def get_arguments(parser):
                         "wavelength for the averaging")
     parser.add_argument("--average_wlrange", type=float, help="Wavelength "
                         "range for the averaging")
+
+    parser.add_argument("--ifu_search_radius", type=float, help="Radius for "
+                        "search for fibers near a given star.")
+    parser.add_argument("--shot_search_radius", type=float, help="Radius for "
+                        "search for shots near a given star.")
 
     return parser
 
@@ -118,7 +141,6 @@ def parseArgs(argv):
         config_source = args.conf_file
         config = ConfigParser.SafeConfigParser()
         config.read([args.conf_file])
-        defaults.update(dict(config.items("SpecExtract")))
         defaults.update(dict(config.items("StarExtract")))
 
     # Parse rest of arguments
@@ -399,10 +421,11 @@ def extract_star(ra, dec, starid, args, multi_shot=False,
             os.mkdir(stardir)
 
         # Extract data like the data in l1
-        starobs, nshots = vspec.get_star_spectrum_data(ra, dec, args,
-                                                       (args.night, args.shotid),
-                                                       multi_shot,
-                                                       dithall=dithall)
+        starobs, nshots = vext.get_star_spectrum_data(ra, dec, args,
+                                                      (args.night,
+                                                       args.shotid),
+                                                      multi_shot,
+                                                      dithall=dithall)
 
         if not len(starobs):
             _logger.warn('No shots found, skipping!')
@@ -412,10 +435,10 @@ def extract_star(ra, dec, starid, args, multi_shot=False,
         # Get fwhm and relative normalizations
         vp.call_getnormexp(nightshot, stardir)
 
-        specfiles = vspec.extract_star_spectrum(starobs, args,
-                                                args.extraction_wl,
-                                                args.extraction_wlrange,
-                                                stardir)
+        specfiles = vext.extract_star_spectrum(starobs, args,
+                                               args.extraction_wl,
+                                               args.extraction_wlrange,
+                                               stardir)
 
         vp.call_sumsplines(len(starobs), stardir)
 
@@ -427,7 +450,7 @@ def extract_star(ra, dec, starid, args, multi_shot=False,
         average_spectra(specfiles, starobs, args.average_wl,
                         args.average_wlrange, stardir)
 
-        vspec.get_structaz(starobs, args.multifits_dir)
+        vext.get_structaz(starobs, args.multifits_dir)
 
         run_fit2d(ra, dec, starobs, args.seeing, starname + '.ps', stardir)
 
@@ -443,10 +466,10 @@ def extract_star(ra, dec, starid, args, multi_shot=False,
 
         # Extract full spectrum
 
-        fspecfiles = vspec.extract_star_spectrum(starobs, args,
-                                                 args.full_extraction_wl,
-                                                 args.full_extraction_wlrange,
-                                                 stardir, prefix='f')
+        fspecfiles = vext.extract_star_spectrum(starobs, args,
+                                                args.full_extraction_wl,
+                                                args.full_extraction_wlrange,
+                                                stardir, prefix='f')
 
         run_sumlineserr(fspecfiles, stardir)
 
