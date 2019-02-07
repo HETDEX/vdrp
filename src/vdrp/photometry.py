@@ -834,27 +834,7 @@ def run():
 
     args, remaining_argv = parser.parse_known_args()
 
-    # Setup the logging
-    fmt = '%(asctime)s %(levelname)-8s %(threadName)12s %(funcName)15s(): ' \
-        '%(message)s'
-    formatter = logging.Formatter(fmt, datefmt='%m-%d %H:%M:%S')
-    _logger.setLevel(logging.DEBUG)
-
-    cHndlr = logging.StreamHandler()
-    cHndlr.setLevel(logging.DEBUG)
-    cHndlr.setFormatter(formatter)
-
-    _logger.addHandler(cHndlr)
-
-    fHndlr = logging.FileHandler(args.logfile, mode='w')
-    fHndlr.setLevel(logging.DEBUG)
-    fHndlr.setFormatter(formatter)
-
-    _logger.addHandler(fHndlr)
-
-    # Wrap the log handlers with the MPHandler, this is essential for the use
-    # of multiprocessing, otherwise, tasks will hang.
-    mplog.install_mp_handler(_logger)
+    mplog.setup_mp_logging(args.logfile, args.loglevel)
 
     # Run (if requested) in threaded mode, this function will call sys.exit
     mp_run(main, args, remaining_argv, parseArgs)

@@ -516,7 +516,7 @@ def extract_star(ra, dec, starid, args, multi_shot=False,
         shutil.copy2(os.path.join(stardir, starname+'specf.dat'),
                      os.path.join(args.results_dir, 'sp%d_2.dat' % starid))
         shutil.copy2(os.path.join(stardir, 'sumspec.out'),
-                     os.path.join(stardir, 'sp%d_100.dat' % starid))
+                     os.path.join(args.results_dir, 'sp%d_100.dat' % starid))
         shutil.copy2(os.path.join(stardir, 'sp%d.obsdata') % starid,
                      args.results_dir)
         shutil.copy2(os.path.join(stardir, 'sp%d_out2.dat') % starid,
@@ -598,15 +598,13 @@ def run():
                         help='Number of paralles process to execute.')
     parser.add_argument('-l', '--logfile', type=str, default='vdrp.log',
                         help='Logfile to write to.')
+    parser.add_argument('-L', '--loglevel', type=str, default='INFO',
+                        help='Loglevel to use.')
 
     args, remaining_argv = parser.parse_known_args()
 
     # Setup the logging
-    utils.setup_logging(_logger, args.logfile)
-
-    # Wrap the log handlers with the MPHandler, this is essential for the use
-    # of multiprocessing, otherwise, tasks will hang.
-    mplog.install_mp_handler(_logger)
+    mplog.setup_mp_logging(args.logfile, args.loglevel)
 
     # Run (if requested) in threaded mode, this function will call sys.exit
     mp_run(main, args, remaining_argv, parseArgs)
