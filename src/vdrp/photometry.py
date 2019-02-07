@@ -580,9 +580,9 @@ def extract_star_single_shot(ra, dec, starid, args, dithall=None):
 
         # Extract data like the data in l1
         starobs, nshots = vstar.get_star_spectrum_data(ra, dec, args,
-                                                      (args.night,
-                                                       args.shotid),
-                                                      False, dithall=dithall)
+                                                       (args.night,
+                                                        args.shotid),
+                                                       False, dithall=dithall)
 
         if not len(starobs):
             _logger.warn('No shots found, skipping!')

@@ -170,10 +170,8 @@ def parseArgs(argv):
                         help='Right Ascension of star.')
     parser.add_argument('dec', metavar='dec', type=float,
                         help='Declination of star.')
-    parser.add_argument('night', metavar='night', type=str,
-                        help='Night of observation (e.g. 20180611).')
-    parser.add_argument('shotid', metavar='shotid', type=str,
-                        help='Shotname of observation (e.g. 021).')
+    parser.add_argument('starid', metavar='starid', type=int,
+                        help='Star ID')
 
     args = parser.parse_args(remaining_argv)
 
@@ -401,8 +399,7 @@ def extract_star(args):
     try:
         _logger.info('Starting star extraction')
 
-        nightshot = args.night + 'v' + args.shotid
-        starname = '%s_%d' % (nightshot, args.starid)
+        starname = '%f_%f_%d' % (args.ra, args.dec, args.starid)
 
         _logger.info('Extracting star %s' % starname)
 
@@ -416,7 +413,7 @@ def extract_star(args):
         # Extract data like the data in l1
         starobs, nshots = \
             vext.get_star_spectrum_data(args.ra, args.dec, args,
-                                        (args.night, args.shotid), True)
+                                        None, True)
 
         if not len(starobs):
             _logger.warn('No shots found, skipping!')
@@ -444,7 +441,8 @@ def main(jobnum, args):
 
     # Create results directory for given night and shot
     cwd = _baseDir
-    results_dir = os.path.join(cwd, '%f_%f' % (args.ra,  args.dec),  'res')
+    results_dir = os.path.join(cwd, '%f_%f_%d'
+                               % (args.ra, args.dec, args.starid),  'res')
     utils.createDir(results_dir)
     args.results_dir = results_dir
 
