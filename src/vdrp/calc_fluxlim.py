@@ -162,7 +162,6 @@ def parseArgs(argv):
     parser.add_argument("--logfile", type=str,
                         help="Filename for log file.")
 
-    parser = vext.get_arguments(parser)
     parser = get_arguments(parser)
 
     # Boolean paramters

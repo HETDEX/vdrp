@@ -2,12 +2,25 @@ F77=gfortran
 FFLAGS = -O3
 LFLAGS = -O3
 
+OS := $(shell uname)
+
+$(info ${OS})
+
+ifeq ($(OS),Darwin)
+	FFLAGS = -O3 -I/usr/X11/include
+	X11LIBS = -L/usr/X11/lib
+	HOSTLIBS= -L$(LIBDIR) -lm -lnumrec -lquest -lgcv -llinpack -lpgplot \
+		-lcfitsio $(X11LIBS) -lX11
+else
+	X11LIBS = -L/usr/X11R6/lib
+	HOSTLIBS= -L$(LIBDIR) -lm -lnumrec -lquest -lgcv -llinpack -lpgplot \
+		-lcfitsio $(X11LIBS) -lX11
+endif
+
 BINDIR = $(HOME)/bin
 PKG_BINDIR = ../vdrp/bin/
 
 LIBDIR = $(shell vdrp_support_libdir)
-HOSTLIBS= -L$(LIBDIR) -lm -lnumrec -lquest -lgcv -llinpack -lpgplot \
-	-lcfitsio -L/usr/X11R6/lib -lX11
 
 BINARIES = ampnorm combsed fit2d fit2dc fit2dfix \
 	fit2dfw fit2dpsf fitem fitema fitemfull fitemmc fitems fitonesig \
