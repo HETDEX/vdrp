@@ -1,0 +1,12 @@
+VAR = 2
+READ = 1.06
+LOW = 10
+FWHM = 2.0
+WATCH = -1
+PSF = 7.
+GAIN = 1.274
+HIGH = 84000.
+THRESHOLD = 15.
+FIT = 4.0
+EX = 5
+AN = 1
