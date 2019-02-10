@@ -20,6 +20,7 @@ import logging
 import logging.config
 from astropy.io import fits
 import shutil
+import tempfile
 import numpy as np
 
 import vdrp.mplog as mplog
@@ -162,7 +163,6 @@ def parseArgs(argv):
     parser.add_argument("--logfile", type=str,
                         help="Filename for log file.")
 
-    parser = vext.get_arguments(parser)
     parser = get_arguments(parser)
 
     # Boolean paramters
@@ -209,7 +209,7 @@ def calc_fluxlim(args, workdir):
         The arguments structure
     """
 
-    curdir = workdir
+    curdir = tempfile.mkdtemp(prefix='flimtmp', dir='/tmp/')
     cosd = np.cos(args.dec / 57.3)
     rstart = args.ra - args.ra_range/2./3600./cosd
     dstart = args.dec - args.dec_range/2./3600.
@@ -308,6 +308,9 @@ def calc_fluxlim(args, workdir):
                 / (specdata[w, 8] * args.fill) * args.sn
 
             speccounter += 1
+
+            # del starobs
+            # del specdata
 
             if not args.debug:
                 _logger.info('Removing workdir %s' % wdir)
