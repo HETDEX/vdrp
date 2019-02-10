@@ -579,17 +579,10 @@ def extract_star_single_shot(ra, dec, starid, args, dithall=None):
             os.mkdir(stardir)
 
         # Extract data like the data in l1
-<<<<<<< HEAD
-        starobs, nshots = vstar.get_star_spectrum_data(ra, dec, args,
-                                                       (args.night,
-                                                        args.shotid),
-                                                       False, dithall=dithall)
-=======
         starobs, nshots = vext.get_star_spectrum_data(ra, dec, args,
                                                       (args.night,
                                                        args.shotid),
                                                       False, dithall=dithall)
->>>>>>> 8d82c95d04ec2a96fe236f1a86f65f4163421398
 
         if not len(starobs):
             _logger.warn('No shots found, skipping!')

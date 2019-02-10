@@ -5,6 +5,7 @@ from __future__ import print_function
 from argparse import ArgumentParser as AP
 from argparse import ArgumentDefaultsHelpFormatter as AHF
 
+import subprocess
 import os
 import sys
 
@@ -128,8 +129,12 @@ def main(args):
             raise Exception('Found fewer commands than expected!')
 
         cmd_file = '%s_%d%s' % (fname, file_c, fext)
-        create_job_file(cmd_file, commands, n_nodes, jobs_per_file,
+        slurmfile = create_job_file(cmd_file, commands, n_nodes, jobs_per_file,
                         jobs_per_node, args)
+
+        if args.commit:
+            p = subprocess.Popen('/bin/sbatch %s' % slurmfile, shell=True)
+            p.communicate()
 
         file_c += 1
 
@@ -223,6 +228,8 @@ def create_job_file(fname, commands, n_nodes, jobs_per_file, jobs_per_node,
 
         sf.write(slurm_footer)
 
+    return fn + '.slurm'
+
 
 def getDefaults():
     '''
@@ -271,6 +278,8 @@ def get_arguments(parser):
                         help='Use a specific pyenv environment')
     parser.add_argument('--debug_job', '-d', action="store_true",
                         help='Keep pylauncher workdir after completion')
+    parser.add_argument("--commit", action='store_true',
+                        help="Start the batch job on the batch system automatically")
 
     return parser
 

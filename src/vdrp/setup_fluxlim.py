@@ -106,8 +106,9 @@ def parseArgs(argv):
     job_defaults = vj.getDefaults()
 
     # Update them for fluxlim
-    job_defaults['cores'] = 1
-    job_defaults['threads'] = 24
+    job_defaults['cores_per_job'] = 2
+    job_defaults['nodes'] = 5
+    job_defaults['runtime'] = '06:00:00'
 
     # Parse rest of arguments
     # Don't suppress add_help here so it will handle -h
@@ -213,7 +214,7 @@ def setup_fluxlim_entrypoint():
 
     args, rargs = parseArgs(sys.argv[1:])
 
-    mplog.setup_mp_logging(args.logfile)
+    mplog.setup_mp_logging(args.logfile, 'INFO')
 
     # Create results directory for given night and shot
     cwd = _baseDir
