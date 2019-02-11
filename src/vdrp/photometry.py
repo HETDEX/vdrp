@@ -375,7 +375,7 @@ def get_shuffle_stars(nightshot, args, wdir):
     _logger.error('No shuffle stars found at all!')
 
 
-def get_sedfits(starobs, args, wdir):
+def get_sedfits(starobs, args, wdir, nomove=False):
     """
     Run quick_fit to generate the SED fits, if available.
 
@@ -425,7 +425,8 @@ def get_sedfits(starobs, args, wdir):
                 if not os.path.exists(fitsedname):
                     _logger.warn('No sed fit found for star %d' % s.starid)
                     continue
-                shutil.move(fitsedname, sedname)
+                if not nomove:
+                    shutil.move(fitsedname, sedname)
 
     except ImportError:
         _logger.warn('Failed to import quick_fit, falling back to '

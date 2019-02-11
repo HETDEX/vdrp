@@ -1,0 +1,42 @@
+rad1=600
+ra=$1
+dec=$2
+rad=$3
+wave=$4
+wl=$5
+name=$6
+awk '{if((3600.*sqrt((cos(dec0/57.3)*($3-ra0))^2+($4-dec0)^2))<rad0) print "/work/00115/gebhardt/maverick/getfib/rch",$1,$2,ra0,dec0,radp,wave0,wl0,name0}' ra0=$ra dec0=$dec rad0=$rad1 radp=$rad wave0=$wave wl0=$wl name0=$name /work/00115/gebhardt/maverick/getfib/radec.all > rj
+mv rj rj.all
+echo $name | sed s/v/" "/ | sed s/_/" "/ | awk '{print "grep \""$1,$2"\" rj.all"}' > rtmp ; chmod +x rtmp ; rtmp > rj
+chmod +x rj*
+rj.all > l1
+rm -f explist explist2
+awk '{s+=1; print 3600.*($1-rap),3600.*($2-decp),s}' rap=$ra decp=$dec l1 > loffset
+awk '{print $10,$11,$5,$9,$8}' l1 | sed s/v/" "/ | sed s/_/" "/g | sed s/.ixy// > l2
+awk '{print "/work/03946/hetdex/maverick/red1/reductions/"$1"/virus/virus0000"$2}' l2 > l3
+awk '{print $6}' l1 > explist2 
+paste l3 explist2 > l4
+awk '{print $3"_"$4"_"$5"_"$6"_"$7".fits"}' l2 > l5
+paste l4 l5 | awk '{print $1"/"$2"/virus/"$3}' > l6
+awk '{print "~gebhardt/bin/rtp0",$10"v"$11}' l1 > rj2 ; chmod +x rj2; rj2 > l7
+awk '{print $5}' l1 | sed s/.ixy// | cut -b 1-20 | awk '{print "/work/00115/gebhardt/maverick/getampnorm/all/"$1".norm"}' > l8
+#paste l6 l2 l7 l8 | awk '{s+=1; print "~gebhardt/bin/rextsp",$1,$9,wp,wlp,"tmp"s+100".dat","/work/00115/gebhardt/maverick/detect/tp/"$12,$13}' wp=$wave wlp=$wl > rextsp0
+paste l6 l2 l7 l8 | awk '{s+=1; print "~gebhardt/bin/rextsp",$1,$9,4505,1035,"tmp"s+100".dat","/work/00115/gebhardt/maverick/detect/tp/"$12,$13}' wp=$wave wlp=$wl > rextsp0
+chmod +x rextsp0
+rm -f tmp*.dat list
+rextsp0
+if [ -e tmp101.dat ] 
+then
+ls tmp*.dat > list
+if [ -e list ]
+then
+wc list | awk '{if($1==0) print "rm list"}' > rtr; chmod +x rtr; rtr
+wc list > ltmp
+fi
+fi
+echo $wave $wl > sprange.dat
+#~gebhardt/bin/plotsplines << eof
+#/vcps
+#eof
+#mv pgplot.ps $name.ps
+#mv splines.out $name.spsum
