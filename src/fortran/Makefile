@@ -5,7 +5,7 @@ LFLAGS = -O3
 OS := $(shell uname)
 
 ifeq ($(READTHEDOCS),True)
-	PKG_INSTALL_TARGETS = 
+	PKG_INSTALL_TARGETS =
 else
 	PKG_INSTALL_TARGETS = all install_pkg
 endif

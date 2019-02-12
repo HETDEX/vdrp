@@ -1,0 +1,13 @@
+# this file contains an extra url, the packages available only from them and the
+# ones necessary to build the docs
+# it is used to deploy the documentation
+
+# add the extra url
+--extra-index-url https://gate.mpe.mpg.de/pypi
+
+# packages from extra-index-ulr
+# pyhetdex
+# doc requirements
+sphinx
+numpydoc
+alabaster
