@@ -121,8 +121,10 @@ def parseArgs(args):
     Command line arguments overwrite configuration file settiongs which
     in turn overwrite default values.
 
-    Args:
-        args (argparse.Namespace): Return the populated namespace.
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Return the populated namespace.
     """
 
     # Parse any conf_file specification
@@ -292,13 +294,19 @@ def parseArgs(args):
 def cp_post_stamps(wdir, reduction_dir, night, shotid):
     """ Copy CoFeS (collapsed IFU images).
 
-    Args:
-        wdir (str): Work directory.
-        reduction_dir (str): Directory that holds panacea reductions.
-        night (str): Night (e.g. 20180611)
-        shotid (str): ID of shot (e.g. 017)
+    Parameters
+    ----------
+    wdir : str
+        Work directory.
+    reduction_dir : str
+        Directory that holds panacea reductions.
+    night : str
+        Night (e.g. 20180611)
+    shotid : str
+        ID of shot (e.g. 017)
 
-    Raises:
+    Raises
+    ------
         Exception
     """
     # find the IFU postage stamp fits files and copy them over
@@ -329,13 +337,16 @@ def cp_post_stamps(wdir, reduction_dir, night, shotid):
 def mk_post_stamp_matrix(wdir, prefixes, cofes_vis_vmin, cofes_vis_vmax):
     """ Create the IFU postage stamp matrix image.
 
-    Args:
-        wdir (str): Work directory.
-        prefixes (list): List file name prefixes for the collapsed IFU images.
-        cofes_vis_vmin (float): Minimum value (= black) for
-                                matrix overview plot.
-        cofes_vis_vmax (float): Maximum value (= black) for
-                                matrix overview plot.
+    Parameters
+    ----------
+    wdir : str
+        Work directory.
+    prefixes : list
+        List file name prefixes for the collapsed IFU images.
+    cofes_vis_vmin : float
+        Minimum value (= black) for matrix overview plot.
+    cofes_vis_vmax : float
+        Maximum value (= black) for matrix overview plot.
     """
     # create the IFU postage stamp matrix image
     logging.info("Creating the IFU postage stamp matrix images ...")
@@ -354,15 +365,24 @@ def daophot_find(wdir, prefixes, daophot_opt, daophot_sigma, daophot_xmin,
                  daophot_xmax, daophot_ymin, daophot_ymix):
     """ Run initial daophot find.
 
-    Args:
-        wdir (str): Work directory.
-        prefixes (list): List file name prefixes for the collapsed IFU images.
-        daophot_opt (str): Daphot sigma value.
-        daophot_sigma (float): Filename for daophot configuration.
-        daophot_xmin (float): X limit for daophot detections.
-        daophot_xmax (float): X limit for daophot detections.
-        daophot_ymin (float): Y limit for daophot detections.
-        daophot_ymix (float): Y limit for daophot detections.
+    Parameters
+    ----------
+    wdir : str
+        Work directory.
+    prefixes : list
+        List file name prefixes for the collapsed IFU images.
+    daophot_opt : str
+        Daphot sigma value.
+    daophot_sigma : float
+        Filename for daophot configuration.
+    daophot_xmin : float
+        X limit for daophot detections.
+    daophot_xmax : float
+        X limit for daophot detections.
+    daophot_ymin : float
+        Y limit for daophot detections.
+    daophot_ymix : float
+        Y limit for daophot detections.
     """
     logging.info("Running initial daophot find...")
     # Create configuration file for daophot.
@@ -380,16 +400,21 @@ def daophot_find(wdir, prefixes, daophot_opt, daophot_sigma, daophot_xmin,
 def daophot_phot_and_allstar(wdir, prefixes, daophot_photo_opt,
                              daophot_allstar_opt, daophot_phot_psf):
     """ Runs daophot photo and allstar on all IFU postage stamps.
-    Produces *.ap and *.als files.
+    Produces \*.ap and \*.als files.
     Analogous to run4a.
 
-    Args:
-        wdir (str): Work directory.
-        prefixes (list): List file name prefixes for the collapsed IFU images.
-        daophot_opt (str): Filename for daophot configuration.
-        daophot_photo_opt (str): Filename for daophot photo task configuration.
-        daophot_allstar_opt (str): Filename for daophot allstar
-                                   task configuration.
+    Parameters
+    ----------
+    wdir : str
+        Work directory.
+    prefixes : list
+        List file name prefixes for the collapsed IFU images.
+    daophot_opt : str
+        Filename for daophot configuration.
+    daophot_photo_opt : str
+        Filename for daophot photo task configuration.
+    daophot_allstar_opt : str
+        Filename for daophot allstar task configuration.
 
     """
     # run initial daophot phot & allstar
@@ -413,20 +438,30 @@ def mktot(wdir, prefixes, mktot_ifu_grid, mktot_magmin, mktot_magmax,
     config/ifu_grid.txt (should later become fplane.txt.
     Then produces all.mch.
 
-    Note:
+    Notes
+    -----
         Analogous to run6 and run6b.
 
-    Args:
-        wdir (string): Work directory.
-        prefixes (list): List file name prefixes for the collapsed IFU images.
-        mktot_ifu_grid (str): Name of file that holds gird of IFUs
-                              offset fit (mktot).
-        mktot_magmin (float): Magnitude limit for offset fit.
-        mktot_magmax (float): Magnitude limit for offset fit.
-        mktot_xmin (float): X limit for offset fit.
-        mktot_xmax (float): X limit for offset fit.
-        mktot_ymin (float): Y limit for offset fit.
-        mktot_ymax (float): Y limit for offset fit.
+    Parameters
+    ----------
+    wdir : str
+        Work directory.
+    prefixes : list
+        List file name prefixes for the collapsed IFU images.
+    mktot_ifu_grid : str
+        Name of file that holds gird of IFUs offset fit (mktot).
+    mktot_magmin : float
+        Magnitude limit for offset fit.
+    mktot_magmax : float
+        Magnitude limit for offset fit.
+    mktot_xmin : float
+        X limit for offset fit.
+    mktot_xmax : float
+        X limit for offset fit.
+    mktot_ymin : float
+        Y limit for offset fit.
+    mktot_ymax : float
+        Y limit for offset fit.
 
     """
     # read IFU grid definition file (needs to be replaced by fplane.txt)
@@ -505,11 +540,14 @@ def rmaster(wdir):
     """ Executes daomaster. This registers the sets of detections
     for the thre different exposrues with respec to each other.
 
-    Note:
+    Notes
+    -----
         Analogous to run8b.
 
-    Args:
-        wdir (str): Work directory.
+    Parameters
+    ----------
+    wdir : str
+        Work directory.
     """
     logging.info("Running daomaster.")
 
@@ -521,13 +559,17 @@ def rmaster(wdir):
 def getNorm(all_raw, mag_max):
     """ Comutes the actual normalisation for flux_norm.
 
-    Note:
+    Notes
+    -----
         Analogous to run9.
 
-    Args:
-        all_raw (str): Output file name of daomaster, usuall all.raw.
-        mag_max (float): Magnitude cutoff for normalisation.
-                         Fainter objects will be ignored.
+    Parameters
+    ----------
+    all_raw : str
+        Output file name of daomaster, usuall all.raw.
+    mag_max : float
+        Magnitude cutoff for normalisation.
+        Fainter objects will be ignored.
     """
     def mag2flux(m):
         return 10**((25-m)/2.5)
@@ -548,14 +590,20 @@ def flux_norm(wdir, mag_max, infile='all.raw', outfile='norm.dat'):
     """ Reads all.raw and compute relative flux normalisation
     for the three exposures.
 
-    Note:
+    Notes
+    -----
         Analogous to run9.
 
-    Args:
-        wdir (str): Work directory.
-        mag_max (float): Magnitude limit for flux normalisation.
-        infile (str): Output file of daomaster.
-        outfile (str): Filename for result file.
+    Parameters
+    ----------
+    wdir : str
+        Work directory.
+    mag_max : float
+        Magnitude limit for flux normalisation.
+    infile : str
+        Output file of daomaster.
+    outfile : str
+        Filename for result file.
     """
     global vdrp_info
     logging.info("Computing flux normalisation between exposures 1,2 and 3.")
@@ -580,14 +628,22 @@ def redo_shuffle(wdir, ra, dec, track, acam_magadd, wfs1_magadd, wfs2_magadd,
     Creates a number of output files, most importantly
     `shout.ifustars` which is used as catalog for the offset computation.
 
-    Args:
-        wdir (str): Work directory.
-        ra (float): Right ascension in degrees.
-        dec (float): Declination in degrees.
-        track (int): East or west track (0, 1)
-        acam_magadd (float): do_shuffle acam magadd.
-        wfs1_magadd (float): do_shuffle wfs1 magadd.
-        wfs2_magadd (float): do_shuffle wfs2 magadd.
+    Parameters
+    ----------
+    wdir : str
+        Work directory.
+    ra : float
+        Right ascension in degrees.
+    dec : float
+        Declination in degrees.
+    track : int
+        East or west track (0, 1)
+    acam_magadd : float
+        do_shuffle acam magadd.
+    wfs1_magadd : float
+        do_shuffle wfs1 magadd.
+    wfs2_magadd : float
+        do_shuffle wfs2 magadd.
     """
     logging.info("Using {}.".format(shuffle_cfg))
     shutil.copy2(shuffle_cfg, os.path.join(wdir, "shuffle.cfg"))
@@ -627,16 +683,24 @@ def get_track(wdir, reduction_dir, night, shotid):
     Reads first of the many multi* file'd headers to get
     the track.
 
-    Notes:
+    Notes
+    -----
         This function is so emparrisingly similar to get_ra_dec_orig
         that they should probably be combined.
 
-    Args:
-        wdir (str): Work directory.
-        reduction_dir (str): Directory that holds panacea reductions.
-        night (str): Night (e.g. 20180611)
-        shotid (str): ID of shot (e.g. 017)
-    Returns:
+    Parameters
+    ----------
+    wdir : str
+        Work directory.
+    reduction_dir : str
+        Directory that holds panacea reductions.
+    night : str
+        Night (e.g. 20180611)
+    shotid : str
+        ID of shot (e.g. 017)
+
+    Returns
+    ------
         (int): 0 = east track, 1 = west track
     """
     global vdrp_info
@@ -672,13 +736,20 @@ def get_ra_dec_orig(wdir, reduction_dir, night, shotid, user_pa=-999999.):
     Reads first of the many multi* file'd headers to get
     the RA, DEC, PA guess from the telescope.
 
-    Notes:
+    Notes
+    -----
         Creates radec.orig
-    Args:
-        wdir (str): Work directory.
-        reduction_dir (str): Directory that holds panacea reductions.
-        night (str): Night (e.g. 20180611)
-        shotid (str): ID of shot (e.g. 017)
+
+    Parameters
+    ----------
+    wdir : str
+        Work directory.
+    reduction_dir : str
+        Directory that holds panacea reductions.
+    night : str
+        Night (e.g. 20180611)
+    shotid : str
+        ID of shot (e.g. 017)
     """
     global vdrp_info
     pattern = \
@@ -709,14 +780,18 @@ def get_ra_dec_orig(wdir, reduction_dir, night, shotid, user_pa=-999999.):
 def get_als_files(fp, exp_prefixes):
     """
     Derives for a list of exposure prefixes a list
-    of *.als files, but rejects any that refer to an IFU slot
+    of \*.als files, but rejects any that refer to an IFU slot
     which is not contained in the fplane.
 
-    Args:
-        fp (pyhetdex.het.fplane.FPlane): Fplane object.
-        exp_prefixes (list): List of epxosure prefixes.
+    Parameters
+    ----------
+    fp : pyhetdex.het.fplane.FPlane
+        Fplane object.
+    exp_prefixes : list
+        List of epxosure prefixes.
 
-    Returns:
+    Returns
+    -------
         (list): List of *.als files.
     """
     # collect als files for all IFUs that are contained in the fplane file.
@@ -734,10 +809,14 @@ def get_als_files(fp, exp_prefixes):
 
 def load_als_data(als_files):
     """ Load set of als files.
-    Args:
-        als_files (list): List of file names.
 
-    Returns:
+    Parameters
+    ----------
+    als_files : list
+        List of file names.
+
+    Returns
+    ------
         (OrderedDict):  Dictionary with als data for each IFU slot.
     """
     # work out the IFU slot from the file name
@@ -759,15 +838,23 @@ def add_ra_dec(wdir, als_data, ra, dec, pa, fp, radec_outfile='tmp.csv'):
     Requires, fplane.txt
     Creates primarely EXPOSURE_tmp.csv but also radec.dat.
 
-    Args:
-        wdir (str): Work directory.
-        als_data (dict): Dictionary with als data for each IFU slot.
-        ra (float): Focal plane center RA.
-        dec (float): Focal plane center Dec.
-        pa (float): Positions angle.
-        fp (FPlane): Focal plane object.
-        radec_outfile (str): Filename that will contain output from
-                             add_ra_dec (gets overwritten!).
+    Parameters
+    ----------
+    wdir : str
+        Work directory.
+    als_data : dict
+        Dictionary with als data for each IFU slot.
+    ra : float
+        Focal plane center RA.
+    dec : float
+        Focal plane center Dec.
+    pa : float
+        Positions angle.
+    fp : FPlane
+        Focal plane object.
+    radec_outfile : str
+        Filename that will contain output from
+        add_ra_dec (gets overwritten!).
 
     """
     with path.Path(wdir):
@@ -820,11 +907,15 @@ def compute_optimal_ang_off(wdir, smoothing=0.05, PLOT=True):
     The RMS(ang_off) are interpolate with a smoothing spline.
     The smoothing value is a parameter to this function.
 
-    Args:
-        wdir (string): Directory that holds the angular offset trials
+    Parameters
+    ----------
+    wdir : str
+        Directory that holds the angular offset trials
         (e.g. 20180611v017/add_radec_angoff_trial)
-    Returns:
-        (float): Optimal offset angle.
+
+    Returns
+    -------
+        float : Optimal offset angle.
     """
     global vdrp_info
     colors = ['red', 'green', 'blue']
@@ -939,28 +1030,39 @@ def compute_offset(wdir, prefixes, getoff2_radii, add_radec_angoff_trial,
 
     Compute offset in RA DEC  by matching detected stars in IFUs
     against the shuffle profived RA DEC coordinates.
-    Notes:
+
+    Notes
+    -----
         Analogous to rastrom3.
         Creates radec.dat, radec2.dat and
         radec_TRIAL_OFFSET_ANGLE.dat, radec_TRIAL_OFFSET_ANGLE2.dat.
 
-    Args:
-        wdir (str): Work directory.
-        prefixes (list): List file name prefixes for the collapsed IFU images.
-        getoff2_radii (list): List of matching radii for astrometric
-                              offset measurement.
-        add_radec_angoff_trial (list:) Trial values for angular offsets.
-        add_radec_angoff (float): Angular offset to add during conversion
-                                  of x/y coordinate to RA/Dec.
-        add_radec_angoff_trial_dir (str): Directory to save results
-                                          of angular offset trials.
-        offset_exposure_indices (list): Exposure indices.
-        final_ang_offset (float): Final angular offset to use. This overwrites
-                                  the values in add_radec_angoff and
-                                  add_radec_angoff_trial
-        shout_ifustars (str): Shuffle output catalog of IFU stars.
-        ra0 (float) : Optionally allows to overwrite use of RA from radec.orig
-        dec0 (float) : Optionally allows to overwrite use of DEC from radec.orig
+    Parameters
+    ----------
+    wdir : str
+        Work directory.
+    prefixes : list
+        List file name prefixes for the collapsed IFU images.
+    getoff2_radii : list
+        List of matching radii for astrometric offset measurement.
+    add_radec_angoff_trial : list
+        Trial values for angular offsets.
+    add_radec_angoff : float
+        Angular offset to add during conversion
+        of x/y coordinate to RA/Dec.
+    add_radec_angoff_trial_dir : str
+        Directory to save results of angular offset trials.
+    offset_exposure_indices : list
+        Exposure indices.
+    final_ang_offset : float
+        Final angular offset to use. This overwrites the values in
+        add_radec_angoff and add_radec_angoff_trial
+    shout_ifustars : str
+        Shuffle output catalog of IFU stars.
+    ra0 : float
+        Optionally allows to overwrite use of RA from radec.orig
+    dec0 : float
+        Optionally allows to overwrite use of DEC from radec.orig
     """
     global vdrp_info
 
@@ -1124,12 +1226,15 @@ def combine_radec(wdir, dither_offsets, PLOT=True):
     Computes - based on the RA Dec information of the individual exposures
     (from radec2_exp0?.dat) the final RA/Dec for the shot.
 
-    Notes:
+    Notes
+    -----
         Creates radec2_final.dat.
         Optionally create a plot indicating the individual exposure positions.
 
-    Args:
-        wdir (str): Work directory.
+    Parameters
+    ----------
+    wdir : str
+        Work directory.
     """
     global vdrp_info
     logging.info("Combining RA, Dec positions of all exposures to "
@@ -1202,9 +1307,12 @@ def add_ifu_xy(wdir, offset_exposure_indices):
     Requires: getoff.out, radec2.dat
     Analogous to rastrom3.
 
-    Args:
-        wdir (str): Work directory.
-        offset_exposure_indices (list): List of exposure indices to consider.
+    Parameters
+    ----------
+    wdir : str
+        Work directory.
+    offset_exposure_indices : list
+        List of exposure indices to consider.
     """
     global vdrp_info
 
@@ -1272,13 +1380,18 @@ def add_ifu_xy(wdir, offset_exposure_indices):
 def mkmosaic(wdir, prefixes, night, shotid, mkmosaic_angoff):
     """Creates mosaic fits image.
 
-    Args:
-        wdir (str): Work directory.
-        prefixes (list): List file name prefixes for the collapsed IFU images.
-        night (str): Night (e.g. 20180611)
-        shotid (str): ID of shot (e.g. 017)
-        mkmosaic_angoff (float): Angular offset to add for creation of
-                                 mosaic image.
+    Parameters
+    ----------
+    wdir : str
+        Work directory.
+    prefixes : list
+        List file name prefixes for the collapsed IFU images.
+    night : str
+        Night (e.g. 20180611)
+    shotid : str
+        ID of shot (e.g. 017)
+    mkmosaic_angoff : float
+        Angular offset to add for creation of mosaic image.
     """
     with path.Path(wdir):
         logging.info("Creating mosaic image.")
@@ -1327,12 +1440,18 @@ def project_xy(wdir, radec_file, fplane_file, ra, dec):
     Call pyhetdex tangent_plane's functionality to project
     ra,dec to x,y.
 
-    Args:
-        wdir (str): Work directory.
-        radec_file (str): File that contains shot ra dec position.
-        fplane_file (str): Focal plane file filename.
-        ra (list): List of ra positions (in float, degree).
-        dec (list): List of dec positions (in float, degree).
+    Parameters
+    ----------
+    wdir : str
+        Work directory.
+    radec_file : str
+        File that contains shot ra dec position.
+    fplane_file : str
+        Focal plane file filename.
+    ra : list
+        List of ra positions (in float, degree).
+    dec : list
+        List of dec positions (in float, degree).
     """
     # read ra,dec, pa from radec2.dat
     ra0, dec0, pa0 = utils.read_radec(os.path.join(wdir, radec_file))
@@ -1352,16 +1471,26 @@ def mk_match_matrix(wdir, ax, exp, image_files, fplane_file, shout_ifu_file,
     """ Creates the actual match plot for a specific exposures.
     This is a subroutine to mk_match_plots.
 
-    Args:
-        wdir (str): Work directory.
-        prefixes (list): List file name prefixes for the collapsed IFU images.
-        ax (pyplot.axes): Axes object to plot into.
-        exp (str): Exposure string (e.g. exp01)
-        image_files (list): List of file names.
-        fplane_file (str): Focal plane file filename.
-        shout_ifu_file (str): Shuffle IFU star catalog output filename.
-        xy_file (str): Filename for list of matched stars, aka xy_exp??.dat.
-        radec_file (str): File that contains shot ra dec position.
+    Parameters
+    ----------
+    wdir : str
+        Work directory.
+    prefixes : list
+        List file name prefixes for the collapsed IFU images.
+    ax : pyplot.axes
+        Axes object to plot into.
+    exp : str
+        Exposure string (e.g. exp01)
+    image_files : list
+        List of file names.
+    fplane_file : str
+        Focal plane file filename.
+    shout_ifu_file : str
+        Shuffle IFU star catalog output filename.
+    xy_file : str
+        Filename for list of matched stars, aka xy_exp??.dat.
+    radec_file : str
+        File that contains shot ra dec position.
     """
     cmap = plt.cm.bone
 
@@ -1422,14 +1551,16 @@ def mk_match_matrix(wdir, ax, exp, image_files, fplane_file, shout_ifu_file,
             h = headers[f]
             xsize = h['NAXIS1']
             ysize = h['NAXIS2']
-            if not "CRVAL1" in h:
-                xcenter  =   -25.14999961853027
-                logging.warning("Found no CRVAL1 in {}.fits, using default value.".format(f))
+            if "CRVAL1" not in h:
+                xcenter = -25.14999961853027
+                logging.warning("Found no CRVAL1 in {}.fits, "
+                                "using default value.".format(f))
             else:
                 xcenter = h['CRVAL1']
-            if not "CRVAL2" in h:
-                ycenter  =   -25.14999961853027
-                logging.warning("Found no CRVAL2 in {}.fits, using default value.".format(f))
+            if "CRVAL2" not in h:
+                ycenter = -25.14999961853027
+                logging.warning("Found no CRVAL2 in {}.fits, "
+                                "using default value.".format(f))
             else:
                 ycenter = h['CRVAL2']
 
@@ -1459,6 +1590,7 @@ def mk_match_matrix(wdir, ax, exp, image_files, fplane_file, shout_ifu_file,
         except Exception:
             pass
 
+
 def get_exposures_files(basedir):
     """
     Create list of all file prefixes based
@@ -1484,13 +1616,16 @@ def get_exposures_files(basedir):
      'exp03' : ['20180611T060006_015',...,'20180611T060006_106']
     }
 
+    Parameters
+    ----------
+    basedir : str
+        Directory to search.
 
-    Args:
-       basedir (str): Directory to search.
-
-    Returns:
-       (OrderedDict): Ordered dictionary with pairs of exposure
+    Returns
+    -------
+    OrderedDict : Ordered dictionary with pairs of exposure
                       string "exp??" and time and list of
+
     """
     ff = []
     with path.Path(basedir):
@@ -1512,9 +1647,12 @@ def get_exposures_files(basedir):
 def mk_match_plots(wdir, prefixes):
     """Creates match plots.
 
-    Args:
-        wdir (str): Work directory.
-        prefixes (list): List file name prefixes for the collapsed IFU images.
+    Parameters
+    ----------
+    wdir : str
+        Work directory.
+    prefixes : list
+        List file name prefixes for the collapsed IFU images.
     """
     logging.info("Creating match plots.")
 
@@ -1548,8 +1686,10 @@ def get_prefixes(wdir):
     Create list of all file prefixes based
     on the existing collapsed IFU files in the current directory.
 
-    Args:
-       wdir (str): Work directory.
+    Parameters
+    ----------
+    wdir : str
+        Work directory.
     """
     ff = []
     with path.Path(wdir):
@@ -1560,23 +1700,30 @@ def get_prefixes(wdir):
 def get_exposures(prefixes):
     """ Computes unique list of exposures from prefixes.
 
-    Args:
-        args (argparse.Namespace): Parsed configuration parameters.
-        prefixes (list): List file name prefixes for the collapsed IFU images
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed configuration parameters.
+    prefixes : list
+        List file name prefixes for the collapsed IFU images
 
-    Returns:
+    Returns
+    -------
         (list): Unique list of exposure strings.
     """
     return np.unique([p[:15] for p in prefixes])
 
 
 def cp_addin_files(wdir, addin_dir, subdir="coords"):
-    """ Copies `addin` files. These are
+    """ Copies ``addin`` files. These are
     essentially the IFUcen files in a different format.
 
-    Args:
-        addin_dir (str): Directory where the *.addin files are stored.
-        wdir (str): Work directory.
+    Parameters
+    ----------
+    addin_dir : str
+        Directory where the \*.addin files are stored.
+    wdir : str
+        Work directory.
     """
     logging.info("Copy over *.addin from {}.".format(addin_dir))
     pattern = addin_dir + "/*.addin"
@@ -1587,12 +1734,15 @@ def cp_addin_files(wdir, addin_dir, subdir="coords"):
 
 
 def cp_ixy_files(wdir, ixy_dir, subdir="coords"):
-    """ Copies `ixy` files. These are
+    """ Copies ``ixy`` files. These are
     essentially the IFUcen files in a different format.
 
-    Args:
-        ixy_dir_dir (str): Directory where the *.ixy files are stored.
-        wdir (str): Work directory.
+    Parameters
+    ----------
+    ixy_dir_dir :str
+        Directory where the \*.ixy files are stored.
+    wdir : str
+        Work directory.
     """
     logging.info("Copy over *.ixy from {}.".format(ixy_dir))
     pattern = ixy_dir + "/*.ixy"
@@ -1608,27 +1758,29 @@ def get_fiber_coords(wdir, active_slots, dither_offsets, subdir="coords"):
     The is the main routine for getcoord which computes the on-sky positions
     for all fibers.
 
-    Essentially this is a whole bunch of calls like.
+    Essentially this is a whole bunch of calls like.::
 
-    add_ra_dec --ftype line_detect --astrometry 262.496605 33.194212 262.975922
-        --fplane /work/00115/gebhardt/maverick/sci/panacea/shifts/fplane.txt
-        --ihmps 015 --fout i015_1.csv --dx 0 --dy 0 015.addin
-    ...
-    add_ra_dec --ftype line_detect --astrometry 262.496605 33.194212 262.975922
-        --fplane /work/00115/gebhardt/maverick/sci/panacea/shifts/fplane.txt
-        --ihmps 015 --fout i015_2.csv --dy 1.27 --dx -0.73 015.addin
-    ...
-    add_ra_dec --ftype line_detect --astrometry 262.496605 33.194212 262.975922
-        --fplane /work/00115/gebhardt/maverick/sci/panacea/shifts/fplane.txt
-        --ihmps 015 --fout i015_3.csv --dy 1.27 --dx 0.73 015.addin
-    ...
+   add_ra_dec --ftype line_detect --astrometry 262.496605 33.194212 262.975922
+       --fplane /work/00115/gebhardt/maverick/sci/panacea/shifts/fplane.txt
+       --ihmps 015 --fout i015_1.csv --dx 0 --dy 0 015.addin
+   ...
+   add_ra_dec --ftype line_detect --astrometry 262.496605 33.194212 262.975922
+       --fplane /work/00115/gebhardt/maverick/sci/panacea/shifts/fplane.txt
+       --ihmps 015 --fout i015_2.csv --dy 1.27 --dx -0.73 015.addin
+   ...
+   add_ra_dec --ftype line_detect --astrometry 262.496605 33.194212 262.975922
+       --fplane /work/00115/gebhardt/maverick/sci/panacea/shifts/fplane.txt
+       --ihmps 015 --fout i015_3.csv --dy 1.27 --dx 0.73 015.addin
 
-    Notes:
-        This creates a list of files iIFUSLOT_DITHERNUM.csv
-        that store the on-sky fiber coordinates.
+    Notes
+    -----
+    This creates a list of files iIFUSLOT_DITHERNUM.csv
+    that store the on-sky fiber coordinates.
 
-    Args:
-        wdir (str): Work directory.
+    Parameters
+    ----------
+    wdir : str
+        Work directory.
 
     """
 
@@ -1831,9 +1983,12 @@ def cp_results(tmp_dir, results_dir):
     """ Copies all relevant result files
     from tmp_dir results_dir.
 
-    Args:
-        tmp_dir (str): Temporary work directory.
-        results_dir (str): Final directory for results.
+    Parameters
+    ----------
+    tmp_dir : str
+        Temporary work directory.
+    results_dir : str
+        Final directory for results.
 
     """
     dirs = ['add_radec_angoff_trial']

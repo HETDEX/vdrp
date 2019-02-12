@@ -203,8 +203,8 @@ def calc_fluxlim(args, workdir):
     Calculate the flux limit for a given night and shot, looping over a
     (by default) 70 x 70 arcsecond grid
 
-    Paramters
-    ---------
+    Parameters
+    ----------
     args : struct
         The arguments structure
     """

@@ -181,7 +181,7 @@ def fit_radec(args):
     """
     Equivalent of the rsp3f script
 
-    Paramters
+    Parameters
     ---------
     args : struct
         The arguments structure
