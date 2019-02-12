@@ -5,6 +5,8 @@ LFLAGS = -O3
 OS := $(shell uname)
 
 $(info ${OS})
+$(info ${READTHEDOCS}
+$(info ${OS})
 
 ifeq ($(OS),Darwin)
 	FFLAGS = -O3 -I/usr/X11/include
