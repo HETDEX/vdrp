@@ -5,7 +5,7 @@ LFLAGS = -O3
 OS := $(shell uname)
 
 $(info ${OS})
-$(info ${READTHEDOCS}
+$(info ${READTHEDOCS})
 $(info ${OS})
 
 ifeq ($(OS),Darwin)
