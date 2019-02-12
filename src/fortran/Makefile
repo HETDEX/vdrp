@@ -4,9 +4,11 @@ LFLAGS = -O3
 
 OS := $(shell uname)
 
-$(info ${OS})
-$(info ${READTHEDOCS})
-$(info ${OS})
+ifeq ($(READTHEDOCS),True)
+	PKG_INSTALL_TARGETS = 
+else
+	PKG_INSTALL_TARGETS = all install_pkg
+endif
 
 ifeq ($(OS),Darwin)
 	FFLAGS = -O3 -I/usr/X11/include
@@ -83,7 +85,7 @@ pfitlov: pfitlov.o fitherm.o
 
 all: $(BINARIES) $(BINARIES_NOBIWT) $(EXTRA_BINARIES)
 
-bins: 
+bins:
 	@echo $(BINARIES)
 
 .phony:
@@ -101,7 +103,9 @@ install: all
 	mkdir -p $(BINDIR)
 	cp $(BINARIES) $(BINARIES_NOBIWT) $(EXTRA_BINARIES) $(BINDIR)/
 
-.phony:
-pkg_install: all
+pkg_install: $(PKG_INSTALL_TARGETS)
+
+install_pkg:
+	$(info ${OS})
 	mkdir -p $(PKG_BINDIR)
 	cp $(BINARIES) $(BINARIES_NOBIWT) $(EXTRA_BINARIES) $(PKG_BINDIR)/
