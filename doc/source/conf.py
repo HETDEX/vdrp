@@ -41,9 +41,7 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.todo',
               'sphinx.ext.coverage',
               'sphinx.ext.viewcode',
-              'numpydoc',
-              'sphinxcontrib.autohttp.flask',
-              'sphinxcontrib.autohttp.flaskqref']
+              'numpydoc']
 
 # todo settings
 todo_include_todos = True
