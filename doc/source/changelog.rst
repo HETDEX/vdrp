@@ -1,0 +1,5 @@
+Changelog
+=========
+
+.. include:: ../../Changelog
+    :literal:
