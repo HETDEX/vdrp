@@ -67,6 +67,8 @@ def getDefaults():
     defaults['fill'] = 3.
     defaults['sn'] = 6.
 
+    defaults['apcorlim'] = 1.
+
     return defaults
 
 
@@ -119,6 +121,9 @@ def get_arguments(parser):
     parser.add_argument("--fill", type=float, help="Fill value")
     parser.add_argument("--sn", type=float, help="SNR value")
 
+    parser.add_argument("--apcorlim", type=float, help="Minimum limit for "
+                        "values to be included in average aperture "
+                        "correction.")
     return parser
 
 
@@ -220,6 +225,7 @@ def calc_fluxlim(args, workdir):
 
     allspec = np.full((n_wave, args.ra_range*args.dec_range,
                        4), -9999.)
+    apcor_all = np.full((n_wave, args.ra_range*args.dec_range), -9999.)
 
     dithall_file = args.dithall_dir+'/'+args.night + 'v' \
         + args.shotid+'/dithall.use'
@@ -307,6 +313,8 @@ def calc_fluxlim(args, workdir):
             allspec[w, speccounter, 3] = specdata[w, 4]*specdata[w, 7] \
                 / (specdata[w, 8] * args.fill) * args.sn
 
+            apcor_all[:, speccounter] = specdata[:, 6]
+
             speccounter += 1
 
             # del starobs
@@ -334,7 +342,10 @@ def calc_fluxlim(args, workdir):
 
     vp.call_mkimage3d(workdir)
 
-    update_im3d_header(args.ra, args.dec, workdir)
+    wcor = np.where(apcor_all > args.apcorlim)
+    apcor = np.median(apcor_all[wcor])
+
+    update_im3d_header(args.ra, args.dec, apcor, workdir)
 
     outname = os.path.join(os.getcwd(),
                            args.nightshot + '_'
@@ -344,7 +355,7 @@ def calc_fluxlim(args, workdir):
     shutil.move(os.path.join(workdir, 'image3d.fits'), outname)
 
 
-def update_im3d_header(ra, dec, wdir):
+def update_im3d_header(ra, dec, apcor, wdir):
     """
     Add header keywords to the image3d.fits
     """
@@ -373,6 +384,7 @@ def update_im3d_header(ra, dec, wdir):
         hdu[0].header['CUNIT1'] = 'deg'
         hdu[0].header['CUNIT2'] = 'deg'
         hdu[0].header['EQUINOX'] = 2000
+        hdu[0].header['APCOR'] = apcor
 
 
 # vdrp_info = None
