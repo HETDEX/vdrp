@@ -67,7 +67,7 @@ def getDefaults():
     defaults['fill'] = 3.
     defaults['sn'] = 6.
 
-    defaults['apcorlim'] = 1.
+    defaults['apcorlim'] = 0.1
 
     return defaults
 
@@ -313,7 +313,7 @@ def calc_fluxlim(args, workdir):
             allspec[w, speccounter, 3] = specdata[w, 4]*specdata[w, 7] \
                 / (specdata[w, 8] * args.fill) * args.sn
 
-            apcor_all[:, speccounter] = specdata[:, 6]
+            apcor_all[:, speccounter] = specdata[:, 8]
 
             speccounter += 1
 
