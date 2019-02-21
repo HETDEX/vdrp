@@ -6,6 +6,7 @@ from argparse import ArgumentParser as AP
 from argparse import ArgumentDefaultsHelpFormatter as AHF
 
 import pylauncher
+import platform
 import shutil
 import os
 import sys
@@ -33,10 +34,17 @@ def VDRPLauncher(commandfile, **kwargs):
     debug = kwargs.pop("debug", "")
     workdir = kwargs.pop("workdir", "pylauncher_tmp"+str(jobid))
     cores = kwargs.pop("cores", 1)
+
+    hosttag = ".wrangler.tacc.utexas.edu"
+    if 'maverick' in platform.node():
+        hosttag = ".maverick.tacc.utexas.edu"
+    if 'stampede2' in platform.node():
+        hosttag = ".stampede2.tacc.utexas.edu"
+
     job = pylauncher.LauncherJob(
         hostpool=pylauncher.HostPool(
             hostlist=pylauncher.SLURMHostList(
-                tag=".wrangler.tacc.utexas.edu"),
+                tag=hosttag),
             commandexecutor=pylauncher.SSHExecutor(
                 workdir=workdir, debug=debug),
             debug=debug),

@@ -5,6 +5,7 @@ from __future__ import print_function
 from argparse import ArgumentParser as AP
 from argparse import ArgumentDefaultsHelpFormatter as AHF
 
+import platform
 import subprocess
 import os
 import sys
@@ -245,6 +246,13 @@ def getDefaults():
     defaults['cores_per_job'] = 1
     defaults['runtime'] = '00:30:00'
     defaults['queue'] = 'normal'
+
+    if 'maverick' in platform.node():
+        defaults['cores_per_node'] = 20
+        defaults['queue'] = 'viz'
+    if 'stampede2' in platform.node():
+        defaults['cores_per_node'] = 48
+        defaults['queue'] = 'skx-normal'
 
     return defaults
 
