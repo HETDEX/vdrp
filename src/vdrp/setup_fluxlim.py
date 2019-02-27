@@ -76,31 +76,7 @@ def parseArgs(argv):
         args (argparse.Namespace): Return the populated namespace.
     """
 
-    # Parse any conf_file specification
-    # We make this parser with add_help=False so that
-    # it doesn't parse -h and print help.
-    conf_parser = AP(description=__doc__,  # printed with -h/--help
-                     # Don't mess with format of description
-                     formatter_class=ap_RDHF,
-                     # Turn off help, so we print all options in response to -h
-                     add_help=False)
-    conf_parser.add_argument("-c", "--conf_file",
-                             help="Specify config file", metavar="FILE")
-    args, remaining_argv = conf_parser.parse_known_args(argv)
-
     defaults = getDefaults()
-
-    config_source = "Default"
-    if args.conf_file:
-        config_source = args.conf_file
-        config = ConfigParser.SafeConfigParser()
-        config.read([args.conf_file])
-        defaults.update(dict(config.items("FluxLim")))
-
-        bool_flags = ['use_tmp', 'remove_tmp']
-        for bf in bool_flags:
-            if config.has_option('FluxLim', bf):
-                defaults[bf] = config.getboolean('FluxLim', bf)
 
     # Now setup the defaults for the jobsplitter
     job_defaults = vj.getDefaults()
@@ -114,7 +90,11 @@ def parseArgs(argv):
     # Don't suppress add_help here so it will handle -h
 
     # Inherit options from config_paarser
-    parser = AP(parents=[conf_parser])
+    parser = AP(description=__doc__,  # printed with -h/--help
+                # Don't mess with format of description
+                formatter_class=ap_RDHF,
+                # Turn off help, so we print all options in response to -h
+                add_help=False)
 
     parser.set_defaults(**defaults)
     parser.set_defaults(**job_defaults)
@@ -141,19 +121,8 @@ def parseArgs(argv):
     # Add the jobsplitter arguments
     vj.get_arguments(parser)
 
-    args, remaining_args = parser.parse_known_args(remaining_argv)
+    args, remaining_args = parser.parse_known_args(argv)
     # args = parser.parse_args(remaining_argv)
-
-    args.config_source = config_source
-    # should in principle be able to do this with accumulate???
-    # args.use_tmp = args.use_tmp == "True"
-    # args.remove_tmp = args.remove_tmp == "True"
-
-    # NEW set the bin_dir to the vdrp supplied bin directory
-    # args.bin_dir = utils.bindir()
-
-    # args.fplane_txt = utils.mangle_config_pathname(args.fplane_txt)
-    # args.shuffle_cfg = utils.mangle_config_pathname(args.shuffle_cfg)
 
     return args, remaining_args
 
