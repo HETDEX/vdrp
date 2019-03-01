@@ -55,7 +55,7 @@ def getDefaults():
     defaults['extraction_wl'] = 4505.
     defaults['extraction_wlrange'] = 1035.
 
-    defaults['ifu_search_radius'] = 4.
+    defaults['ifu_search_radius'] = 3.
     defaults['shot_search_radius'] = 600.
 
     defaults['fitradec_step'] = 0
@@ -64,7 +64,7 @@ def getDefaults():
     defaults['fitradec_w_range'] = 3.
     defaults['fitradec_ifit1'] = 1
 
-    defaults['fill'] = 3.
+    defaults['fill'] = 1.
     defaults['sn'] = 6.
 
     defaults['apcorlim'] = 0.1

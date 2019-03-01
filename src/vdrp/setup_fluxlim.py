@@ -59,10 +59,12 @@ def getDefaults():
 
     defaults["use_tmp"] = False
     defaults["remove_tmp"] = True
+    defaults["ifu_slots"] = None
 
     defaults['logfile'] = 'fluxlim.log'
 
     defaults['dithall_dir'] = '/work/00115/gebhardt/maverick/detect/'
+
 
     return defaults
 
@@ -106,6 +108,8 @@ def parseArgs(argv):
                         "used to find the dithall.use files")
     parser.add_argument("--multifits_dir", type=str, help="Directory "
                         "with the multi extension fits files")
+    parser.add_argument("--ifu_slots", type=str, help="If not None just run on "
+                        "specified IFU slots (specify via ifu{IFUSLOT})", nargs="+")
 
     # Boolean paramters
     parser.add_argument("--use_tmp", action='store_true',
@@ -140,7 +144,10 @@ def setup_fluxlim(args, rargs):
     dithall = DithAllFile(args.dithall_dir+'/'+nightshot +
                           '/dithall.use')
 
-    ifus = np.unique(dithall.ifuslot)
+    if args.ifu_slots:
+        ifus = args.ifu_slots
+    else:
+        ifus = np.unique(dithall.ifuslot)
 
     fname = 'flim%s' % nightshot
 
@@ -195,7 +202,7 @@ def setup_fluxlim_entrypoint():
     # default is to work in results_dir
     wdir = results_dir
 
-    _logger.info("Configuration {}.".format(args.config_source))
+    #_logger.info("Configuration {}.".format(rargs.config_source))
 
     args.curdir = os.path.abspath(os.path.curdir)
     args.wdir = wdir
