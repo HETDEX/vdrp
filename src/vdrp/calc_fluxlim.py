@@ -345,7 +345,7 @@ def calc_fluxlim(args, workdir):
     wcor = np.where(apcor_all > args.apcorlim)
     apcor = np.median(apcor_all[wcor])
 
-    update_im3d_header(args.ra, args.dec, apcor, workdir)
+    update_im3d_header(args.ra, args.dec, apcor, workdir, sn)
 
     outname = os.path.join(os.getcwd(),
                            args.nightshot + '_'
@@ -355,7 +355,7 @@ def calc_fluxlim(args, workdir):
     shutil.move(os.path.join(workdir, 'image3d.fits'), outname)
 
 
-def update_im3d_header(ra, dec, apcor, wdir):
+def update_im3d_header(ra, dec, apcor, wdir, sn):
     """
     Add header keywords to the image3d.fits
     """
@@ -385,7 +385,8 @@ def update_im3d_header(ra, dec, apcor, wdir):
         hdu[0].header['CUNIT2'] = 'deg'
         hdu[0].header['EQUINOX'] = 2000
         hdu[0].header['APCOR'] = apcor
-
+        hdu[0].header['SNRCUT'] = sn
+        
 
 # vdrp_info = None
 
