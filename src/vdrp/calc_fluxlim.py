@@ -219,10 +219,17 @@ def compute_apcor(apcor_all, apcorlim):
         values to consider 
     """
 
-    flattened_arr = apcor_all.flatten()
-    top_vals = flattened_arr.sort()[:apcorlim]
+    flattened = apcor_all.flatten()
+    flattened.sort()
+    top_vals = np.flip(flattened, 0)[:apcorlim]
 
-    return biweight_location(top_vals)
+    # Check if all elements are identical 
+    # as this breaks biweight
+    if any(((top_vals - top_vals[0])/top_vals[0]) > 1e-10):
+        return biweight_location(top_vals)
+    else:
+        _logger.warning("All aperture correction measurements the same!") 
+        return top_vals[0]
 
 
 
