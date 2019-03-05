@@ -379,7 +379,7 @@ def calc_fluxlim(args, workdir):
     #wcor = np.where(apcor_all > args.apcorlim)
     #apcor = np.median(apcor_all[wcor])
 
-    update_im3d_header(args.ra, args.dec, apcor, workdir, sn)
+    update_im3d_header(args.ra, args.dec, apcor, workdir, args.sn)
 
     outname = os.path.join(os.getcwd(),
                            args.nightshot + '_'
