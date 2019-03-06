@@ -22,6 +22,7 @@ from astropy.io import fits
 import shutil
 import tempfile
 import numpy as np
+from astropy.stats import biweight_location
 
 import vdrp.mplog as mplog
 import vdrp.programs as vp
@@ -67,7 +68,7 @@ def getDefaults():
     defaults['fill'] = 1.
     defaults['sn'] = 6.
 
-    defaults['apcorlim'] = 0.1
+    defaults['apcorlim'] = 10000
 
     return defaults
 
@@ -199,6 +200,37 @@ def parseArgs(argv):
     args.nightshot = '%sv%s' % (args.night, args.shotid)
 
     return args
+
+
+def compute_apcor(apcor_all, apcorlim):
+    """
+    Filter out edge and other bad regions by selecting
+    the apcorlim greatest aperture correction values. 
+    Then compute the biweight value and return the 
+    resultant average aperture correction.
+
+    Parameters
+    ----------
+    apcor_all : numpy:ndarray
+        the aperture corrections
+
+    apcorlim : int
+        the number of largest 
+        values to consider 
+    """
+
+    flattened = apcor_all.flatten()
+    flattened.sort()
+    top_vals = np.flip(flattened, 0)[:apcorlim]
+
+    # Check if all elements are identical 
+    # as this breaks biweight
+    if any(((top_vals - top_vals[0])/top_vals[0]) > 1e-10):
+        return biweight_location(top_vals)
+    else:
+        _logger.warning("All aperture correction measurements the same!") 
+        return top_vals[0]
+
 
 
 def calc_fluxlim(args, workdir):
@@ -342,10 +374,12 @@ def calc_fluxlim(args, workdir):
 
     vp.call_mkimage3d(workdir)
 
-    wcor = np.where(apcor_all > args.apcorlim)
-    apcor = np.median(apcor_all[wcor])
+    apcor = compute_apcor(apcor_all, args.apcorlim)
 
-    update_im3d_header(args.ra, args.dec, apcor, workdir)
+    #wcor = np.where(apcor_all > args.apcorlim)
+    #apcor = np.median(apcor_all[wcor])
+
+    update_im3d_header(args.ra, args.dec, apcor, workdir, args.sn)
 
     outname = os.path.join(os.getcwd(),
                            args.nightshot + '_'
@@ -355,7 +389,7 @@ def calc_fluxlim(args, workdir):
     shutil.move(os.path.join(workdir, 'image3d.fits'), outname)
 
 
-def update_im3d_header(ra, dec, apcor, wdir):
+def update_im3d_header(ra, dec, apcor, wdir, sn):
     """
     Add header keywords to the image3d.fits
     """
@@ -385,7 +419,8 @@ def update_im3d_header(ra, dec, apcor, wdir):
         hdu[0].header['CUNIT2'] = 'deg'
         hdu[0].header['EQUINOX'] = 2000
         hdu[0].header['APCOR'] = apcor
-
+        hdu[0].header['SNRCUT'] = sn
+        
 
 # vdrp_info = None
 
