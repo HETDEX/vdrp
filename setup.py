@@ -104,8 +104,10 @@ install_requires = ['numpy', 'scipy', 'matplotlib', 'astropy', 'pyhetdex',
 entry_points = {'console_scripts':
                 ['vdrp_astrom = vdrp.astrometry:run',
                  'vdrp_throughput = vdrp.photometry:run',
-                 'vdrp_calc_flim = vdrp.fluxlim:calc_fluxlim_entrypoint',
-                 'vdrp_setup_flim = vdrp.fluxlim:setup_fluxlim_entrypoint',
+                 'vdrp_calc_flim = vdrp.calc_fluxlim:calc_fluxlim_entrypoint',
+                 'vdrp_setup_flim = vdrp.setup_fluxlim:setup_fluxlim_entrypoint',
+                 'vdrp_extract = vdrp.star_extraction:star_extract_entrypoint',
+                 'vdrp_fitradec = vdrp.fit_radec:fitradec_entrypoint',
                  'vdrp_bindir = vdrp.utils:print_bindir',
                  'vdrp_configdir = vdrp.utils:print_configdir',
                  'vdrp_config = vdrp.utils:print_conffile',
@@ -117,7 +119,7 @@ entry_points = {'console_scripts':
 setup(
     # package description and version
     name="vdrp",
-    version='1.0.5',
+    version='1.0.5-post',
     author="HETDEX collaboration",
     author_email="snigula@mpe.mpg.de",
     description="VIRUS data reduction pipeline",

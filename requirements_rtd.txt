@@ -1,0 +1,24 @@
+# this file contains an extra url, the packages available only from them and the
+# ones necessary to build the docs
+# it is used to deploy the documentation
+numpy
+scipy
+matplotlib
+astropy
+path.py
+paramiko
+urllib3<1.24
+
+# add the extra url
+--extra-index-url https://gate.mpe.mpg.de/pypi
+
+# packages from extra-index-ulr
+pyhetdex
+hetdex-shuffle
+stellarSEDfits
+hetdex_vdrp_support
+
+# doc requirements
+sphinx
+numpydoc
+alabaster

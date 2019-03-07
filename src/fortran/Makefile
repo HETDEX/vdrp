@@ -2,18 +2,35 @@ F77=gfortran
 FFLAGS = -O3
 LFLAGS = -O3
 
+OS := $(shell uname)
+
+ifeq ($(READTHEDOCS),True)
+	PKG_INSTALL_TARGETS =
+else
+	PKG_INSTALL_TARGETS = all install_pkg
+endif
+
+ifeq ($(OS),Darwin)
+	FFLAGS = -O3 -I/usr/X11/include
+	X11LIBS = -L/usr/X11/lib
+	HOSTLIBS= -L$(LIBDIR) -lm -lnumrec -lquest -lgcv -llinpack -lpgplot \
+		-lcfitsio $(X11LIBS) -lX11
+else
+	X11LIBS = -L/usr/X11R6/lib
+	HOSTLIBS= -L$(LIBDIR) -lm -lnumrec -lquest -lgcv -llinpack -lpgplot \
+		-lcfitsio $(X11LIBS) -lX11
+endif
+
 BINDIR = $(HOME)/bin
 PKG_BINDIR = ../vdrp/bin/
 
 LIBDIR = $(shell vdrp_support_libdir)
-HOSTLIBS= -L$(LIBDIR) -lm -lnumrec -lquest -lgcv -llinpack -lpgplot \
-	-lcfitsio -L/usr/X11R6/lib -lX11
 
 BINARIES = ampnorm combsed fit2d fit2dc fit2dfix \
 	fit2dfw fit2dpsf fitem fitema fitemfull fitemmc fitems fitonesig \
-	fitonesiga fitonev fitoneva fitonevp fitonevs fitpoly ftoa ftoaq getflim \
-	getflim2 getfwhm getnormexp getsignif getsdssg ima imaddem \
-	imaddemn imadderr imar imarfib imarftf imars imarsp imarsp2 \
+	fitonesiga fitonev fitoneva fitonevp fitonevs fitpoly fitradecsp \
+	ftoa ftoaq getflim 	getflim2 getfwhm getnormexp getsignif getsdssg ima \
+	imaddem imaddemn imadderr imar imarfib imarftf imars imarsp imarsp2 \
 	imarsp3 imarsqrt imarsvlt imbin imbox2 imbox2sig imboxrow imcheckv imcmb \
 	imcmbs imconv imdao imdump imext3d imextnm imextnmq imextsp imextsp2d \
 	imextspsig imextspsky imflip imflip2 imhist immask immaskcol imminmax \
@@ -68,7 +85,7 @@ pfitlov: pfitlov.o fitherm.o
 
 all: $(BINARIES) $(BINARIES_NOBIWT) $(EXTRA_BINARIES)
 
-bins: 
+bins:
 	@echo $(BINARIES)
 
 .phony:
@@ -86,7 +103,9 @@ install: all
 	mkdir -p $(BINDIR)
 	cp $(BINARIES) $(BINARIES_NOBIWT) $(EXTRA_BINARIES) $(BINDIR)/
 
-.phony:
-pkg_install: all
+pkg_install: $(PKG_INSTALL_TARGETS)
+
+install_pkg:
+	$(info ${OS})
 	mkdir -p $(PKG_BINDIR)
 	cp $(BINARIES) $(BINARIES_NOBIWT) $(EXTRA_BINARIES) $(PKG_BINDIR)/

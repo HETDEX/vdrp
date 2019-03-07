@@ -5,6 +5,8 @@ from __future__ import print_function
 from argparse import ArgumentParser as AP
 from argparse import ArgumentDefaultsHelpFormatter as AHF
 
+import platform
+import subprocess
 import os
 import sys
 
@@ -62,6 +64,16 @@ echo " "
 '''
 
 
+def n_needed(njobs, limit):
+    needed = 1
+    if njobs > limit:
+        needed = njobs / limit
+        if njobs % limit:
+            needed += 1
+
+    return needed
+
+
 def main(args):
 
     commands = []
@@ -77,65 +89,118 @@ def main(args):
 
     fname, fext = os.path.splitext(args.cmdfile)
 
-    nc = len(commands)
+    n_cmds = len(commands)
 
-    nfiles = int(nc / args.jobs / args.nodes + 1)
-    jobsperfile = int(nc / nfiles + 1)
-    jobspernode = int(nc / nfiles / args.nodes + 1)
+    # Calculate the number of usable cores per node
+    effective_cores_per_node = int(args.cores_per_node / args.cores_per_job)
 
-    print('Found %d commands' % nc)
-    print('Splitting them onto %d nodes' % args.nodes)
-    print('Running %d jobs per python instance in %d threads'
-          % (jobspernode, args.threads))
-    print('Resulting in %d jobfiles' % nfiles)
+    # Now the maximum number of jobs per node
+    max_jobs_per_node = int(args.max_jobs_per_node * effective_cores_per_node)
+
+    # And the maximum number of jobs per slurm file
+    max_jobs_per_file = int(args.nodes * max_jobs_per_node)
+
+    # First find the number of files we need
+    n_files = n_needed(n_cmds, max_jobs_per_file)
+    # And the resulting number of jobs per file
+    jobs_per_file = n_needed(n_cmds, n_files)
+
+    # Next check the number of nodes we need
+    n_nodes = n_needed(jobs_per_file, effective_cores_per_node)
+    # Now see if we have enough nodes, if we just fill them up
+    if n_nodes > args.nodes:
+        # We need more nodes than we are allowed to use
+        # so limit it to the number of allocated nodes
+        n_nodes = args.nodes
+
+    # Finally distribute the jobs over the nodes
+    jobs_per_node = n_needed(jobs_per_file, n_nodes)
+
+    print('Found %d commands' % n_cmds)
+    print('Splitting them onto %d nodes' % n_nodes)
+    print('Running %d jobs per node%s'
+          % (jobs_per_node, ' using threading' if args.threading else ''))
+    print('Resulting in %d jobfiles' % n_files)
 
     file_c = 1
 
-    while file_c <= nfiles:
+    while file_c <= n_files:
 
         if not len(commands):
             raise Exception('Found fewer commands than expected!')
 
         cmd_file = '%s_%d%s' % (fname, file_c, fext)
-        create_job_file(cmd_file, commands, jobsperfile, jobspernode, args)
+        slurmfile = create_job_file(cmd_file, commands, n_nodes, jobs_per_file,
+                        jobs_per_node, args)
+
+        if args.commit:
+            p = subprocess.Popen('/bin/sbatch %s' % slurmfile, shell=True)
+            p.communicate()
 
         file_c += 1
 
 
-def create_job_file(fname, commands, maxjobs, jobspernode, args):
+def create_job_file(fname, commands, n_nodes, jobs_per_file, jobs_per_node,
+                    args):
 
     runtime = args.runtime
-    ncores = args.threads * args.cores
-    if ncores > 20:
-        print('Would require %d cores, oversubscribing node!')
-        ncores = 20
-    job_c = 0
-    batch_c = 1
+    ncores = args.cores_per_job
+    if args.threading:
+        ncores = args.cores_per_node
+
+    curdir = os.getcwd()
+
+    job_c = 1
 
     fn, _ = os.path.splitext(fname)
 
+    if args.threading:
+        param_c = 1
+        parname = '%s_%d.params' % (fn, param_c)
+        pf = open(parname, 'w')
+        # Count the number of jobs scheduled per node
+        node_c = 1
+
     with open(fname, 'w') as fout:
+        # Loop over all jobs that should go into this file
+        while job_c <= jobs_per_file:
 
-        subname = '%s.params' % (fn)
-        min_t = 0
+            if not len(commands):
+                break
+            # Get the next command
+            cmd = commands.pop(0)
 
-        with open(subname, 'w') as jf:
+            if args.threading:
+                # We use threading, so we write a parameter file
+                cmd_pars = cmd.split()
+                # In case of threading we cannot use individual log files
+                if '-l' in cmd_pars:
+                    cmd_pars.pop(cmd_pars.index('-l')+1)
+                    cmd_pars.pop(cmd_pars.index('-l'))
+                pf.write('%s\n' % ' '.join(cmd_pars[1:]))
+                node_c += 1
 
-            while job_c < maxjobs:
-                if not len(commands):
-                    break
-                cmd = commands.pop(0)
-                jf.write('%s\n' % cmd.split(' ', 1)[1])
-
-                if (job_c+1) % jobspernode == 0 or (job_c+2) == maxjobs \
-                   or len(commands) == 0:
+                if node_c > jobs_per_node:
+                    # Start a new job file
                     taskname = cmd.split()[0]
-                    fout.write('%s -l %s --mcores %d -M %s[%d:%d]\n'
-                               % (taskname, '%s_%d.log' % (fn, batch_c),
-                                  args.threads, subname, min_t, job_c+1))
-                    batch_c += 1
-                    min_t = job_c+1
-                job_c += 1
+                    fout.write('%s -l %s_%d.log --mcores %d -M %s\n'
+                               % (taskname, fn, param_c, ncores, parname))
+                    pf.close()
+                    param_c += 1
+                    parname = '%s_%d.params' % (fn, param_c)
+                    pf = open(parname, 'w')
+                    node_c = 1
+            else:
+                fout.write('%s\n' % cmd)
+
+            job_c += 1
+
+        if args.threading:
+            # Write the command line in case of threading
+            pf.close()
+            taskname = cmd.split()[0]
+            fout.write('%s -l %s_%d.log --mcores %d -M %s\n'
+                       % (taskname, fn, param_c, ncores, parname))
 
     # Now write the corresponding slurm file
 
@@ -146,15 +211,15 @@ def create_job_file(fname, commands, maxjobs, jobspernode, args):
 
         sf.write(slurm_header.format(pyenv=pyenvstr,
                                      jobname=fn,
-                                     nnodes=args.nodes,
-                                     ntasks=20*args.nodes,
+                                     nnodes=n_nodes,
+                                     ntasks=args.cores_per_node * n_nodes,
                                      runtime=runtime,
-                                     workdir='./'))
+                                     workdir=curdir))
         debug = ''
-        if args.debug:
+        if args.debug_job:
             debug = '-d'
-        sf.write(pyslurm.format(workdir='./',
-                                ncores=args.threads*args.cores,
+        sf.write(pyslurm.format(workdir=curdir,
+                                ncores=ncores,
                                 debug=debug,
                                 runfile=fname))
 #        else:
@@ -163,6 +228,68 @@ def create_job_file(fname, commands, maxjobs, jobspernode, args):
 #                                    workdir='./'))
 
         sf.write(slurm_footer)
+
+    return fn + '.slurm'
+
+
+def getDefaults():
+    '''
+    Get the defaults for the argument parser. Separating this out
+    from the get_arguments routine allows us to use different defaults
+    when using the jobsplitter from within a differen script.
+    '''
+    defaults = {}
+
+    defaults['nodes'] = 5
+    defaults['max_jobs_per_node'] = 96
+    defaults['cores_per_node'] = 24
+    defaults['cores_per_job'] = 1
+    defaults['runtime'] = '00:30:00'
+    defaults['queue'] = 'normal'
+
+    if 'maverick' in platform.node():
+        defaults['cores_per_node'] = 20
+        defaults['queue'] = 'viz'
+    if 'stampede2' in platform.node():
+        defaults['cores_per_node'] = 48
+        defaults['queue'] = 'skx-normal'
+
+    return defaults
+
+
+def get_arguments(parser):
+    '''
+    Add command line arguments for the jobsplitter, this function can be
+    called from another tool, adding job splitter support.
+
+    Parameters
+    ----------
+    parser : argparse.ArgumentParser
+    '''
+
+    parser.add_argument('--nodes', '-n', type=int,
+                        help='Maximum number of nodes to use per job')
+    parser.add_argument('--max_jobs_per_node', '-j', type=int,
+                        help='Maximum number of jobs to schedule per node')
+    parser.add_argument('--threading', '-t', action='store_true',
+                        help='Run one python process per node, and use'
+                        'threading.')
+    parser.add_argument('--cores_per_node', type=int,
+                        help='Number of cores in one node')
+    parser.add_argument('--cores_per_job', type=int,
+                        help='Number of cores used by one job.')
+    parser.add_argument('--runtime', '-r', type=str,
+                        help='Expected runtime of slurm job')
+    parser.add_argument('--queue', '-q', type=str,
+                        help='Slurm queue to use.')
+    parser.add_argument('--py_env', '-p', type=str,
+                        help='Use a specific pyenv environment')
+    parser.add_argument('--debug_job', '-d', action="store_true",
+                        help='Keep pylauncher workdir after completion')
+    parser.add_argument("--commit", action='store_true',
+                        help="Start the batch job on the batch system automatically")
+
+    return parser
 
 
 def parse_args(argv):
@@ -182,22 +309,12 @@ def parse_args(argv):
 
     p = AP(formatter_class=AHF)
 
-    p.add_argument('--nodes', '-n', type=int, default=1,
-                   help='Number of nodes to use per job')
-    p.add_argument('--jobs', '-j', type=int, default=20,
-                   help='Number of jobs to schedule per node')
-    p.add_argument('--threads', '-t', type=int, default=5,
-                   help='Number of threads to use per python process')
-    p.add_argument('--cores', '-c', type=int, default=4,
-                   help='Number of jobs to schedule per node')
-    p.add_argument('--runtime', '-r', type=str, default='00:30:00',
-                   help='Expected runtime of slurm job')
-    p.add_argument('--queue', '-q', type=str, default='vis',
-                   help='Slurm queue to use.')
-    p.add_argument('--py_env', '-p', type=str,
-                   help='Use a specific pyenv environment')
-    p.add_argument('--debug', '-d', action="store_true",
-                   help='Keep pylauncher workdir after completion')
+    defaults = getDefaults()
+
+    p.set_defaults(**defaults)
+
+    p = get_arguments(p)
+
     p.add_argument('cmdfile', type=str, help="""Input commands file""")
 
     return p.parse_args(args=argv)

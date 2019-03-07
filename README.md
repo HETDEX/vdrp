@@ -31,8 +31,9 @@ In shifts and specphot, link the corresponding run scripts.
   cd ..
 
 
-Execution
-  # Astrometry
+## Execution
+
+### Astrometry
   cd shifts
   ./run_shifts.sh 20180611 017
   cd ..
@@ -42,5 +43,11 @@ Execution
   cd specphot
   ./run_specphot.sh 20180611 017
   cd ..
+
+### Flux limits
+
+To run on a limited number of IFUs and pass a config file
+
+  vdrp_setup_flim --cores_per_job 12 --ifu_slots ifu086 ifu044 -c=/work/04120/dfarrow/wrangler/flims/flux_limits_vdrp/flim_aper_3.0.cfg 20181205 017
 
 

@@ -1,0 +1,5 @@
+rm -rf $7_$6
+mkdir -p $7_$6
+cd $7_$6
+# ~gebhardt/bin/rgetsp1f $1 $2 $3 $4 $5 $7_$6
+~gebhardt/bin/rgetsp1f $1 $2 $3 4500 1000 $7_$6

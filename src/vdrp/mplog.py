@@ -6,6 +6,10 @@ import sys
 import traceback
 import Queue
 
+import vdrp.utils as utils
+
+_logger = logging.getLogger()
+
 
 def install_mp_handler(logger=None):
     """Wraps the handlers in the given Logger with an MultiProcessingHandler.
@@ -93,3 +97,15 @@ class MultiProcessingHandler(logging.Handler):
 
             self.sub_handler.close()
             logging.Handler.close(self)
+
+
+def setup_mp_logging(logfile, loglevel):
+    '''
+    Setup the logging and prepare it for use with multiprocessing
+    '''
+
+    utils.setup_logging(_logger, logfile, loglevel)
+
+    # Wrap the log handlers with the MPHandler, this is essential for the use
+    # of multiprocessing, otherwise, tasks will hang.
+    install_mp_handler(_logger)

@@ -9,7 +9,7 @@ import numpy as np
 _vdrp_bindir = utils.bindir()
 
 
-def call_imextsp(filename, ifuslot, wl, wlw, tpavg, norm, outfile):
+def call_imextsp(filename, ifuslot, wl, wlw, tpavg, norm, outfile, wdir):
     """
     Equivalent of the rextsp script,
     a wrapper around the imextsp fortran routine.
@@ -30,36 +30,38 @@ def call_imextsp(filename, ifuslot, wl, wlw, tpavg, norm, outfile):
         The width of the extraction window around wl
     tpavg : float
         Throughput average for the spectrum
-    norm : float
-        Fiber to fiber normaliztion for the spectrum
+    norm : str
+        File with fiber to fiber normaliztion for the spectrum
     outfile : str
         Name of the output filename
+    wdir : str
+        Name of the work directory
     """
     input = '"{filename:s}"\n{ifuslot} {wl} {wlw}\n"{tpavg}"\n"{norm}"\n'
 
     try:
-        os.remove('out.sp')
+        os.remove(os.path.join(wdir, 'out.sp'))
     except OSError:
         pass
 
     try:
-        os.remove(outfile)
+        os.remove(os.path.join(wdir, outfile))
     except OSError:
         pass
 
-    s = input.format(filename=filename, ifuslot=ifuslot, wl=wl, wlw=wlw,
-                     tpavg=tpavg, norm=norm)
+    s = input.format(filename=os.path.join(wdir, filename), ifuslot=ifuslot,
+                     wl=wl, wlw=wlw, tpavg=tpavg, norm=norm)
 
-    run_command(_vdrp_bindir + '/imextsp', s)
+    run_command(_vdrp_bindir + '/imextsp', s, wdir=wdir)
 
-    shutil.move('out.sp', 'specin')
+    shutil.move(os.path.join(wdir, 'out.sp'), os.path.join(wdir, 'specin'))
 
-    run_command(_vdrp_bindir + '/specclean')
+    run_command(_vdrp_bindir + '/specclean', wdir=wdir)
 
-    shutil.move('out', outfile)
+    shutil.move(os.path.join(wdir, 'out'), os.path.join(wdir, outfile))
 
 
-def call_sumsplines(nspec):
+def call_sumsplines(nspec, wdir):
     """
     Call sumsplines, calculate a straight sum of the spectra in a list,
     including errors. Expects the spectra to be called tmp101 to
@@ -71,15 +73,17 @@ def call_sumsplines(nspec):
     ----------
     nspec : int
         Number of spectra to read.
+    wdir : str
+        Name of the work directory
     """
-    with open('list', 'w') as f:
+    with open(os.path.join(wdir, 'list'), 'w') as f:
         for i in range(0, nspec):
             f.write('tmp{c}.dat\n'.format(c=i+101))
 
-    run_command(_vdrp_bindir + '/sumsplines')
+    run_command(_vdrp_bindir + '/sumsplines', wdir=wdir)
 
 
-def call_fitonevp(wave, outname):
+def call_fitonevp(wave, outname, wdir):
     """
     Call fitonevp
 
@@ -91,24 +95,29 @@ def call_fitonevp(wave, outname):
         Wavelength
     outname : str
         Output filename
+    wdir : str
+        Name of the work directory
     """
     input = '0 0\n{wave:f}\n/vcps\n'
 
-    run_command(_vdrp_bindir + '/fitonevp', input.format(wave=wave))
+    run_command(_vdrp_bindir + '/fitonevp', input.format(wave=wave), wdir=wdir)
 
-    shutil.move('pgplot.ps', outname+'tot.ps')
-    shutil.move('out', outname+'spec.dat')
-    shutil.move('lines.out', outname+'spec.res')
+    shutil.move(os.path.join(wdir, 'pgplot.ps'),
+                os.path.join(wdir, outname+'tot.ps'))
+    shutil.move(os.path.join(wdir, 'out'),
+                os.path.join(wdir, outname+'spec.dat'))
+    shutil.move(os.path.join(wdir, 'lines.out'),
+                os.path.join(wdir, outname+'spec.res'))
 
-    splinedata = np.loadtxt('splines.out')
+    splinedata = np.loadtxt(os.path.join(wdir, 'splines.out'))
 
-    with open(outname+'spece.dat', 'w') as f:
+    with open(os.path.join(wdir, outname+'spece.dat'), 'w') as f:
         for d in splinedata:
             f.write('%.4f\t%.7f\t%.8e\t%.7f\t%.8e\n'
                     % (d[0], d[1], d[3], d[2]*1e17, d[4]*1e17))
 
 
-def call_fit2d(ra, dec, outname):
+def call_fit2d(ra, dec, outname, wdir):
     """
     Call fit2d. Calculate the 2D spatial fit based on fwhm, fiber locations,
     and ADC. This convolves the PSF over each fiber, for a given input
@@ -124,16 +133,19 @@ def call_fit2d(ra, dec, outname):
         Declination of the star.
     outname : str
         Output filename.
+    wdir : str
+        Name of the work directory
     """
     input = '{ra:f} {dec:f}\n/vcps\n'
 
-    run_command(_vdrp_bindir + '/fit2d', input.format(ra=ra, dec=dec))
+    run_command(_vdrp_bindir + '/fit2d', input.format(ra=ra, dec=dec),
+                wdir=wdir)
 
-    shutil.move('pgplot.ps', outname)
-    shutil.move('out', 'out2d')
+    shutil.move(os.path.join(wdir, 'pgplot.ps'), os.path.join(wdir, outname))
+    shutil.move(os.path.join(wdir, 'out'), os.path.join(wdir, 'out2d'))
 
 
-def call_mkimage(ra, dec, starobs):
+def call_mkimage(ra, dec, starobs, wdir):
     """
     Call mkimage, equivalent of rmkim
 
@@ -151,43 +163,46 @@ def call_mkimage(ra, dec, starobs):
         List of StarObservation objects for the star
     """
 
-    gausa = np.loadtxt('out2d', ndmin=1, usecols=[9])
+    gausa = np.loadtxt(os.path.join(wdir, 'out2d'), ndmin=1, usecols=[9])
 
     # First write the first j4 input file
-    with open('j4', 'w') as f:
+    with open(os.path.join(wdir, 'j4'), 'w') as f:
         for obs in starobs:
             f.write('%f %f %f\n' % (3600.*(obs.ra-ra)
                                     * np.cos(dec/57.3),
                                     3600*(obs.dec-dec), obs.avg))
 
-    run_command(_vdrp_bindir + '/mkimage')
+    run_command(_vdrp_bindir + '/mkimage', wdir=wdir)
 
-    shutil.move('image.fits', 'im1.fits')
+    shutil.move(os.path.join(wdir, 'image.fits'),
+                os.path.join(wdir, 'im1.fits'))
 
-    with open('j4', 'w') as f:
+    with open(os.path.join(wdir, 'j4'), 'w') as f:
         for i in range(0, len(starobs)):
             f.write('%f %f %f\n' % (3600.*(starobs[i].ra-ra)
                                     * np.cos(dec/57.3),
                                     3600*(starobs[i].dec-dec),
                     starobs[i].avg - gausa[i]))
 
-    run_command(_vdrp_bindir + '/mkimage')
+    run_command(_vdrp_bindir + '/mkimage', wdir=wdir)
 
-    shutil.move('image.fits', 'im2.fits')
+    shutil.move(os.path.join(wdir, 'image.fits'),
+                os.path.join(wdir, 'im2.fits'))
 
-    with open('j4', 'w') as f:
+    with open(os.path.join(wdir, 'j4'), 'w') as f:
         for i in range(0, len(starobs)):
             f.write('%f %f %f\n' % (3600.*(starobs[i].ra-ra)
                                     * np.cos(dec/57.3),
                                     3600*(starobs[i].dec-dec),
                     gausa[i]))
 
-    run_command(_vdrp_bindir + '/mkimage')
+    run_command(_vdrp_bindir + '/mkimage', wdir=wdir)
 
-    shutil.move('image.fits', 'im3.fits')
+    shutil.move(os.path.join(wdir, 'image.fits'),
+                os.path.join(wdir, 'im3.fits'))
 
 
-def call_fitem(wl):
+def call_fitem(wl, wdir):
     """
     Call fitem requires input files created by run_fitem
 
@@ -201,10 +216,10 @@ def call_fitem(wl):
 
     input = '{wl:f}\n/vcps\n'
 
-    run_command(_vdrp_bindir + '/fitem', input.format(wl=wl))
+    run_command(_vdrp_bindir + '/fitem', input.format(wl=wl), wdir=wdir)
 
 
-def call_sumspec(starname):
+def call_sumspec(starname, wdir):
     """
     Call sumpspec. Sums a set of spectra, and then bins to 100AA bins.
     Used for SED fitting.
@@ -214,15 +229,15 @@ def call_sumspec(starname):
     starname : str
         Star name used to create the outputn filename (adds specf.dat)
     """
-    if os.path.exists('sumspec.out'):
-        os.remove('sumspec.out')
-    with open('list', 'w') as f:
+    if os.path.exists(os.path.join(wdir, 'sumspec.out')):
+        os.remove(os.path.join(wdir, 'sumspec.out'))
+    with open(os.path.join(wdir, 'list'), 'w') as f:
         f.write(starname + 'specf.dat')
 
-    run_command(_vdrp_bindir + '/sumspec')
+    run_command(_vdrp_bindir + '/sumspec', wdir=wdir)
 
 
-def call_getnormexp(nightshot):
+def call_getnormexp(nightshot, wdir):
     """
     Call getnormexp. Get fwhm and relative normalizations for the frames.
 
@@ -233,4 +248,43 @@ def call_getnormexp(nightshot):
     """
     input = '{name:s}\n'
 
-    run_command(_vdrp_bindir + '/getnormexp', input.format(name=nightshot))
+    run_command(_vdrp_bindir + '/getnormexp', input.format(name=nightshot),
+                wdir=wdir)
+
+
+def run_fitradecsp(ra, dec, step, nstep, w_center, w_range, ifit1,
+                   starobs, specfiles, wdir):
+    """
+    Setup and call fitradecsp. This creates a file called spec.out
+
+    Parameters
+    ----------
+    starobs : list
+        List of StarObservation structures one for each fiber
+    specfiles : list
+        List of filename of the different spec files
+    """
+
+    with open(os.path.join(wdir, 'list'), 'w') as f:
+        for st, sp in zip(starobs, specfiles):
+            f.write('%s %.7f %.7f %.6f %s\n' % (sp, st.ra, st.dec,
+                    st.structaz, st.expname))
+
+    input = '{ra:.7f} {dec:.7f} {step:d} {nstep:d} {wcen:f} {wr:f} {ifit1:d}\n'
+
+    run_command(_vdrp_bindir + '/fitradecsp',
+                input.format(ra=ra, dec=dec, step=step, nstep=nstep,
+                             wcen=w_center, wr=w_range, ifit1=ifit1),
+                wdir=wdir)
+
+
+def call_mkimage3d(wdir):
+    """
+    Run the mkimage3d command, creating an output file called image3d.fits
+    """
+
+    if os.path.exists(os.path.join(wdir, './image3d.fits')):
+        os.remove(os.path.join(wdir, './image3d.fits'))
+    print(os.path.exists(os.path.join(wdir, './image3d.fits')))
+
+    run_command(_vdrp_bindir + '/mkimage3d', wdir=wdir)

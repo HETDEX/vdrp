@@ -6,6 +6,7 @@ from argparse import ArgumentParser as AP
 from argparse import ArgumentDefaultsHelpFormatter as AHF
 
 import pylauncher
+import platform
 import shutil
 import os
 import sys
@@ -33,10 +34,17 @@ def VDRPLauncher(commandfile, **kwargs):
     debug = kwargs.pop("debug", "")
     workdir = kwargs.pop("workdir", "pylauncher_tmp"+str(jobid))
     cores = kwargs.pop("cores", 1)
+
+    hosttag = ".wrangler.tacc.utexas.edu"
+    if 'maverick' in platform.node():
+        hosttag = ".maverick.tacc.utexas.edu"
+    if 'stampede2' in platform.node():
+        hosttag = ".stampede2.tacc.utexas.edu"
+
     job = pylauncher.LauncherJob(
         hostpool=pylauncher.HostPool(
             hostlist=pylauncher.SLURMHostList(
-                tag=".wrangler.tacc.utexas.edu"),
+                tag=hosttag),
             commandexecutor=pylauncher.SSHExecutor(
                 workdir=workdir, debug=debug),
             debug=debug),
@@ -48,6 +56,8 @@ def VDRPLauncher(commandfile, **kwargs):
                                                            stampdir=workdir),
             debug=debug),
         debug=debug, **kwargs)
+    print('Running job')
+    print(job)
     job.run()
     print(job.final_report())
 
@@ -61,6 +71,7 @@ def main(args):
 
     debug = ''
     if args.debug:
+        print('Enabling debugging')
         debug = 'job+host+task+exec+command'
     VDRPLauncher(args.cmdfile, cores=args.cores,
                  workdir=workdir, debug=debug)
@@ -97,6 +108,7 @@ def parse_args(argv):
 
 def run():
 
+    print('Starting vdrp runner')
     args = parse_args(sys.argv[1:])
     main(args)
 
