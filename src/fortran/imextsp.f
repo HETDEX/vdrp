@@ -40,9 +40,8 @@ c         if(ae.eq.file1(73:77)) xrelnorm=x3
  365  continue
 
 c - get the bad pixel list
-      open(unit=1,file='/work/00115/gebhardt/maverick/gettar/badpix.new'
+      open(unit=1,file='/work/03946/hetdex/hdr1/calib/badpix.new'
      $     ,status='old')
-c      open(unit=1,file='/home/00115/gebhardt/badpix.new',status='old')
       nbad=0
       nbadw=0
       do i=1,1000
@@ -72,7 +71,9 @@ c      open(unit=1,file='/home/00115/gebhardt/badpix.new',status='old')
          wave(i)=wmin+float(i-1)*wsp
       enddo
 
-      open(unit=1,file=file2,status='old')
+c - getting the throughput
+
+      open(unit=1,file=file2,status='old',err=576)
       ntp=0
       do i=1,narrm
          read(1,*,end=676) x1,x2
@@ -82,6 +83,26 @@ c      open(unit=1,file='/home/00115/gebhardt/badpix.new',status='old')
       enddo
  676  continue
       close(1)
+      goto 578
+ 576  continue
+      close(1)
+
+      open(unit=1,file=
+     $     "/work/00115/gebhardt/maverick/detect/tp/tpavg.dat",
+     $     status='old')
+      ntp=0
+      do i=1,narrm
+         read(1,*,end=577) x1,x2
+         ntp=ntp+1
+         wtp(ntp)=x1
+         tp(ntp)=x2
+      enddo
+ 577  continue
+      close(1)
+ 578  continue
+
+c- getting the amp2amp
+
       open(unit=1,file=file3,status='old',err=678)
       na=0
       do i=1,narrm
@@ -416,9 +437,11 @@ c         ytp=ytp*xrelnorm
          yfrac=yfp*ytp
 c         if(yerr2.gt.5000.or.yerr.gt.5000) yflag=0
          if(yerr2.gt.5000) yflag=0
+         if(yerr.gt.1.e5) yflag=0
          if(wave(i).lt.waved(3).or.wave(i).gt.waved(n-3)) yflag=0
-         if(yfp.gt.0.and.yflag.gt.0.and.
-     $        yp.lt.1e7.and.yp.gt.-1e3) then
+         if(yfp.eq.0) yflag=0
+c         if(yfp.gt.0.and.yflag.gt.0.and.
+         if(yflag.gt.0.and.yp.lt.1e7.and.yp.gt.-1e3) then
 c     $        yp.lt.1e5.and.yp.gt.-1e3) then
 c - yerr2 is propagation of error
 c   ysky is the sky value

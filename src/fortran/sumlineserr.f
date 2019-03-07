@@ -9,6 +9,7 @@
       ylocut=-100.
       yhicut=1000.
       fcut=0.03
+      fcut=0.0
 c      fcut=0.06
 
       open(unit=1,file='list2',status='old',err=866)

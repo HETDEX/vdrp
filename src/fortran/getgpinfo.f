@@ -57,14 +57,14 @@
       open(unit=1,file="all/"//nbase//"gp1.comp",status='old')
       read(1,*) fm(1),fm(2),fm(3)
       close(1)
-      open(unit=1,file="all/"//nbase//"gp1.comp",status='old')
+      open(unit=1,file="all/"//nbase//"gp2.comp",status='old')
       read(1,*) fm(4),fm(5),fm(6)
       close(1)
       nn=0
       do i=1,6
          if(fm(i).gt.0.5.and.fm(i).lt.4.0) then
             nn=nn+1
-            fmn(i)=fm(i)
+            fmn(nn)=fm(i)
          endif
       enddo
       call biwgt(fmn,nn,xf,xs)

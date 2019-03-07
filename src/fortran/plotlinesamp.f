@@ -6,9 +6,10 @@
       integer ica(nmax)
       character file1*80,file2*80
 
-      call pgbegin(0,'?',1,1)
-      call pgpap(0.,1.)
-      call pgsch(1.)
+c      call pgbegin(0,'?',1,1)
+      call pgbegin(0,'?',4,3)
+c      call pgpap(0.,1.)
+      call pgsch(1.4)
       call pgscf(2)
       call pgslw(2)
 
@@ -20,8 +21,8 @@ c      xmax=4600.
       ymax=1.4
 c      ymin=0.85
 c      ymax=1.25
-      call pgenv(xmin,xmax,ymin,ymax,0,0)
-      call pglabel('Wavelength','FtF','')
+c      call pgenv(xmin,xmax,ymin,ymax,0,0)
+c      call pglabel('Wavelength','FtF','')
       call pgsls(1)
       call pgslw(4)
 
@@ -31,6 +32,11 @@ c      ymax=1.25
       do il=1,1000
          read(1,*,end=666) file1,ic
          open(unit=2,file=file1,status='old')
+         call pgenv(xmin,xmax,ymin,ymax,0,0)
+         call pglabel('Wavelength','FtF','')
+         call pgsch(2.0)
+         call pgmtxt('T',-1.5,0.5,0.5,file1(1:20))
+         call pgsch(1.4)
          nl=nl+1
          n=0
          do i=1,2000
@@ -88,10 +94,9 @@ c         if(xs.gt.0.02) then
             print *,j,xs,ic
             ic=ic+1
             if(ic.eq.15) ic=1
-c            call pgline(n,x,ydiff)
             ic=ica(j)
             call pgsci(ic)
-            call pgline(n,x,yorig)
+c            call pgline(n,x,yorig)
          endif
       enddo
 

@@ -6,6 +6,7 @@
       logical simple,extend,anyf
 
       readn=2.9*sqrt(5.)
+      readn=0.
 
 c 1    call qc1('Image ','imars.def',file1)
 c      call qi1('Which extension ','imars.def',iext)
@@ -47,7 +48,9 @@ c      call savdef
 
       do j=1,nrow
          do i=1,ncol
-            xd(i,j)=sqrt(xd(i,j)+readn*readn)
+            xdum=xd(i,j)+readn*readn
+            xdum=max(0.,xdum)
+            xd(i,j)=sqrt(xdum)
          enddo
       enddo
 

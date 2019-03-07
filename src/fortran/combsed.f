@@ -3,7 +3,7 @@
       real x(nmax),y(nmax),ye(nmax),ya(nmax,1000),xin(1000),ya2(nmax)
       real yel(nmax),yeu(nmax),xg(nmax),yg(nmax),ydiff(nmax)
       real xball(nmax),xballa(nmax),xballa2(nmax),xballs(nmax)
-      real xballr(nmax),fap(nmax),facapa(nmax)
+      real xballr(nmax),fap(nmax),facapa(nmax),xin2(nmax)
       integer ibad(nmax),iap(nmax)
       character file1*80,file2*80
 
@@ -15,7 +15,7 @@ c- rmscut is the rms of the difference after normalization
       read *,sigcut,rmscut
 
       open(unit=1,file=
-     $     '/work/00115/gebhardt/maverick/detect/sed/good.dat',
+     $     '/work/03946/hetdex/hdr1/calib/goodsed.dat',
      $     status='old')
       do i=1,nmax
          read(1,*,end=866) x1,x2
@@ -93,29 +93,28 @@ c remove the last point
          xballs(il)=xs
          xballr(il)=rms
          if(rms.gt.rmscut) ibad(il)=1
+         if(rms.gt.2.*rmscut) ibad(il)=2
          if(xs.gt.sigcut) ibad(il)=1
          if(xb2.lt.0.005) ibad(il)=1
          if(ibad(il).eq.0) then
             nall=nall+1
             xball(nall)=xb
          endif
-c         print *,il,ibad(il),sigcut,xs,rms,rmscut
       enddo
  666  continue
       close(1)
       call biwgt(xball,nall,xb,xs)
-c      print *,nl,nall,xb,xs
 
       open(unit=11,file='out',status='unknown')
       write(*,*) " ID    Offset    scale   use  Offset2   RMS"
       do i=1,nl
-c         if(xballa(i).lt.(xb-xs)) ibad(i)=1
          if(ibad(i).eq.0) then
             write(*,1001) i,xballa(i),xballs(i),ibad(i),xballa2(i),
      $           xballr(i),facapa(i)
             write(11,1001) i,xballa(i),xballs(i),ibad(i),xballa2(i),
      $           xballr(i),facapa(i)
          else
+            write(*,1001) i,0.,0.,ibad(i),0.,0.,facapa(i)
             write(11,1001) i,0.,0.,ibad(i),0.,0.,facapa(i)
          endif
       enddo
@@ -124,20 +123,35 @@ c         if(xballa(i).lt.(xb-xs)) ibad(i)=1
       open(unit=11,file='comb.out',status='unknown')
       do i=1,n
          nin=0
+         nin2=0
          do j=1,nl
             if(ibad(j).eq.0) then
                nin=nin+1
                xin(nin)=ya(i,j)
             endif
+            if(ibad(j).lt.2) then
+               nin2=nin2+1
+               xin2(nin2)=ya(i,j)
+            endif
          enddo
          call biwgt(xin,nin,xb,xs)
+         call biwgt(xin2,nin2,xb2,xs2)
+         xb=max(0.,xb)
+         xs=max(0.,xs)
+         xb2=max(0.,xb2)
          y(i)=xb
-         yel(i)=y(i)-xs/sqrt(float(nin))
-         yeu(i)=y(i)+xs/sqrt(float(nin))
-         write(11,*) x(i),y(i),yel(i),yeu(i)
+         if(nin.gt.0) then
+            yel(i)=y(i)-xs/sqrt(float(nin))
+            yeu(i)=y(i)+xs/sqrt(float(nin))
+         else
+            yel(i)=0.
+            yeu(i)=0.
+         endif
+         write(11,1101) x(i),y(i),yel(i),yeu(i),xb2
       enddo
       close(11)
 
  1001 format(i4,2(1x,f9.4),2x,i1,2(1x,f9.4),1x,f6.3)
+ 1101 format(f6.1,4(1x,f6.3))
 
       end

@@ -4,8 +4,7 @@
       xnd=0.9
 
       open(unit=1,file=
-c     $     "/work/00115/gebhardt/maverick/getgp/fwhm_and_fluxes.txt",
-     $"/work/00115/gebhardt/maverick/getgp/fwhm_and_fluxes_better.txt",
+     $"/work/03946/hetdex/hdr1/calib/fwhm_and_fluxes_better.txt",
      $     status='old')
       read(1,*)
 

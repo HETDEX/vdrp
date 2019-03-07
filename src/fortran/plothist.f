@@ -32,18 +32,20 @@ c         print *,n,x(n)
 
       write(*,"('Limits : '$)")
       read *,xmin,xmax
-c      call pgenv(xmin,xmax,0.,150.,0,0)
+      call pgenv(xmin,xmax,0.,250.,0,0)
 c      xmin=0.
 c      xmax=4.
 c      call pghist(n,x,xmin,xmax,30,0)
 c      call pghist(n,x,xmin,xmax,100,0)
-      call pghist(n,x,xmin,xmax,19,0)
+      call pghist(n,x,xmin,xmax,19,1)
 c      call pglabel('Radial Velocity Uncertainty (km s\\U-1\\D)','','')
 c      call pglabel('','Number','')
 c      call pglabel('DARKTIME-EXPTIME (sec)','Number','')
 c      call pglabel('FP Center Accuracy (arcsec)','Number','')
 c      call pglabel('FWHM (arcsec)','Number','')
-      call pglabel('Normalized response at 4540 AA','Number','')
+      call pglabel('Normalized response at 4940\(2078)','Number','')
+c      call pglabel('Sigma in \(2078) for candidate LAEs','Number','')
+c      call pglabel('Response at 4940 AA','Number','')
 c      call pglabel('sqrt(x\U2\D+y\U2\D)','Number','')
 
       call pgend

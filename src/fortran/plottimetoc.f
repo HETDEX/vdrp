@@ -18,8 +18,8 @@
 
       call pgsci(2)
       call pgsch(1.0)
-      call pgptxt(4.5,400.,270.,0.,'Spring Complete')
-      call pgptxt(5.2,400.,270.,0.,'Fall Complete')
+      call pgptxt(4.6,400.,270.,0.,'Spring Complete')
+      call pgptxt(5.4,400.,270.,0.,'Fall Complete')
       call pgsci(1)
       call pgsch(1.5)
       call pgsls(4)
@@ -51,6 +51,7 @@
       call pgsci(2)
       call pgsls(1)
       call pgline(n,x,y)
+      xfield=x(2)-1.
 
       open(unit=1,file='shotperyear',status='old')
       n2=0
@@ -62,10 +63,12 @@
       enddo
  667  continue
       close(1)
+      call xlinint(xfield,n2,xa,ya,yfield)
+      yfield=yfield*47./1000.
+      print *,yfield
       
       xstart=x(n)
       xend=xmax
-c      ystart=y(n)+67.6
       ystart=y(n)+48.
       ystartb=y(n)+48.
       ystartc=y(n)+48.
@@ -97,7 +100,7 @@ c      ystart=y(n)+67.6
             if(icheck1.eq.0) ystartc=yc(i-1)
             if(icheck1.eq.0) ystartd=yd(i-1)
             icheck1=1
-            nifu=67
+            nifu=64
             nifub=57
          endif
          if(xcheck.gt.2.and.xcheck.lt.3) then
@@ -108,7 +111,7 @@ c      ystart=y(n)+67.6
             if(icheck2.eq.0) ystartd=yd(i-1)
             icheck2=1
             nifu=78
-            nifub=78
+            nifub=70
          endif
          if(xcheck.gt.3.and.xcheck.lt.4) then
             xcheck=xcheck-3
@@ -161,13 +164,14 @@ c      ystart=y(n)+67.6
             endif
          enddo
  555     continue
-         yp=yp*nifu/1000.
+         if(x(i).ge.2) yfield=0.
+         yp=yp*nifu/1000.-yfield
          y(i)=ystart-yp
-         ypb=ypb*nifub/1000.
+         ypb=ypb*nifub/1000.-yfield
          yb(i)=ystartb-ypb
-         ypc=ypc*nifuc/1000.
+         ypc=ypc*nifuc/1000.-yfield
          yc(i)=ystartc-ypc
-         ypd=ypd*nifud/1000.
+         ypd=ypd*nifud/1000.-yfield
          yd(i)=ystartd-ypd
       enddo
 
@@ -212,4 +216,17 @@ c      ystart=y(n)+67.6
       call pgline(npd,x,yd)
       call pgend
 
+      end
+
+      subroutine xlinint(xp,n,x,y,yp)
+      real x(n),y(n)
+      do j=1,n-1
+         if(xp.ge.x(j).and.xp.lt.x(j+1)) then
+            yp=y(j)+(y(j+1)-y(j))*(xp-x(j))/(x(j+1)-x(j))
+            return
+         endif
+      enddo
+      if(xp.lt.x(1)) yp=y(1)
+      if(xp.gt.x(n)) yp=y(n)
+      return
       end

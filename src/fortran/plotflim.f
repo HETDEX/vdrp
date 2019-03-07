@@ -4,63 +4,47 @@
       real xb(nmax),yb(nmax)
       character file1*80,file2*80,c1*18
 
-      ibin=13
+      nf=18
+      ibin=5
+c      ibin=1
       ib1=(ibin-1)/2
       xib=float(ibin)
 
+c      call pgbegin(0,'?',3,3)
       call pgbegin(0,'?',1,1)
       call pgpap(0.,1.)
       call pgsch(1.5)
       call pgscf(2)
       call pgslw(3)
 
+      xmin=3810.
+      xmax=3870.
       xmin=3500.
       xmax=5500.
-c      xmin=1.
-c      xmax=112.
-c      ymin=-0.03
-c      ymax=0.03
-      ymin=0.
-      ymax=0.18
-      ymin=600.
-      ymax=1150.
-      ymin=-0.4
-      ymax=0.4
-      ymin=0.
-      ymax=30.
-      call pgsls(1)
-      call pgslw(2)
-      call pgsci(1)
-      call pgsch(1.2)
-      call pgenv(xmin,xmax,ymin,ymax,0,0)
-c      call pglabel('Wavelength','Residual from mastersky (600 cts)','')
-c      call pglabel('Fiber','FtF correction','')
-      call pgsch(1.4)
-c      call pglabel('Wavelength','Throughput for 50 sq-m','')
-c      call pglabel('Wavelength','Resolving Power','')
-c      call pglabel('Fiber','Fiber Renormalization','')
-      call pglabel('Fiber','Wavelength Offset','')
-      call pgslw(3)
-      call pgsch(1.)
 
-      open(unit=1,file='list',status='old')
+      open(unit=1,file='splist',status='old')
 
       nl=0
       ic=0
       do il=1,10000
-         read(1,*,end=666) file1
+c         read(1,*,end=666) file1
+         read(1,*,end=666) file1,icol,ils,ilw
+         xnorm=1.
          open(unit=2,file=file1,status='old')
+         ymin=1e10
+         ymax=-ymin
          n=0
          do i=1,nmax
             read(2,*,end=667) x1,x2
-            if(x2.ge.-1e10.or.x2.le.1e10) then
+c            read(2,*,end=667) x1,x2,x3,x4,x5,x6
+c            x2=x6
+            if(x2.ne.0) then
                n=n+1
                x(n)=x1
-               y(n)=x2
-            else
-               goto 866
+               y(n)=x2*xnorm
+               ymin=min(ymin,y(n))
+               ymax=max(ymax,y(n))
             endif
-            if(x(n).eq.4740.) print *,x2,file1
          enddo
  667     continue
          close(2)
@@ -87,14 +71,30 @@ c      call pglabel('Fiber','Fiber Renormalization','')
             xn(nbb)=xbb
          enddo
          c1=file1(1:17)
-         ic=ic+1
-         icp=int(float(ic)/4.)+1
-         if(icp.eq.14) ic=1
-         if(ic.eq.14) ic=1
-         call pgsci(icp)
-         call pgsci(ic)
+         icp=1
+         call pgsls(1)
+         call pgslw(2)
+         call pgsci(1)
+         call pgsch(1.8)
+         ybit=(ymax-ymin)/10.
+         ymin=ymin-ybit
+         ymax=ymax+ybit
+         ymin=3.
+         ymax=12.
+         if(il.eq.1) call pgenv(xmin,xmax,ymin,ymax,0,0)
+         call pgsci(icol)
+         call pgsls(ils)
+         call pgslw(ilw)
 c         call pgline(n,x,y)
          call pgline(nbb,xn,yn)
+         call pgsch(1.8)
+         if(il.eq.1) call pglabel('Wavelength',
+     $        '1e-17 ergs/cm\U2\D/s','')
+c         if(il.eq.1) call pglabel('Wavelength',
+c     $        'Counts','')
+c         call pgmtxt('T',0.9,0.5,0.5,file1(1:nf))
+         call pgsch(1.5)
+         call pgsci(1)
  866     continue
          close(2)
       enddo

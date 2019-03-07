@@ -82,29 +82,51 @@ c      ymax=0.02
 
       call qd1('Enter smoothing val ','smflat.def',val)
       call savdef
-c      val=0.d0
-      md=3
-      if(val.eq.0.) md=2
-      m=2
+      if(val.ge.0) then
+         md=3
+         if(val.eq.0.) md=2
+         m=2
+         
+         do i=1,n
+            dx(i)=dble(x(i))
+            dy(i)=dble(y(i))
+            wx(i)=1.d0
+         enddo
+         
+         ier=0
+         call gcvspl(dx,dy,nmax,wx,1.d0,m,n,1,md,val,cf,nmax,wk,ier)
+         if(ier.ne.0) print *,'ier= ',ier
+         
+         do i=1,n2
+            in=i
+            y2(i)=sngl(splder(0,m,n,dble(x2(i)),dx,cf,in,q))
+         enddo
+         
+         do i=1,n
+            in=i
+            y3(i)=sngl(splder(0,m,n,dble(x(i)),dx,cf,in,q))
+         enddo
+      else
+         do i=1,n2
+            call xlinint(x2(i),n,x,y,y2(i))
+         enddo
+         do i=1,n
+            y3(i)=y(i)
+         enddo
+      endif
+         
+      return
+      end
 
-      do i=1,n
-         dx(i)=dble(x(i))
-         dy(i)=dble(y(i))
-         wx(i)=1.d0
+      subroutine xlinint(xp,n,x,y,yp)
+      real x(n),y(n)
+      do j=1,n-1
+         if(xp.ge.x(j).and.xp.lt.x(j+1)) then
+            yp=y(j)+(y(j+1)-y(j))*(xp-x(j))/(x(j+1)-x(j))
+            return
+         endif
       enddo
-
-      call gcvspl(dx,dy,nmax,wx,1.d0,m,n,1,md,val,cf,nmax,wk,ier)
-      if(ier.ne.0) print *,'ier= ',ier
-
-      do i=1,n2
-         in=i
-         y2(i)=sngl(splder(0,m,n,dble(x2(i)),dx,cf,in,q))
-      enddo
-
-      do i=1,n
-         in=i
-         y3(i)=sngl(splder(0,m,n,dble(x(i)),dx,cf,in,q))
-      enddo
-
+      if(xp.lt.x(1)) yp=y(1)
+      if(xp.gt.x(n)) yp=y(n)
       return
       end

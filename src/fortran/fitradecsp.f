@@ -14,7 +14,7 @@
       rd=3.
       wd=4.
 
-      print *,"ra,dec,step,nstep,wcen,wrange,ifit1"
+c      print *,"ra,dec,step,nstep,wcen,wrange,ifit1"
       read *,ra,dec,step,nstep,wcen,wrange,ifit1
 
       sigin=-3.0
@@ -496,6 +496,8 @@ c     $        an(i,1),an(i,2),an(i,3),an(i,4),iflag(i)
 c- now get area covered with fibers
          sumf1=0.
          sumf2=0.
+         sumfw1=0.
+         sumfw2=0.
          nfull=100
          sigfull=5.
          xs=xrs-sigfull*rsig
@@ -542,7 +544,8 @@ c         enddo
       real yout6(nmax),yout7(nmax),sumrata(nmax),fweight2(nfmax,nmax)
       integer iflag(ntf)
 
-      fcut=0.03
+c      fcut=0.03
+      fcut=0.01
 
       do i=1,nmax
          ysum(i)=0.
@@ -557,6 +560,9 @@ c         enddo
       enddo
       do i=1,ntf
          gna(i)=0.
+      enddo
+      do i=1,naf
+         spec(i,1)=wa(1,i)
       enddo
 
       nw=5
@@ -578,6 +584,7 @@ cc   gna is normalized counts for each
          endif
       enddo
       if(ng.eq.0) goto 866
+      if(sumg.eq.0) goto 866
       do i=1,ng
          gna(i)=gna(i)/sumg
       enddo

@@ -20,7 +20,7 @@ c   let's center on Feb 1, 2018, which is mjd=58150.3
 
       xmin=0.
       xmax=365.
-      xmax=400.
+      xmax=450.
       ymin=0.
       ymax=1300.
       call pgenv(xmin,xmax,ymin,ymax,0,0)
@@ -76,11 +76,14 @@ c      call pgsci(1)
          y(i)=y(i)-xn0
       enddo
       call pgsci(2)
-c      call pgline(n,x,y)
       do i=1,n
          y(i)=y(i)+90.
       enddo
-c      call pgsls(4)
+      call pgline(n,x,y)
+      do i=1050,n
+         y(i)=y(i)+90.
+      enddo
+      call pgsls(2)
       call pgline(n,x,y)
 
       call pgsci(1)

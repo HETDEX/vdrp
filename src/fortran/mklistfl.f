@@ -14,7 +14,7 @@ c      dcen=52.35663
          do j=1,70
             n=n+1
             dnew=dstart+float(j-1)/3600.
-            write(11,1001) "rspfl3f",rnew,dnew,2.5,4505,1035,n,
+            write(11,1001) "rspfl3f",rnew,dnew,3.0,4505,1035,n,
      $           name,1.7,3.0,-3.5,0,1,1
          enddo
       enddo

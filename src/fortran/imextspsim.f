@@ -41,9 +41,8 @@ c         if(ae.eq.file1(41:45)) xrelnorm=x3
  365  continue
 
 c - get the bad pixel list
-      open(unit=1,file='/work/00115/gebhardt/maverick/gettar/badpix.new'
+      open(unit=1,file='/work/03946/hetdex/hdr1/calib/badpix.new'
      $     ,status='old')
-c      open(unit=1,file='/home/00115/gebhardt/badpix.new',status='old')
       nbad=0
       nbadw=0
       do i=1,1000

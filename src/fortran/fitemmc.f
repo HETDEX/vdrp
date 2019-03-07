@@ -28,6 +28,7 @@
          wave(n)=x1
          flux(n)=x2
          fluxe(n)=x3
+         if(flux(n).eq.0) flux(n)=-666
       enddo
  666  continue
       close(1)
@@ -51,8 +52,8 @@ c      wave0=wave(nint(float(n)/2.))
             yo(nt)=flux(i)
             yin(nt)=flux(i)
             yeo(nt)=fluxe(i)
-            ymin=min(ymin,y(nt))
-            ymax=max(ymax,y(nt))
+            ymin=min(ymin,yin(nt))
+            ymax=max(ymax,yin(nt))
          endif
       enddo
       call biwgt(yin,nt,xb,xs)
@@ -86,7 +87,7 @@ c      wave0=wave(nint(float(n)/2.))
                y(i)=yfito(i)+yeo(i)*gasdev(idum)
             endif
          enddo
-      
+
          call fitherms(nt,x,y,ye,a,na,covar,alpha,nca)
 
          h3=a(2)

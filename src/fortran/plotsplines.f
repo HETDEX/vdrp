@@ -27,8 +27,8 @@
 
       ymin=-100.
       ymax=250.
-      ymin=0.5
-      ymax=1.15
+      ymin=-1
+      ymax=10.
       call pgsls(1)
       call pgslw(1)
 
@@ -111,7 +111,7 @@ c         print *,i,x(i),ysum(i)
 c         ysum(i)=ysum(i)-frac
       enddo
       close(11)
-c      call pgline(n,x,ysum)
+      call pgline(n,x,ysum)
       print *,frac,xb
       write(c1,1001) frac
  1001 format(f8.1)

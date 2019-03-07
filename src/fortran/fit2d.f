@@ -105,6 +105,10 @@ c - get relative frame normalizations
       as=40.
       ae=2000.
       ae=xfmax*5.
+      if(ae.lt.as) then
+         print *,"Problem with negative flux"
+         goto 866
+      endif
       print *,ae
       chimin=1e10
       do ia=1,100
@@ -162,6 +166,7 @@ c - get relative frame normalizations
          sumg=sumg+gausa(i)
          sumd=sumd+xf(i)
       enddo
+      print *,atb
       sumrat=sumg/atb
       open(unit=11,file='out2',status='unknown')
       write(11,1103) xnew,ynew,atb,xtb,ytb,chimin,rfw,sumrat
