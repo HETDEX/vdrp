@@ -2174,6 +2174,12 @@ def main(args):
                         ra = _ra
                     if dec is None:
                         dec = _dec
+                # First make sure we run with SDSS to get the stars list
+                redo_shuffle(wdir, ra, dec, track,
+                             args.acam_magadd, args.wfs1_magadd,
+                             args.wfs2_magadd, args.shuffle_cfg,
+                             args.fplane_txt, args.night, catalog='SDSS')
+                shutil.move('shout.ifustars', 'sdss.ifustars')
                 redo_shuffle(wdir, ra, dec, track,
                              args.acam_magadd, args.wfs1_magadd,
                              args.wfs2_magadd, args.shuffle_cfg,
