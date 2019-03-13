@@ -715,6 +715,15 @@ def print_conffile():
     write_conf_file(args.filename)
 
 
+def count_lines(fname):
+
+    i = 0
+    with open(fname, 'r') as f:
+        for i, l in enumerate(f, 1):
+            pass
+    return i
+
+
 # ---------------------------------------------------------------------
 #  Package utils
 # ---------------------------------------------------------------------
