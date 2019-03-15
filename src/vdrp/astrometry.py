@@ -2174,10 +2174,34 @@ def main(args):
                         ra = _ra
                     if dec is None:
                         dec = _dec
+                # First make sure we run with SDSS to get the stars list
                 redo_shuffle(wdir, ra, dec, track,
                              args.acam_magadd, args.wfs1_magadd,
                              args.wfs2_magadd, args.shuffle_cfg,
-                             args.fplane_txt, args.night)
+                             args.fplane_txt, args.night, catalog='SDSS')
+                shutil.move('shout.ifustars', 'sdss.ifustars')
+                # Now try to run it using GAIA, for the astrometry
+                logging.info('Trying shuffle with GAIA')
+                redo_shuffle(wdir, ra, dec, track,
+                             args.acam_magadd, args.wfs1_magadd,
+                             args.wfs2_magadd, args.shuffle_cfg,
+                             args.fplane_txt, args.night, catalog='GAIA')
+                # check the number of stars in the shout.ifustars
+                if utils.count_lines('shout.ifustars') < 2:
+                    # No stars found, check SDSS results
+                    logging.info('No GAIA stars found, checking SDSS')
+                    if utils.count_lines('sdds.ifustars') > 1:
+                        # SDSS stars found, use these:
+                        shutil.copy('sdss.ifustars', 'shout.ifustars')
+                    else:
+                        logging.info('No SDSS stars found, checking USNO')
+                        # Finally use USNO as last fallback
+                        redo_shuffle(wdir, ra, dec, track,
+                                     args.acam_magadd, args.wfs1_magadd,
+                                     args.wfs2_magadd, args.shuffle_cfg,
+                                     args.fplane_txt, args.night,
+                                     catalog='USNO')
+
 
             if task in ["compute_offset", "all"]:
                 # Compute offsets by matching
