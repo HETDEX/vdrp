@@ -2,18 +2,26 @@
       character name*14
       read *,rcen,dcen
       read *,name
-c      rcen=214.593585
-c      dcen=52.35663
+      xstep=2.0
+      ystep=xstep
+      side=70.
+      irange=nint(side/xstep)
+      jrange=irange
+
       cosd=cos(dcen/57.3)
-      rstart=rcen-35./3600/cosd
-      dstart=dcen-35./3600.
+      rstart=rcen-side/2./3600/cosd
+      dstart=dcen-side/2./3600.
       n=0
       open(unit=11,file='out',status='unknown')
-      do i=1,70
-         rnew=rstart+float(i-1)/3600./cosd
-         do j=1,70
+      do i=1,irange
+         xoff=float(i-1)*xstep
+c         rnew=rstart+float(i-1)/3600./cosd
+         rnew=rstart+xoff/3600./cosd
+         do j=1,jrange
             n=n+1
-            dnew=dstart+float(j-1)/3600.
+            yoff=float(j-1)*ystep
+c            dnew=dstart+float(j-1)/3600.
+            dnew=dstart+yoff/3600.
             write(11,1001) "rspfl3f",rnew,dnew,3.0,4505,1035,n,
      $           name,1.7,3.0,-3.5,0,1,1
          enddo

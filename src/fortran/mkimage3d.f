@@ -7,6 +7,7 @@
 
       inum=1
       rfw=1.8
+      rfw=1.8*2.
       rsig=rfw/2.35
       w=1.0/rsig
       gaus0=exp(-w*w/2.)
@@ -18,10 +19,15 @@
             enddo
          enddo
       enddo
-      dx=1.0
-      nx=70
-      ny=70
-      nh=35
+c      dx=1.0
+c      nx=70
+c      ny=70
+c      nh=35
+
+      dx=2.0
+      nx=35
+      ny=35
+      xnh=17.5
       ntot=0
 
       open(unit=2,file='list',status='old')
@@ -35,8 +41,8 @@
          do i=1,nmax
             read(1,*,end=666) x1,x2,x3
             n=n+1
-            x(n)=x1+nh
-            y(n)=x2+nh
+            x(n)=x1+xnh*dx
+            y(n)=x2+xnh*dx
             if(x3.gt.0.) then
                x3=1./x3
             else
