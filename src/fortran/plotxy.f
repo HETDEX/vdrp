@@ -67,8 +67,8 @@ c      ymin=ymin-ybit
          call pgenv(xmin,xmax,ymin,ymax,0,10)
       endif
       call pgsls(1)
-c      call pgsch(0.8)
-      call pgsch(1.4)
+      call pgsch(0.8)
+c      call pgsch(1.4)
       do i=1,n
 c         call pgsci(2)
          call pgsci(ic(i))

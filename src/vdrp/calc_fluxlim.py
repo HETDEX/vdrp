@@ -70,6 +70,8 @@ def getDefaults():
 
     defaults['apcorlim'] = 10000
 
+    defaults['pixsize'] = 2.0
+
     return defaults
 
 
@@ -121,6 +123,9 @@ def get_arguments(parser):
                         " for fitradecsp call")
     parser.add_argument("--fill", type=float, help="Fill value")
     parser.add_argument("--sn", type=float, help="SNR value")
+
+    parser.add_argument("--pixsize", type=float, help="Size of cube pixels (arcsec)."
+                        " should result in integer grid size")
 
     parser.add_argument("--apcorlim", type=float, help="Minimum limit for "
                         "values to be included in average aperture "
@@ -255,9 +260,15 @@ def calc_fluxlim(args, workdir):
     wave_max = args.extraction_wl + args.extraction_wlrange
     n_wave = int((wave_max - wave_min) / 2.) + 1
 
-    allspec = np.full((n_wave, args.ra_range*args.dec_range,
+    # Compute gird dimensions from pixel size and range
+    nx = int(args.ra_range/args.pixsize)
+    ny = int(args.dec_range/args.pixsize)
+
+    _logger.info("Computed required grid size: {:d} by {:d}".format(nx, ny))
+
+    allspec = np.full((n_wave, nx*ny,
                        4), -9999.)
-    apcor_all = np.full((n_wave, args.ra_range*args.dec_range), -9999.)
+    apcor_all = np.full((n_wave, nx*ny), -9999.)
 
     dithall_file = args.dithall_dir+'/'+args.night + 'v' \
         + args.shotid+'/dithall.use'
@@ -277,9 +288,9 @@ def calc_fluxlim(args, workdir):
 
     cosdec = np.cos(args.dec/57.3)
 
-    for r_off in range(0, args.ra_range):
+    for r_off in np.arange(0, args.ra_range, args.pixsize):
         ra = rstart + r_off/3600./cosd
-        for d_off in range(0, args.dec_range):
+        for d_off in np.arange(0, args.dec_range, args.pixsize):
             dec = dstart + d_off/3600.
             counter += 1
 
@@ -379,7 +390,7 @@ def calc_fluxlim(args, workdir):
     #wcor = np.where(apcor_all > args.apcorlim)
     #apcor = np.median(apcor_all[wcor])
 
-    update_im3d_header(args.ra, args.dec, apcor, workdir, args.sn)
+    update_im3d_header(args, nx, ny, apcor, workdir)
 
     outname = os.path.join(os.getcwd(),
                            args.nightshot + '_'
@@ -389,37 +400,38 @@ def calc_fluxlim(args, workdir):
     shutil.move(os.path.join(workdir, 'image3d.fits'), outname)
 
 
-def update_im3d_header(ra, dec, apcor, wdir, sn):
+def update_im3d_header(args, nx, ny, apcor, wdir):
     """
     Add header keywords to the image3d.fits
     """
     with fits.open(os.path.join(wdir, 'image3d.fits'), 'update') as hdu:
 
         hdu[0].header['OBJECT'] = 'CAT'
-        hdu[0].header['CRVAL1'] = ra
-        hdu[0].header['CRVAL2'] = dec
+        hdu[0].header['CRVAL1'] = args.ra
+        hdu[0].header['CRVAL2'] = args.dec
         hdu[0].header['CRVAL3'] = 3470.0
         hdu[0].header['CDELT3'] = 2.0
         hdu[0].header['CTYPE1'] = 'RA---TAN'
         hdu[0].header['CTYPE2'] = 'DEC--TAN'
         hdu[0].header['CTYPE3'] = 'Wave'
-        hdu[0].header['CD1_1'] = 0.0002777
+        # Image scale in pixels
+        hdu[0].header['CD1_1'] = 0.0002777*args.pixsize
         hdu[0].header['CD1_2'] = 0
-        hdu[0].header['CD2_2'] = 0.0002777
+        hdu[0].header['CD2_2'] = 0.0002777*args.pixsize
         hdu[0].header['CD2_1'] = 0
         hdu[0].header["CD3_3"] = hdu[0].header["CDELT3"]
         hdu[0].header["CD3_1"] = 0.0
         hdu[0].header["CD3_2"] = 0.0
         hdu[0].header["CD2_3"] = 0.0
         hdu[0].header["CD1_3"] = 0.0
-        hdu[0].header['CRPIX1'] = 35.0
-        hdu[0].header['CRPIX2'] = 35.0
+        hdu[0].header['CRPIX1'] = nx/2.0
+        hdu[0].header['CRPIX2'] = ny/2.0
         hdu[0].header['CRPIX3'] = 1
         hdu[0].header['CUNIT1'] = 'deg'
         hdu[0].header['CUNIT2'] = 'deg'
         hdu[0].header['EQUINOX'] = 2000
         hdu[0].header['APCOR'] = apcor
-        hdu[0].header['SNRCUT'] = sn
+        hdu[0].header['SNRCUT'] = args.sn
         
 
 # vdrp_info = None
