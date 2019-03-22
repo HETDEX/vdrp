@@ -17,7 +17,7 @@ slurm_header = '''#!/bin/bash
 #SBATCH -J {jobname:s}         # Job name
 #SBATCH -N {nnodes:d}          # Number of nodes
 #SBATCH -n {ntasks:d}          # Total number of tasks
-#SBATCH -p normal              # Queue name
+#SBATCH -p {queue:s}           # Queue name
 #SBATCH -o {jobname:s}.o%j     # Name of stdout output file
 #SBATCH -t {runtime:s}         # Run time (hh:mm:ss)
 #SBATCH -A Hobby-Eberly-Telesco
@@ -143,6 +143,7 @@ def main(args):
 def create_job_file(fname, commands, n_nodes, jobs_per_file, jobs_per_node,
                     args):
 
+    queue = args.queue
     runtime = args.runtime
     ncores = args.cores_per_job
     if args.threading:
@@ -213,6 +214,7 @@ def create_job_file(fname, commands, n_nodes, jobs_per_file, jobs_per_node,
                                      jobname=fn,
                                      nnodes=n_nodes,
                                      ntasks=args.cores_per_node * n_nodes,
+                                     queue=queue,
                                      runtime=runtime,
                                      workdir=curdir))
         debug = ''
