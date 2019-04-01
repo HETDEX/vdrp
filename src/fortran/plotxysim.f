@@ -5,13 +5,18 @@
 
       read *,fname
       c1="cat.0"
-c      c2="/work/00115/gebhardt/maverick/detect/dexall/"//fname//".cat"
-      c2="/work/00115/gebhardt/maverick/detect/dexall/"//fname//".cat1"
-      c3="/work/00115/gebhardt/maverick/detect/dexall/"
-     $     //fname//".alines2"
+c      c2="/work/00115/gebhardt/maverick/detect/dexall/"//fname//".cat1"
+c      c3="/work/00115/gebhardt/maverick/detect/dexall/"
+c     $     //fname//".alines2"
+
+c      c2="/work/00115/gebhardt/maverick/detect/dexall/"//fname//".cat1"
+c      c3="/work/05178/cxliu/maverick/detect/dexall/sci/"
+c     $     //fname//".alines2"
+
+      c2="/work/00115/gebhardt/maverick/detect/hdr1/"//fname//"/cat.0"
       
       xmin=5.
-      xmax=20.
+      xmax=27.
       ymin=0.
       ymax=3.
 
@@ -32,11 +37,11 @@ c      c2="/work/00115/gebhardt/maverick/detect/dexall/"//fname//".cat"
       call pgslw(2)
 
       call pgenv(xmin,xmax,ymin,ymax,0,0)
-      call pglabel("S/N","chi\U2","")
+      call pglabel("S/N","\Gx\U2\D\Dreduced","")
 
       call pgsch(0.8)
       call pgsci(4)
-      open(unit=1,file=c3,status='old')
+      open(unit=1,file=c3,status='old',err=668)
       do i=1,nmax
          read(1,*,end=668) x1,x2,x3,x4,x5,x6,x7,x8
          call pgpt1(x4,x5,17)
@@ -46,7 +51,7 @@ c      c2="/work/00115/gebhardt/maverick/detect/dexall/"//fname//".cat"
 
       call pgsch(0.9)
       call pgsci(2)
-      open(unit=1,file=c1,status='old')
+      open(unit=1,file=c1,status='old',err=666)
       do i=1,nmax
          read(1,*,end=666) a1,x2,x3,x4,x5,x6,x7,x8,x9
          call pgpt1(x5,x6,17)
@@ -56,7 +61,7 @@ c      c2="/work/00115/gebhardt/maverick/detect/dexall/"//fname//".cat"
 
       call pgsch(1.1)
       call pgsci(1)
-      open(unit=1,file=c2,status='old')
+      open(unit=1,file=c2,status='old',err=667)
       do i=1,nmax
          read(1,*,end=667) a1,x2,x3,x4,x5,x6,x7,x8,x9
          call pgpt1(x5,x6,17)
@@ -65,7 +70,7 @@ c      c2="/work/00115/gebhardt/maverick/detect/dexall/"//fname//".cat"
       close(1)
 
       call pgsci(1)
-      call pgline(2,xl,yl)
+c      call pgline(2,xl,yl)
 
       call pgend
       end

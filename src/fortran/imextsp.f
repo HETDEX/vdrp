@@ -468,7 +468,7 @@ c            yerr2=yerrn
       enddo
       close(11)
 
- 1101 format(1x,f8.2,1x,f11.2,1x,1pe11.2,3(1x,0pf7.3),2(1x,f8.2),
+ 1101 format(1x,f8.2,1x,f11.2,1x,1pe11.2,3(1x,0pf7.3),2(1x,f9.2),
      $     1x,1pe11.2)
  706  continue
       end

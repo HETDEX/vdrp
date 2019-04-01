@@ -1,5 +1,5 @@
 
-      parameter(narr=4000,radtodeg=57.29578)
+      parameter(narr=10000,radtodeg=57.29578)
       real x(narr),y(narr),sig(narr),xsig(narr),ysig(narr)
       real xin(narr),yin(narr)
       integer ic(narr)
