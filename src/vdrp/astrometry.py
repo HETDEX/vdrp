@@ -2202,7 +2202,6 @@ def main(args):
                                      args.fplane_txt, args.night,
                                      catalog='USNO')
 
-
             if task in ["compute_offset", "all"]:
                 # Compute offsets by matching
                 # detected stars to sdss stars from shuffle.
