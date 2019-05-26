@@ -109,7 +109,7 @@ def getDefaults():
     defaults["optimal_ang_off_smoothing"] = 0.05
     defaults["dither_offsets"] = "[(0.,0.),(1.270,-0.730),(1.270,0.730)]"
     # for fibcoords
-    defaults["ixy_dir"] = "$config/"
+    defaults["fibermap_dir"] = "$config/"
     defaults["addin_dir"] = "$config/"
     defaults["parangle"] = -999999.
 
@@ -243,7 +243,7 @@ def parseArgs(args):
                         help="Optional parangle to use if the one found"
                         "in the header is unknown (-999999.).")
     # for fibcoords
-    parser.add_argument("--ixy_dir", type=str)
+    parser.add_argument("--fibermap_dir", type=str)
     parser.add_argument("--shifts_dir", type=str)
 
     # positional arguments
@@ -285,7 +285,7 @@ def parseArgs(args):
     args.mktot_ifu_grid = utils.mangle_config_pathname(args.mktot_ifu_grid)
     args.fplane_txt = utils.mangle_config_pathname(args.fplane_txt)
     args.shuffle_cfg = utils.mangle_config_pathname(args.shuffle_cfg)
-    args.ixy_dir = utils.mangle_config_pathname(args.ixy_dir)
+    args.fibermap_dir = utils.mangle_config_pathname(args.fibermap_dir)
     args.addin_dir = utils.mangle_config_pathname(args.addin_dir)
 
     return args
@@ -616,7 +616,7 @@ def flux_norm(wdir, mag_max, infile='all.raw', outfile='norm.dat'):
         logging.info("flux_norm: Flux normalisation is {:10.8f} {:10.8f} "
                      "{:10.8f}".format(n1, n2, n3))
         with open(outfile, 'w') as f:
-            s = "{:10.8f} {:10.8f} {:10.8f}".format(n1, n2, n3)
+            s = "{:10.8f} {:10.8f} {:10.8f}\n".format(n1, n2, n3)
             f.write(s)
 
 
@@ -676,6 +676,9 @@ def redo_shuffle(wdir, ra, dec, track, acam_magadd, wfs1_magadd, wfs2_magadd,
                             x_offset, y_offset)
         logging.info("Calling shuffle with {}".format(cmd))
         subprocess.call(cmd, shell=True)
+
+        # archive the result
+        shutil.copy2('shout.ifustars', 'sdss.{}'.format(catalog))
 
 
 def get_track(wdir, reduction_dir, night, shotid):
@@ -1733,19 +1736,19 @@ def cp_addin_files(wdir, addin_dir, subdir="coords"):
         shutil.copy2(f, os.path.join(wdir, subdir))
 
 
-def cp_ixy_files(wdir, ixy_dir, subdir="coords"):
-    """ Copies ``ixy`` files. These are
+def cp_fibermap_files(wdir, fibermap_dir, subdir="coords"):
+    """ Copies ``fibermap`` files. These are
     essentially the IFUcen files in a different format.
 
     Parameters
     ----------
-    ixy_dir_dir :str
-        Directory where the \*.ixy files are stored.
+    fibermap_dir_dir :str
+        Directory where the \*.fibermap files are stored.
     wdir : str
         Work directory.
     """
-    logging.info("Copy over *.ixy from {}.".format(ixy_dir))
-    pattern = ixy_dir + "/*.ixy"
+    logging.info("Copy over *.fibermap from {}.".format(fibermap_dir))
+    pattern = fibermap_dir + "/*.fibermap"
     ff = glob.glob(pattern)
     logging.info("    Found {} files.".format(len(ff)))
     for f in ff:
@@ -1789,18 +1792,26 @@ def get_fiber_coords(wdir, active_slots, dither_offsets, subdir="coords"):
         ra0, dec0, pa0 = read_radec("radec2_final.dat")
 
         # Find which IFU slots to operate of based on the
-        # existing set og *.addin files.
+        # existing set og *.fibermap files.
         ifuslots = []
-        addin_files = []
+        fibermap_files = []
+        fplane = FPlane("fplane.txt")
         for slot in active_slots:
-            fn = "{}.addin".format(slot)
+            if not slot in fplane.ifuslots:
+                logging.warning("get_fiber_coords: Slot "
+                    "{} not found in fplane.txt."
+                    .format(slot))
+                continue
+            ifu = fplane.by_ifuslot(slot)
+
+            fn = "ifuid{}.fibermap".format(ifu.ifuid)
             if os.path.exists(fn):
                 ifuslots.append(slot)
-                addin_files.append(fn)
+                fibermap_files.append(fn)
             else:
-                logging.warning("get_fiber_coords: Found no addin file "
-                                "for slot {}. This slot delivers data however."
-                                .format(slot))
+                logging.warning("get_fiber_coords: Found no fibermap file "
+                                "for slot {} with IFU ID {}. This slot delivers data however."
+                                .format(slot, ifu.ifuid))
 
         # Carry out required changes to astrometry
         rot = 360.0 - (pa0 + 90.)
@@ -1808,22 +1819,22 @@ def get_fiber_coords(wdir, active_slots, dither_offsets, subdir="coords"):
         # Set up astrometry from user supplied options
         tp = TangentPlane(ra0, dec0, rot)
 
-        fplane = FPlane("fplane.txt")
         for offset_index, (dx, dy) in enumerate(dither_offsets):
             logging.info("get_fiber_coords:    offset_index {} dx "
                          "= {:.3f}, dy = {:.3f}."
                          .format(offset_index + 1, dx, dy))
             # print("ifuslots: ", ifuslots)
-            # print("addin_files: ", addin_files)
-            for ifuslot, addin_file in zip(ifuslots, addin_files):
+            # print("fibermap_files: ", fibermap_files)
+            for ifuslot, fibermap_file in zip(ifuslots, fibermap_files):
                 # identify ifu
                 if ifuslot not in fplane.ifuslots:
                     logging.warning("IFU {} not in fplane "
                                     "file.".format(ifuslot))
                     continue
                 ifu = fplane.by_ifuslot(ifuslot)
-                # read fiber positions
-                x, y, table = rc.read_line_detect(addin_file)
+                # read fiber positions in IFU system
+                fm       = ascii.read(fibermap_file)
+                x,y      = fm["xs"], fm["ys"]
                 # skip empty tables
                 if len(x) < 1:
                     continue
@@ -1831,17 +1842,22 @@ def get_fiber_coords(wdir, active_slots, dither_offsets, subdir="coords"):
                 xfp = x + ifu.y + dx
                 yfp = y + ifu.x + dy
                 # project to sky
-                # print("ifuslot, addin_file, ifu.x, dx, ifu.y , dy, ra0, "
-                #       "dec0, pa0", ifuslot, addin_file, ifu.x, dx, ifu.y ,
+                # print("ifuslot, fibermap_file, ifu.x, dx, ifu.y , dy, ra0, "
+                #       "dec0, pa0", ifuslot, fibermap_file, ifu.x, dx, ifu.y ,
                 #       dy, ra0, dec0, pa0)
 
                 ra, dec = tp.xy2raDec(xfp, yfp)
                 # save results
-                table['ra'] = ra
-                table['dec'] = dec
-                table['ifuslot'] = ifuslot
-                table['xfplane'] = xfp
-                table['yfplane'] = yfp
+                # construct new table that will hole fiber positions in focal plane system
+                cxs      = Column(name="XS",data=x,dtype=float)
+                cys      = Column(name="YS",data=y,dtype=float)
+                cra      = Column(name="ra",data=ra,dtype=float)
+                cdec     = Column(name="dec",data=dec,dtype=float)
+                cifuslot = Column(name="ifuslot",data=[ifuslot]*len(ra),dtype="S3")
+                cxfplane = Column(name="xfplane",data=xfp,dtype=float)
+                cyfplane = Column(name="yfplane",data=yfp,dtype=float)
+                table    = Table([cxs, cys, cra, cdec, cifuslot, cxfplane, cyfplane])
+
                 outfilename = "i{}_{}.csv".format(ifuslot, offset_index + 1)
                 logging.info("Writing {}.".format(outfilename))
                 table.write(outfilename, comment='#', format='ascii.csv',
@@ -1893,6 +1909,20 @@ def get_active_slots(wdir, reduction_dir, exposures, night, shotid):
         return final_slots
 
 
+def comp_multifits(ifuslot, ifuid, specid, amp, index):
+    """
+    Computes multifits file links from
+    ifuslot, ifuid, specid
+    and lists of
+    amplifier and index
+    called by mk_dithall.
+    """
+    mf = []
+    for a,i in zip(amp,index):
+        mf.append("multi_{specid:03d}_{ifuslot:03d}_{ifuid:03d}_{amp}_{index:03d}.ixy".format(specid=int(specid), ifuslot=int(ifuslot), ifuid=int(ifuid), amp=a, index=i))
+    return mf
+
+
 def mk_dithall(wdir, active_slots, reduction_dir, night, shotid, subdir="."):
     """
     This creates the dithall.use file that is required by the downstream
@@ -1926,49 +1956,68 @@ def mk_dithall(wdir, active_slots, reduction_dir, night, shotid, subdir="."):
             prefix = t[5:22]
             elist[exp] = prefix
 
-        column_names = "ra", "dec", "ifuslot", "XS", "YS", "dxfplane", \
+        column_names = "ra", "dec", "ifuslot", "XS", "YS", "xfplane", \
             "yfplane", "multifits", "timestamp", "exposure"
         # read list of exposures
         all_tdith = []
+
+        # need fplane to translate ifuslot to ifu id
+        fp = fplane.FPlane("fplane.txt")
         for i, exp in enumerate(exposures):
             logging.info("get_fiber_coords: Exposure {} ...".format(exp))
             exp_tdith = []
             for ifuslot in active_slots:
-                # read the ixy files, those contain the mapping of
-                # x/y (IFU space) to fiber number on the detector
-                ixy_filename = "{}.ixy".format(ifuslot)
-                if not os.path.exists(ixy_filename):
-                    logging.warning("mk_dithall: Found no *.ixy file for "
-                                    "IFU slot {} ({})."
-                                    .format(ifuslot, ixy_filename))
+                if not ifuslot in fp.ifuslots:
+                    logging.warning("mk_dithall: IFU slot {} "
+                        "not in fplane.txt. Please update fplane.txt."
+                        .format(ifuslot))
                     continue
-                # some evil person put tabs in just some of the files ....
-                with open(ixy_filename) as f:
-                    s = f.read()
-                s = s.replace("\t", " ")
-                ixy = ascii.read(s, format='no_header')
+                ifu = fp.by_ifuslot(ifuslot)
+
+                # read the fibermaps, those contain the mapping of
+                # x/y (IFU space) to fiber number on the detector
+                fibermap_filename = "ifuid{}.fibermap".format(ifu.ifuid)
+                if not os.path.exists(fibermap_filename):
+                    logging.warning("mk_dithall: Found no fibermap file for "
+                                    "IFU slot {} and IFU ID {} (expected {})."
+                                    .format(ifuslot, ifu.ifuid, fibermap_filename))
+                    continue
+
+                fibermap = ascii.read(fibermap_filename)
                 csv_filename = "i{}_{}.csv".format(ifuslot, i+1)
                 if not os.path.exists(csv_filename):
                     logging.warning("mk_dithall: Found no *.csv file for "
-                                    "IFU slot {} ({})."
+                                    "IFU slot {} (expected {})."
                                     .format(ifuslot, csv_filename))
                     continue
                 csv = ascii.read(csv_filename)
 
-                # pointer to the multi extention fits and fiber
-                # nubmer like: multi_301_015_038_RU_085.ixy
-                cmulti_name = ixy["col3"]
-                cifu = Column(["ifu{}".format(ifuslot)] * len(ixy))
-                # cc = csv["ra"], csv["dec"], cifu, csv["ifuslot"], csv["XS"],\
-                #     csv["YS"], csv["xfplane"], csv["yfplane"], cmulti_name
-                # tdithx = Table(data=cc)
-                # tdithx.write("dith{}.all".format(i+1), overwrite=True,
-                #              format='ascii.fixed_width')
-                cprefix = Column([elist[exp]] * len(ixy))
-                cexp = Column([exp] * len(ixy))
+                # pointers to the multi extention fits and fiber
+                # strings like: multi_301_015_038_RU_085.ixy
+                cmulti_name = comp_multifits(ifuslot, ifu.ifuid, ifu.specid, fibermap["amp"], fibermap["index"])
+
+                cifu = Column(["ifu{}".format(ifuslot)] * len(fibermap))
+
+                cprefix = Column([elist[exp]] * len(fibermap))
+                cexp = Column([exp] * len(fibermap))
                 cc = csv["ra"], csv["dec"], cifu, csv["XS"], csv["YS"], \
                     csv["xfplane"], csv["yfplane"], cmulti_name, cprefix, cexp
                 tdith = Table(cc, names=column_names)
+                tdith["ra"].format = "%10.7f"
+                tdith["dec"].format = "%10.7f"
+                tdith["ifuslot"].format = "%6s"
+                tdith["XS"].format = "%8.3f"
+                tdith["YS"].format = "%8.3f"
+                tdith["xfplane"].format = "%8.3f"
+                tdith["yfplane"].format = "%8.3f"
+                tdith["multifits"].format = "%28s"
+                tdith["timestamp"].format = "%17s"
+                tdith["exposure"].format = "%5s"
+
+#        column_names = "ra", "dec", "ifuslot", "XS", "YS", "xfplane", \
+#            "yfplane", "multifits", "timestamp", "exposure"
+#201.1057160  51.6220455 ifu013    -1.270     0.000   148.730  -450.000 multi_401_013_043_LL_001.ixy 20190430T030312.0 exp01
+
                 all_tdith.append(tdith)
                 exp_tdith.append(tdith)
             vstack(exp_tdith).write("dith_{}.all".format(exp), overwrite=True,
@@ -2015,7 +2064,7 @@ def cp_results(tmp_dir, results_dir):
     file_pattern += ["radec_exp??.dat"]
 #    file_pattern += ["shout.acamstars"]
     file_pattern += ["shout.ifu"]
-    file_pattern += ["shout.ifustars"]
+    file_pattern += ["shout.*"]
 #    file_pattern += ["shout.info"]
 #    file_pattern += ["shout.probestars"]
 #    file_pattern += ["shout.result"]
@@ -2178,29 +2227,31 @@ def main(args):
                 redo_shuffle(wdir, ra, dec, track,
                              args.acam_magadd, args.wfs1_magadd,
                              args.wfs2_magadd, args.shuffle_cfg,
-                             args.fplane_txt, args.night, catalog='SDSS')
-                shutil.move('shout.ifustars', 'sdss.ifustars')
-                # Now try to run it using GAIA, for the astrometry
-                logging.info('Trying shuffle with GAIA')
-                redo_shuffle(wdir, ra, dec, track,
-                             args.acam_magadd, args.wfs1_magadd,
-                             args.wfs2_magadd, args.shuffle_cfg,
-                             args.fplane_txt, args.night, catalog='GAIA')
-                # check the number of stars in the shout.ifustars
-                if utils.count_lines('shout.ifustars') < 2:
-                    # No stars found, check SDSS results
-                    logging.info('No GAIA stars found, checking SDSS')
-                    if utils.count_lines('sdds.ifustars') > 1:
-                        # SDSS stars found, use these:
-                        shutil.copy('sdss.ifustars', 'shout.ifustars')
-                    else:
-                        logging.info('No SDSS stars found, checking USNO')
-                        # Finally use USNO as last fallback
-                        redo_shuffle(wdir, ra, dec, track,
-                                     args.acam_magadd, args.wfs1_magadd,
-                                     args.wfs2_magadd, args.shuffle_cfg,
-                                     args.fplane_txt, args.night,
-                                     catalog='USNO')
+                             args.fplane_txt, args.night)
+                #             args.fplane_txt, args.night, catalog='SDSS')
+                if False:
+                    # Now try to run it using GAIA, for the astrometry
+                    logging.info('Trying shuffle with GAIA')
+                    redo_shuffle(wdir, ra, dec, track,
+                                 args.acam_magadd, args.wfs1_magadd,
+                                 args.wfs2_magadd, args.shuffle_cfg,
+                                 args.fplane_txt, args.night, catalog='GAIA')
+                    with path.Path(wdir):
+                        # check the number of stars in the shout.ifustars
+                        if utils.count_lines('shout.ifustars') < 2:
+                            # No stars found, check SDSS results
+                            logging.info('No GAIA stars found, checking SDSS')
+                            if utils.count_lines('sdds.ifustars') > 1:
+                                # SDSS stars found, use these:
+                                shutil.copy('sdss.ifustars', 'shout.ifustars')
+                            else:
+                                logging.info('No SDSS stars found, checking USNO')
+                                # Finally use USNO as last fallback
+                                redo_shuffle(wdir, ra, dec, track,
+                                             args.acam_magadd, args.wfs1_magadd,
+                                             args.wfs2_magadd, args.shuffle_cfg,
+                                             args.fplane_txt, args.night,
+                                             catalog='USNO')
 
             if task in ["compute_offset", "all"]:
                 # Compute offsets by matching
@@ -2254,9 +2305,9 @@ def main(args):
                 # in a different format.
                 cp_addin_files(wdir, args.addin_dir, subdir=".")
 
-                # Copy `ixy` files. These conain the IFU x/y to fiber
+                # Copy `fibermap` files. These conain the IFU x/y to fiber
                 # number mapping.
-                cp_ixy_files(wdir, args.ixy_dir, subdir=".")
+                cp_fibermap_files(wdir, args.fibermap_dir, subdir=".")
 
                 # find which slots delivered data for all exposures
                 # (infer from existance of corresponding multifits files).
