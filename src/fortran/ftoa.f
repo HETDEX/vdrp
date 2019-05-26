@@ -1,5 +1,5 @@
 
-      parameter (narrm=100000)
+      parameter (narrm=2000000)
       real xd(narrm,1)
       integer naxes(2)
       character file1*80

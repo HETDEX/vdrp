@@ -10,9 +10,11 @@
       real fitamp(nmax),fitsig(nmax),fitampt(nmax),fitsigt(nmax)
       real fitcont(nmax),fweight2(nfmax,nmax),sumrata(nmax)
       integer iflag(nfmax)
+      common/cfwhm/ ifwf,fwin
 
       rd=3.
       wd=4.
+      ifwf=0
 
 c      print *,"ra,dec,step,nstep,wcen,wrange,ifit1"
       read *,ra,dec,step,nstep,wcen,wrange,ifit1
@@ -51,6 +53,22 @@ c         print *,ara(i),adec(i)
                if(nt.eq.nmax*5) goto 766
             enddo
          else
+            if(ifit1.eq.-2) then
+               nfw=100
+               fws=1.1
+               fwe=4.0
+               ifwf=1
+               open(unit=11,file='fwhm.out',status='unknown')
+               do j=1,nfw
+                  fwin=fws+float(j-1)/float(nfw-1)*(fwe-fws)
+                  call fit2d(ara(i),adec(i),ntf,sflux,sfluxe,raf,decf,
+     $                 xw,weight,iflag,fadcw,az,chif,ampsf,sumrata)
+                  write(11,1103) fwin,chif,ampsf
+c                  print *,j,fwin,chif,ampsf
+               enddo
+               close(11)
+               ifwf=0
+            endif
             nt=nt+1
             fitchit(nt)=chi
             fitcont(nt)=amps
@@ -80,6 +98,8 @@ c         print *,ara(i),adec(i)
 
  1101 format(2(1x,f10.6),3(1x,f7.2),1x,f9.1,1x,f7.2,1x,f10.2)
  1102 format(2(1x,f10.6),2(1x,f11.3))
+ 1103 format(f6.3,2(1x,f11.3))
+
       end
 
       subroutine writespec(n,spec)
@@ -305,6 +325,7 @@ c            fweight2(i,na)=x4*x6
       integer iflag(nfmax)
       parameter(pi=3.141593e0)      
       common/csigma/ rsig,fmof,bmof,imoff
+      common/cfwhm/ ifwf,fwin
 
       imoff=1
 
@@ -324,6 +345,7 @@ c            fweight2(i,na)=x4*x6
  957  continue
       close(1)
  958  continue
+      if(ifwf.eq.1) rfw=fwin
       rsig=rfw/2.35
       fmof=rfw
       bmof=3.9
@@ -342,9 +364,11 @@ c            fweight2(i,na)=x4*x6
          xfmax=max(xfmax,sflux(i))
       enddo
 
-      as=10.
+      inew=1
+      if(inew.eq.1) goto 500
+      as=5.
       ae=2000.
-      ae=xfmax*5.
+      ae=xfmax*10.
       chimin=1e10
       na=500
       do ia=1,na
@@ -355,9 +379,15 @@ c            fweight2(i,na)=x4*x6
             chimin=chi
             atb=at
          endif
+c         if(ifwf.eq.1) print *,ia,at,xfmax,as,ae
       enddo
       amps=atb
       call getchifib(0.,0.,amps,ntf,xr,xd,sflux,xw,sfluxe,
+     $     iflag,da,gausa,chi,1,sumrat)
+
+ 500  continue
+      amps=1.
+      call getchifib2(0.,0.,amps,ntf,xr,xd,sflux,xw,sfluxe,
      $     iflag,da,gausa,chi,1,sumrat)
 
 c- now get the atmospheric distortion correction to each fiber
@@ -395,7 +425,8 @@ c      if(ip.eq.1) write(*,*) "Ifib     Counts      Fit",
 c     $     "       Distance        C-F           Chi"
 
       rfib=0.75
-      nstep=50
+c      nstep=50
+      nstep=30
       xstep=2.*rfib/float(nstep-1)
       deltx=pi*rfib*rfib
       area=amps*deltx/(2.*rsig*rsig*pi)
@@ -445,6 +476,81 @@ c     $        an(i,1),an(i,2),an(i,3),an(i,4),iflag(i)
       return
       end
 
+      subroutine getchifib2(xrs,xds,amps,n,xr,xd,xf,xw,fe,iflag,da,
+     $     gausa,chi,ip,sumrat)
+      real xr(n),xd(n),xf(n),xw(n),da(n),fe(n)
+      real gausa(n)
+      integer iflag(n)
+      parameter(pi=3.141593e0)      
+      common/csigma/ rsig,fmof,bmof,imoff
+
+      rfib=0.75
+      nstep=30
+      xstep=2.*rfib/float(nstep-1)
+      deltx=pi*rfib*rfib
+      area=amps*deltx/(2.*rsig*rsig*pi)
+      areamoff=4.*(2.**(1./bmof)-1.)*(bmof-1.)/pi/fmof/fmof
+      areamoff=amps*deltx*areamoff
+      chi=0.
+      do i=1,n
+         xs=xr(i)-rfib
+         ys=xd(i)-rfib
+         gaus=0.
+         xmoff=0.
+         nsum=0
+         do ix=1,nstep
+            xp=xs+xstep*float(ix-1)
+            do iy=1,nstep
+               yp=ys+xstep*float(iy-1)
+               dist0=sqrt((xp-xr(i))**2+(yp-xd(i))**2)
+               if(dist0.lt.rfib) then
+                  dist=sqrt((xp-xrs)**2+(yp-xds)**2)
+                  g=dist/rsig
+                  gaus=gaus+exp(-g*g/2.)*area
+                  xmoff=xmoff+areamoff*((1.+4.*(2.**(1./bmof)-1.)*
+     $                 (dist/fmof)**2)**(-bmof))
+                  nsum=nsum+1
+               endif
+            enddo
+         enddo
+         gaus=gaus/float(nsum)
+         xmoff=xmoff/float(nsum)
+         if(imoff.eq.1) gaus=xmoff
+         gausa(i)=gaus
+      enddo
+
+      na=3000
+      as=1.
+      ae=2e5
+      chimin=1e10
+      do ia=1,na
+         chi=0
+         at=as+float(ia-1)/float(na-1)*(ae-as)
+         do i=1,n
+            gaus=gausa(i)*at
+            if(fe(i).gt.0) then
+               chi1=xw(i)*(gaus-xf(i))**2/(fe(i))**2
+            else
+               chi1=0.
+            endif
+            if(iflag(i).eq.0) chi=chi+chi1
+         enddo
+         if(chi.lt.chimin) then
+            chimin=chi
+            amps=at
+         endif
+      enddo
+      do i=1,n
+         gaus=gausa(i)*amps
+         da(i)=xf(i)-gaus
+      enddo
+      chi=chimin
+
+ 1001 format(i3,1x,f12.2,2(2x,f9.2),2(2x,f12.2),
+     $     2x,a17,1x,a8,1x,a3,1x,a5,1x,i1)
+      return
+      end
+
       subroutine adcor(nw,wadc,adc,fadc,xrs0,xds0,n,xr,xd,az,sumrata)
       real wadc(nw),adc(nw),fadc(3000,5),xr(n),xd(n),az(n),sumrata(nw)
       parameter(pi=3.141593e0)      
@@ -454,7 +560,8 @@ c     $        an(i,1),an(i,2),an(i,3),an(i,4),iflag(i)
       xrs=xrs0
       xds=xds0
       rfib=0.75
-      nstep=50
+c      nstep=50
+      nstep=30
       xstep=2.*rfib/float(nstep-1)
       deltx=pi*rfib*rfib
       area=1.*deltx/(2.*rsig*rsig*pi)

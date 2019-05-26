@@ -127,10 +127,14 @@ c - get relative frame normalizations
 
       nstepa=30
       nstepc=21
-      xs=-1.0
-      xe=1.0
-      ys=-1.0
-      ye=1.0
+c      xs=-1.0
+c      xe=1.0
+c      ys=-1.0
+c      ye=1.0
+      xs=-0.2
+      xe=0.2
+      ys=-0.2
+      ye=0.2
       as=0.7*amps
       ae=1.4*amps
       chimin=1e10
@@ -255,7 +259,8 @@ c         write(*,1002) i,fadcw(1),fadcw(2),fadcw(3),fadcw(4),fadcw(5)
      $     "       Distance        C-F           Chi"
 
       rfib=0.75
-      nstep=50
+c      nstep=50
+      nstep=30
       xstep=2.*rfib/float(nstep-1)
       deltx=pi*rfib*rfib
       area=amps*deltx/(2.*rsig*rsig*pi)

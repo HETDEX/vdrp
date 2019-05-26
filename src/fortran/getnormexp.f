@@ -58,15 +58,31 @@ c            fwhm=x2
          endif
       enddo
  666  continue
+      open(unit=2,file="norm.dat",status='old',err=333)
+      read(2,*) x1,x2,x3
+      print *,x1,x2,x3
+      write(11,1101) "exp01",1.8,x1
+      write(11,1101) "exp02",1.8,x2
+      write(11,1101) "exp03",1.8,x3
+      goto 667
+ 333  continue
       write(11,1101) "exp01",1.8,1.0
       write(11,1101) "exp02",1.8,1.0
       write(11,1101) "exp03",1.8,1.0
  667  continue
       close(1)
+      close(2)
+      close(11)
+c- check if virus fwhm is good:
+      open(unit=11,file='fwhm.out',status='old',err=334)
+      read(11,*) fwhmv
+      if(fwhmv.gt.1.3.and.fwhmv.lt.3.5) fwhm=fwhmv
+ 334  continue
       close(11)
       open(unit=11,file='fwhm.use',status='unknown')
       write(11,*) fwhm
       close(11)
+
  1101 format(a12,2(1x,f7.3))
  1102 format(a20,6(1x,f6.2))
 

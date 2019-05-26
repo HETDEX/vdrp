@@ -83,6 +83,7 @@ c - getting the throughput
       enddo
  676  continue
       close(1)
+      if(ntp.le.1) goto 576
       goto 578
  576  continue
       close(1)
