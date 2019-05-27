@@ -7,6 +7,12 @@ import numpy as np
 
 import logging
 
+# Python 2.7 safeguard
+try:
+    FileNotFoundError
+except NameError:
+    FileNotFoundError = IOError
+
 _logger = logging.getLogger()
 
 
@@ -254,11 +260,11 @@ def call_getnormexp(nightshot, normdir, fwhmdir, wdir):
 
     try:
         shutil.copy2(normdir + '/' + nightshot + '/norm.dat', './')
-    except shutil.FileNotFoundError:
+    except FileNotFoundError:
         _logger.warn('norm.dat is missing for %s' % nightshot)
     try:
         shutil.copy2(fwhmdir + '/' + nightshot + '/fwhm.out', './')
-    except shutil.FileNotFoundError:
+    except FileNotFoundError:
         _logger.warn('fwhm.out is missing for %s' % nightshot)
 
     run_command(_vdrp_bindir + '/getnormexp', input.format(name=nightshot),

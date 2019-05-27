@@ -1,5 +1,9 @@
 2019-05-27  Jan Snigula  <snigula@mpe.mpg.de>
 
+	* src/vdrp/programs.py: Fixed Exception error
+
+2019-05-27  Jan Snigula  <snigula@mpe.mpg.de>
+
 	* src/vdrp/fit_radec.py: Added parameters for getnormexp call
 	* src/vdrp/photometry.py: Same
 	* src/vdrp/calc_fluxlim.py: Same
