@@ -55,8 +55,8 @@ c         print *,ara(i),adec(i)
          else
             if(ifit1.eq.-2) then
                nfw=100
-               fws=1.1
-               fwe=4.0
+               fws=1.2
+               fwe=3.2
                ifwf=1
                open(unit=11,file='fwhm.out',status='unknown')
                do j=1,nfw

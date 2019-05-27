@@ -51,32 +51,33 @@ c            fwhm=x2
                xn3=1.0
                write(*,1102) "Nothing worked here: ",x4,x5,x6,x7,x8,x9
             endif
-            write(11,1101) "exp01",x2,xn1
-            write(11,1101) "exp02",x2,xn2
-            write(11,1101) "exp03",x2,xn3
+            xfwn=x2
+            xn1n=xn1
+            xn2n=xn2
+            xn3n=xn3
             goto 667
          endif
       enddo
  666  continue
-      open(unit=2,file="norm.dat",status='old',err=333)
-      read(2,*) x1,x2,x3
-      print *,x1,x2,x3
-      write(11,1101) "exp01",1.8,x1
-      write(11,1101) "exp02",1.8,x2
-      write(11,1101) "exp03",1.8,x3
-      goto 667
- 333  continue
-      write(11,1101) "exp01",1.8,1.0
-      write(11,1101) "exp02",1.8,1.0
-      write(11,1101) "exp03",1.8,1.0
+      xfwn=1.8
+      xn1n=1.
+      xn2n=1.
+      xn3n=1.
  667  continue
+      open(unit=2,file="norm.dat",status='old',err=333)
+      read(2,*,end=333) xn1n,xn2n,xn3n
+      print *,xn1n,xn2n,xn3n
+ 333  continue
+      write(11,1101) "exp01",xfwn,xn1n
+      write(11,1101) "exp02",xfwn,xn2n
+      write(11,1101) "exp03",xfwn,xn3n
       close(1)
       close(2)
       close(11)
 c- check if virus fwhm is good:
       open(unit=11,file='fwhm.out',status='old',err=334)
       read(11,*) fwhmv
-      if(fwhmv.gt.1.3.and.fwhmv.lt.3.5) fwhm=fwhmv
+      if(fwhmv.gt.1.2.and.fwhmv.lt.3.5) fwhm=fwhmv
  334  continue
       close(11)
       open(unit=11,file='fwhm.use',status='unknown')
