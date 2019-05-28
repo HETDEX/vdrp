@@ -34,7 +34,6 @@ import ast
 import re
 import inspect
 
-# import scipy
 from scipy.interpolate import UnivariateSpline
 
 from distutils import dir_util
@@ -65,6 +64,7 @@ from vdrp.daophot import DAOPHOT_ALS
 from vdrp.utils import read_radec, write_radec
 from vdrp.fplane_client import retrieve_fplane
 from vdrp.vdrp_helpers import VdrpInfo
+
 
 
 def getDefaults():
@@ -109,8 +109,6 @@ def getDefaults():
     defaults["optimal_ang_off_smoothing"] = 0.05
     defaults["dither_offsets"] = "[(0.,0.),(1.270,-0.730),(1.270,0.730)]"
     # for fibcoords
-    defaults["fibermap_dir"] = "$config/"
-    defaults["addin_dir"] = "$config/"
     defaults["parangle"] = -999999.
 
     return defaults
@@ -242,8 +240,6 @@ def parseArgs(args):
     parser.add_argument("--parangle", type=float,
                         help="Optional parangle to use if the one found"
                         "in the header is unknown (-999999.).")
-    # for fibcoords
-    parser.add_argument("--fibermap_dir", type=str)
     parser.add_argument("--shifts_dir", type=str)
 
     # positional arguments
@@ -285,8 +281,6 @@ def parseArgs(args):
     args.mktot_ifu_grid = utils.mangle_config_pathname(args.mktot_ifu_grid)
     args.fplane_txt = utils.mangle_config_pathname(args.fplane_txt)
     args.shuffle_cfg = utils.mangle_config_pathname(args.shuffle_cfg)
-    args.fibermap_dir = utils.mangle_config_pathname(args.fibermap_dir)
-    args.addin_dir = utils.mangle_config_pathname(args.addin_dir)
 
     return args
 
@@ -868,7 +862,7 @@ def add_ra_dec(wdir, als_data, ra, dec, pa, fp, radec_outfile='tmp.csv'):
         # Set up astrometry from user supplied options
         tp = TangentPlane(ra, dec, rot)
 
-        # Loop over the files, adding ra, dec
+        # Loop over the files
         tables = []
         for ihmp in als_data:
             x, y, table = als_data[ihmp]
@@ -1717,42 +1711,54 @@ def get_exposures(prefixes):
     return np.unique([p[:15] for p in prefixes])
 
 
-def cp_addin_files(wdir, addin_dir, subdir="coords"):
-    """ Copies ``addin`` files. These are
+def mk_fibermap_files(wdir, reduction_dir, night, shotid):
+    """ Replaces ``cp_fibermap_files``. Creates ``fibermap`` files from multifits. These are
     essentially the IFUcen files in a different format.
 
     Parameters
     ----------
-    addin_dir : str
-        Directory where the \*.addin files are stored.
     wdir : str
         Work directory.
+    reduction_dir : str
+        Directory that holds panacea reductions.
+    night : str
+        Night (e.g. 20180611)
+    shotid : str
+        ID of shot (e.g. 017)
     """
-    logging.info("Copy over *.addin from {}.".format(addin_dir))
-    pattern = addin_dir + "/*.addin"
-    ff = glob.glob(pattern)
-    logging.info("    Found {} files.".format(len(ff)))
-    for f in ff:
-        shutil.copy2(f, os.path.join(wdir, subdir))
 
+    logging.info("mk_fibermap_files: Extracting fiber mapping from multifits files.")
 
-def cp_fibermap_files(wdir, fibermap_dir, subdir="coords"):
-    """ Copies ``fibermap`` files. These are
-    essentially the IFUcen files in a different format.
+    with path.Path(wdir):
+        # In order to gt the mapping from IFU fiber number to spectrograph, amplifier and spectrum index
+        # we look at exp01. There is the built-in assumption that there is always exp01 and that the mapping is 
+        # stample over the exposures of one shot.
+        # find all mutlifits files.
+        pattern = os.path.join(reduction_dir,
+        "{}/virus/virus0000{}/exp01/virus/multi_???_???_???_??.fits".format(night,shotid))
+        ff = glob.glob(pattern)
 
-    Parameters
-    ----------
-    fibermap_dir_dir :str
-        Directory where the \*.fibermap files are stored.
-    wdir : str
-        Work directory.
-    """
-    logging.info("Copy over *.fibermap from {}.".format(fibermap_dir))
-    pattern = fibermap_dir + "/*.fibermap"
-    ff = glob.glob(pattern)
-    logging.info("    Found {} files.".format(len(ff)))
-    for f in ff:
-        shutil.copy2(f, os.path.join(wdir, subdir))
+        # structure to store all the fibermaps
+        fibermaps = OrderedDict()
+
+        for f in ff:
+            tt = f.split("_")
+            ifuslot = tt[-3]
+            amp = tt[-1].replace(".fits","")
+
+            hdu = fits.open(f)
+            xy = hdu["ifupos"].data
+
+            if not ifuslot in fibermaps:
+                fibermaps[ifuslot] = []
+
+            for i,(x,y) in enumerate(xy):
+                fibermaps[ifuslot].append([x,y,amp,i+1])
+
+        for ifuslot in fibermaps:
+            t = Table( np.array( fibermaps[ifuslot] ), names=["XS","YS","amp","mf_spec_index"])
+            fnfm = "ifuslot{}.fibermap".format(ifuslot)
+            t.write(fnfm, format='ascii.fixed_width', overwrite=True)
 
 
 def get_fiber_coords(wdir, active_slots, dither_offsets, subdir="coords"):
@@ -1761,7 +1767,7 @@ def get_fiber_coords(wdir, active_slots, dither_offsets, subdir="coords"):
     The is the main routine for getcoord which computes the on-sky positions
     for all fibers.
 
-    Essentially this is a whole bunch of calls like.::
+    Essentially this is a whole bunch of calls like.:
 
    add_ra_dec --ftype line_detect --astrometry 262.496605 33.194212 262.975922
        --fplane /work/00115/gebhardt/maverick/sci/panacea/shifts/fplane.txt
@@ -1804,7 +1810,7 @@ def get_fiber_coords(wdir, active_slots, dither_offsets, subdir="coords"):
                 continue
             ifu = fplane.by_ifuslot(slot)
 
-            fn = "ifuid{}.fibermap".format(ifu.ifuid)
+            fn = "ifuslot{}.fibermap".format(slot)
             if os.path.exists(fn):
                 ifuslots.append(slot)
                 fibermap_files.append(fn)
@@ -1832,9 +1838,10 @@ def get_fiber_coords(wdir, active_slots, dither_offsets, subdir="coords"):
                                     "file.".format(ifuslot))
                     continue
                 ifu = fplane.by_ifuslot(ifuslot)
+
                 # read fiber positions in IFU system
-                fm       = ascii.read(fibermap_file)
-                x,y      = fm["xs"], fm["ys"]
+                fm       = ascii.read(fibermap_file, format="fixed_width")
+                x,y      = fm["XS"], fm["YS"]
                 # skip empty tables
                 if len(x) < 1:
                     continue
@@ -1856,7 +1863,9 @@ def get_fiber_coords(wdir, active_slots, dither_offsets, subdir="coords"):
                 cifuslot = Column(name="ifuslot",data=[ifuslot]*len(ra),dtype="S3")
                 cxfplane = Column(name="xfplane",data=xfp,dtype=float)
                 cyfplane = Column(name="yfplane",data=yfp,dtype=float)
-                table    = Table([cxs, cys, cra, cdec, cifuslot, cxfplane, cyfplane])
+                camp     = Column(name="amp",data=fm["amp"],dtype='S2')
+                cmf_spec_index = Column(name="mf_spec_index",data=fm["mf_spec_index"],dtype=int)
+                table    = Table([cxs, cys, cra, cdec, cifuslot, cxfplane, cyfplane, camp, cmf_spec_index])
 
                 outfilename = "i{}_{}.csv".format(ifuslot, offset_index + 1)
                 logging.info("Writing {}.".format(outfilename))
@@ -1976,14 +1985,14 @@ def mk_dithall(wdir, active_slots, reduction_dir, night, shotid, subdir="."):
 
                 # read the fibermaps, those contain the mapping of
                 # x/y (IFU space) to fiber number on the detector
-                fibermap_filename = "ifuid{}.fibermap".format(ifu.ifuid)
-                if not os.path.exists(fibermap_filename):
-                    logging.warning("mk_dithall: Found no fibermap file for "
-                                    "IFU slot {} and IFU ID {} (expected {})."
-                                    .format(ifuslot, ifu.ifuid, fibermap_filename))
-                    continue
+                #fibermap_filename = "ifuid{}.fibermap".format(ifu.ifuid)
+                #if not os.path.exists(fibermap_filename):
+                #    logging.warning("mk_dithall: Found no fibermap file for "
+                #                    "IFU slot {} and IFU ID {} (expected {})."
+                #                    .format(ifuslot, ifu.ifuid, fibermap_filename))
+                #    continue
 
-                fibermap = ascii.read(fibermap_filename)
+                #fibermap = ascii.read(fibermap_filename)
                 csv_filename = "i{}_{}.csv".format(ifuslot, i+1)
                 if not os.path.exists(csv_filename):
                     logging.warning("mk_dithall: Found no *.csv file for "
@@ -1994,15 +2003,16 @@ def mk_dithall(wdir, active_slots, reduction_dir, night, shotid, subdir="."):
 
                 # pointers to the multi extention fits and fiber
                 # strings like: multi_301_015_038_RU_085.ixy
-                cmulti_name = comp_multifits(ifuslot, ifu.ifuid, ifu.specid, fibermap["amp"], fibermap["index"])
+                cmulti_name = comp_multifits(ifuslot, ifu.ifuid, ifu.specid, csv["amp"], csv["mf_spec_index"])
 
-                cifu = Column(["ifu{}".format(ifuslot)] * len(fibermap))
+                cifu = Column(["ifu{}".format(ifuslot)] * len(csv))
 
-                cprefix = Column([elist[exp]] * len(fibermap))
-                cexp = Column([exp] * len(fibermap))
+                cprefix = Column([elist[exp]] * len(csv))
+                cexp = Column([exp] * len(csv))
                 cc = csv["ra"], csv["dec"], cifu, csv["XS"], csv["YS"], \
                     csv["xfplane"], csv["yfplane"], cmulti_name, cprefix, cexp
                 tdith = Table(cc, names=column_names)
+                # try to match Karl's formatting
                 tdith["ra"].format = "%10.7f"
                 tdith["dec"].format = "%10.7f"
                 tdith["ifuslot"].format = "%6s"
@@ -2013,10 +2023,6 @@ def mk_dithall(wdir, active_slots, reduction_dir, night, shotid, subdir="."):
                 tdith["multifits"].format = "%28s"
                 tdith["timestamp"].format = "%17s"
                 tdith["exposure"].format = "%5s"
-
-#        column_names = "ra", "dec", "ifuslot", "XS", "YS", "xfplane", \
-#            "yfplane", "multifits", "timestamp", "exposure"
-#201.1057160  51.6220455 ifu013    -1.270     0.000   148.730  -450.000 multi_401_013_043_LL_001.ixy 20190430T030312.0 exp01
 
                 all_tdith.append(tdith)
                 exp_tdith.append(tdith)
@@ -2301,13 +2307,10 @@ def main(args):
 
             if task in ["fibcoords", "all"]:
 
-                # Copy `addin` files. These are essentially the IFUcen files
-                # in a different format.
-                cp_addin_files(wdir, args.addin_dir, subdir=".")
-
-                # Copy `fibermap` files. These conain the IFU x/y to fiber
+                # Create `fibermap` files. These contain the IFU x/y to fiber
                 # number mapping.
-                cp_fibermap_files(wdir, args.fibermap_dir, subdir=".")
+                mk_fibermap_files(wdir, args.reduction_dir, args.night,
+                                                       args.shotid)
 
                 # find which slots delivered data for all exposures
                 # (infer from existance of corresponding multifits files).
@@ -2325,12 +2328,7 @@ def main(args):
                 get_fiber_coords(wdir, active_slots, args.dither_offsets,
                                  subdir=".")
 
-                # Create exposure list
-                # create_elist(wdir, args.reduction_dir, args.night,
-                #              args.shotid, exposures)
-
                 # Create final dithall.use file for downstream functions.
-                # mk_dithall(wdir, active_slots, fnelist = "elist")
                 mk_dithall(wdir, active_slots, args.reduction_dir, args.night,
                            args.shotid, subdir=".")
 
