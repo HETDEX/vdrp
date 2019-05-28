@@ -7,6 +7,10 @@
       xmin=236.
       ymin=45.
       ymax=58.
+      xmax=190.
+      xmin=195.5
+      ymin=50.5
+      ymax=51.7
       rat=(ymax-ymin)/(xmin-xmax)
       print *,1./rat
       
@@ -19,6 +23,7 @@
       call pgscf(2)
       call pgsch(2.0)
 c      call pgsch(2.5)
+      xoff=0.2
       do ip=1,np
          xmin=xmin0+float(ip-1)*xrange
          xmax=xmin+xrange
@@ -31,13 +36,13 @@ c         open(unit=1,file='j3',status='old')
          open(unit=1,file='springall.dat',status='old')
          do i=1,100000
             read(1,*,end=669) x1,x2,x3,x4,x5,x6,x7,x8
-            xp(1)=x1
+            xp(1)=x1+xoff
             yp(1)=x2
-            xp(2)=x3
+            xp(2)=x3+xoff
             yp(2)=x4
-            xp(3)=x5
+            xp(3)=x5+xoff
             yp(3)=x6
-            xp(4)=x7
+            xp(4)=x7+xoff
             yp(4)=x8
             call pgpoly(4,xp,yp)
          enddo

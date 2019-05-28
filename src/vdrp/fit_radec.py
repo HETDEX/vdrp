@@ -43,6 +43,8 @@ def getDefaults():
     defaults['multifits_dir'] = '/work/03946/hetdex/maverick/red1/reductions/'
     defaults['tp_dir'] = '/work/00115/gebhardt/maverick/detect/tp/'
     defaults['norm_dir'] = '/work/00115/gebhardt/maverick/getampnorm/all/'
+    defaults['rel_norm_dir'] = '/work/00115/gebhardt/maverick/detect/all/'
+    defaults['fwhm_dir'] = '/work/00115/gebhardt/maverick/detect/all/'
 
     defaults['radec_file'] = '/work/00115/gebhardt/maverick/getfib/radec.all'
 
@@ -78,6 +80,13 @@ def get_arguments(parser):
                         "with the throughput files")
     parser.add_argument("--norm_dir", type=str, help="Directory "
                         "with the amplifier normalization files")
+    # Parameters for getnormexp
+    parser.add_argument("--rel_norm_dir", type=str, help="Base directory with"
+                        " the norm.dat files. These are expected in nightvshot"
+                        " directories under this directory.")
+    parser.add_argument("--fwhm_dir", type=str, help="Base directory with the"
+                        " fwhm.out files. These are expected in nightvshot "
+                        " directories under this directory.")
 
     parser.add_argument("--extraction_wl", type=float, help="Central "
                         "wavelength for the extraction")
@@ -213,7 +222,8 @@ def fit_radec(args):
 
         # Call rspstar
         # Get fwhm and relative normalizations
-        vp.call_getnormexp(args.nightshot, wdir)
+        vp.call_getnormexp(args.nightshot, args.rel_norm_dir,
+                           args.fwhm_dir, wdir)
 
         specfiles = \
             vext.extract_star_spectrum(starobs, args,

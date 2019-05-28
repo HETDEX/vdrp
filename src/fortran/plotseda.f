@@ -74,7 +74,8 @@ c            read(1,*,end=666) file1
             y(n)=x2
             if(ia.eq.nl) y2(n)=x5
             ysum=ysum+x2
-c            y(n)=x2/x8
+c- this next line applies aperture correction
+            y(n)=x2/x8
          enddo
  667     continue
          close(2)

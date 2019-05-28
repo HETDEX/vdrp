@@ -67,7 +67,8 @@ c- rmscut is the rms of the difference after normalization
          do i=1,2000
             read(2,*,end=667) x1,x2
             n=n+1
-c            x2=x2/facap
+c- this next line normalizes for edge effects. Not sure yet!
+            x2=x2/facap
             x(n)=x1
             ya(n,il)=x2
 c            ydiff(n)=x2-yg(n)

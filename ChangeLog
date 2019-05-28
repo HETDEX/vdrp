@@ -1,5 +1,16 @@
+2019-05-27  Jan Snigula  <snigula@mpe.mpg.de>
+
+	* src/vdrp/programs.py: Fixed Exception error
+
+2019-05-27  Jan Snigula  <snigula@mpe.mpg.de>
+
+	* src/vdrp/fit_radec.py: Added parameters for getnormexp call
+	* src/vdrp/photometry.py: Same
+	* src/vdrp/calc_fluxlim.py: Same
+	* src/vdrp/config/vdrp.config: Same
+
 2019-03-04 Daniel Farrow
-   
+
     * calc_fluxlim.py: New approach to getting average apertue correction
     * pytest/test_calc_fluxlim.py: tests for above
 

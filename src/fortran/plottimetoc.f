@@ -64,7 +64,12 @@
  667  continue
       close(1)
       call xlinint(xfield,n2,xa,ya,yfield)
-      yfield=yfield*47./1000.
+      yfield=yfield*47./1000.*1.2
+      print *,yfield
+      yfield=37.  !red
+      yfield2=32. !green
+      yfield3=29. !blue
+      yfield4=47. !black
       print *,yfield
       
       xstart=x(n)
@@ -100,8 +105,8 @@
             if(icheck1.eq.0) ystartc=yc(i-1)
             if(icheck1.eq.0) ystartd=yd(i-1)
             icheck1=1
-            nifu=64
-            nifub=57
+            nifu=62
+            nifub=55
          endif
          if(xcheck.gt.2.and.xcheck.lt.3) then
             xcheck=xcheck-2
@@ -110,8 +115,8 @@
             if(icheck2.eq.0) ystartc=yc(i-1)
             if(icheck2.eq.0) ystartd=yd(i-1)
             icheck2=1
-            nifu=78
-            nifub=70
+            nifu=76
+            nifub=68
          endif
          if(xcheck.gt.3.and.xcheck.lt.4) then
             xcheck=xcheck-3
@@ -164,14 +169,19 @@
             endif
          enddo
  555     continue
-         if(x(i).ge.2) yfield=0.
+         if(x(i).ge.2) then
+            yfield=0.
+            yfield2=0.
+            yfield3=0.
+            yfield4=0.
+         endif
          yp=yp*nifu/1000.-yfield
          y(i)=ystart-yp
-         ypb=ypb*nifub/1000.-yfield
+         ypb=ypb*nifub/1000.-yfield2
          yb(i)=ystartb-ypb
-         ypc=ypc*nifuc/1000.-yfield
+         ypc=ypc*nifuc/1000.-yfield3
          yc(i)=ystartc-ypc
-         ypd=ypd*nifud/1000.-yfield
+         ypd=ypd*nifud/1000.-yfield4
          yd(i)=ystartd-ypd
       enddo
 

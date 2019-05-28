@@ -68,7 +68,7 @@ c      ymin=ymin-ybit
       endif
       call pgsls(1)
 c      call pgsch(0.8)
-      call pgsch(1.4)
+      call pgsch(1.9)
       do i=1,n
 c         call pgsci(2)
          call pgsci(ic(i))
@@ -154,12 +154,15 @@ c      call pgpt1(x1n,x2n,5)
 
       xl(1)=xmin
       xl(2)=xmax
-      yl(1)=5.
-      yl(2)=5.
+      yl(1)=4.2
+      yl(2)=4.2
       call pgslw(3)
-c      call pgline(2,xl,yl)
+      call pgsci(1)
+      call pgsls(4)
+      call pgline(2,xl,yl)
       call pgsci(1)
       call pgslw(2)
+      call pgsls(1)
 
       call pgsch(1.5)
       open(unit=11,file='labels.dat',status='old',err=866)

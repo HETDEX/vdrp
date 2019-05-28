@@ -47,6 +47,8 @@ def getDefaults():
     defaults['multifits_dir'] = '/work/03946/hetdex/maverick/red1/reductions/'
     defaults['tp_dir'] = '/work/00115/gebhardt/maverick/detect/tp/'
     defaults['norm_dir'] = '/work/00115/gebhardt/maverick/getampnorm/all/'
+    defaults['rel_norm_dir'] = '/work/00115/gebhardt/maverick/detect/all/'
+    defaults['fwhm_dir'] = '/work/00115/gebhardt/maverick/detect/all/'
 
     defaults['radec_file'] = '/work/00115/gebhardt/maverick/getfib/radec.all'
 
@@ -94,6 +96,14 @@ def get_arguments(parser):
     parser.add_argument("--norm_dir", type=str, help="Directory "
                         "with the amplifier normalization files")
 
+    # Parameters for getnormexp
+    parser.add_argument("--rel_norm_dir", type=str, help="Base directory with"
+                        " the norm.dat files. These are expected in nightvshot"
+                        " directories under this directory.")
+    parser.add_argument("--fwhm_dir", type=str, help="Base directory with the"
+                        " fwhm.out files. These are expected in nightvshot "
+                        " directories under this directory.")
+
     parser.add_argument("--ra_range", type=int, help="Width in RA"
                         " direction for search grid in asec")
     parser.add_argument("--dec_range", type=int, help="Width in DEC"
@@ -124,12 +134,13 @@ def get_arguments(parser):
     parser.add_argument("--fill", type=float, help="Fill value")
     parser.add_argument("--sn", type=float, help="SNR value")
 
-    parser.add_argument("--pixsize", type=float, help="Size of cube pixels (arcsec)."
-                        " should result in integer grid size")
+    parser.add_argument("--pixsize", type=float, help="Size of cube pixels"
+                        " (arcsec). should result in integer grid size")
 
     parser.add_argument("--apcorlim", type=float, help="Minimum limit for "
                         "values to be included in average aperture "
                         "correction.")
+
     return parser
 
 
@@ -210,8 +221,8 @@ def parseArgs(argv):
 def compute_apcor(apcor_all, apcorlim):
     """
     Filter out edge and other bad regions by selecting
-    the apcorlim greatest aperture correction values. 
-    Then compute the biweight value and return the 
+    the apcorlim greatest aperture correction values.
+    Then compute the biweight value and return the
     resultant average aperture correction.
 
     Parameters
@@ -220,22 +231,21 @@ def compute_apcor(apcor_all, apcorlim):
         the aperture corrections
 
     apcorlim : int
-        the number of largest 
-        values to consider 
+        the number of largest
+        values to consider
     """
 
     flattened = apcor_all.flatten()
     flattened.sort()
     top_vals = np.flip(flattened, 0)[:apcorlim]
 
-    # Check if all elements are identical 
+    # Check if all elements are identical
     # as this breaks biweight
     if any(((top_vals - top_vals[0])/top_vals[0]) > 1e-10):
         return biweight_location(top_vals)
     else:
-        _logger.warning("All aperture correction measurements the same!") 
+        _logger.warning("All aperture correction measurements the same!")
         return top_vals[0]
-
 
 
 def calc_fluxlim(args, workdir):
@@ -313,7 +323,8 @@ def calc_fluxlim(args, workdir):
 
                 # Call rspstar
                 # Get fwhm and relative normalizations
-                vp.call_getnormexp(args.nightshot, wdir)
+                vp.call_getnormexp(args.nightshot, args.rel_norm_dir,
+                                   args.fwhm_dir, wdir)
 
                 specfiles = \
                     vext.extract_star_spectrum(starobs, args,
@@ -387,8 +398,8 @@ def calc_fluxlim(args, workdir):
 
     apcor = compute_apcor(apcor_all, args.apcorlim)
 
-    #wcor = np.where(apcor_all > args.apcorlim)
-    #apcor = np.median(apcor_all[wcor])
+    # wcor = np.where(apcor_all > args.apcorlim)
+    # apcor = np.median(apcor_all[wcor])
 
     update_im3d_header(args, nx, ny, apcor, workdir)
 
@@ -432,7 +443,6 @@ def update_im3d_header(args, nx, ny, apcor, wdir):
         hdu[0].header['EQUINOX'] = 2000
         hdu[0].header['APCOR'] = apcor
         hdu[0].header['SNRCUT'] = args.sn
-        
 
 # vdrp_info = None
 

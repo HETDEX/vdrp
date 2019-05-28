@@ -5,6 +5,16 @@ import os
 import shutil
 import numpy as np
 
+import logging
+
+# Python 2.7 safeguard
+try:
+    FileNotFoundError
+except NameError:
+    FileNotFoundError = IOError
+
+_logger = logging.getLogger()
+
 
 _vdrp_bindir = utils.bindir()
 
@@ -237,7 +247,7 @@ def call_sumspec(starname, wdir):
     run_command(_vdrp_bindir + '/sumspec', wdir=wdir)
 
 
-def call_getnormexp(nightshot, wdir):
+def call_getnormexp(nightshot, normdir, fwhmdir, wdir):
     """
     Call getnormexp. Get fwhm and relative normalizations for the frames.
 
@@ -247,6 +257,15 @@ def call_getnormexp(nightshot, wdir):
         Observation name
     """
     input = '{name:s}\n'
+
+    try:
+        shutil.copy2(normdir + '/' + nightshot + '/norm.dat', './')
+    except FileNotFoundError:
+        _logger.warn('norm.dat is missing for %s' % nightshot)
+    try:
+        shutil.copy2(fwhmdir + '/' + nightshot + '/fwhm.out', './')
+    except FileNotFoundError:
+        _logger.warn('fwhm.out is missing for %s' % nightshot)
 
     run_command(_vdrp_bindir + '/getnormexp', input.format(name=nightshot),
                 wdir=wdir)

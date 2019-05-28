@@ -2,8 +2,20 @@
       parameter(nmax=20000)
       real x(nmax),y(nmax),ye(nmax),ya(nmax,100),xin(100)
       real yel(nmax),yeu(nmax),ydiff(nmax),ydiffn(nmax)
-      real xl(2),yl(2)
-      character file1*80,file2*80,c1*3
+      real xl(2),yl(2),xtril(10)
+      character file1*80,file2*80,c1*3,ctri(10)*4
+
+      xtri=121.
+      xtril(1)=20.
+      xtril(2)=xtril(1)+xtri
+      xtril(3)=xtril(2)+xtri
+      xtril(4)=xtril(3)+xtri
+      xtril(5)=xtril(4)+xtri
+      ctri(1)="18-1"
+      ctri(2)="18-2"
+      ctri(3)="18-3"
+      ctri(4)="19-1"
+      ctri(5)="19-2"
 
       call pgbegin(0,'?',1,1)
       call pgpap(0.,1.)
@@ -17,12 +29,13 @@ c   let's center on Feb 1, 2018, which is mjd=58150.3
       xt1=58211.3-x0
       xt2=58331.2-x0
       xt3=58452.2-x0
+      xt4=xt3+xtri
 
       xmin=0.
       xmax=365.
-      xmax=450.
+      xmax=540.
       ymin=0.
-      ymax=1300.
+      ymax=1800.
       call pgenv(xmin,xmax,ymin,ymax,0,0)
       call pglabel('Days since 1 Jan 2018','Cumulative Number','')
 
@@ -84,7 +97,7 @@ c      call pgsci(1)
          y(i)=y(i)+90.
       enddo
       call pgsls(2)
-      call pgline(n,x,y)
+c      call pgline(n,x,y)
 
       call pgsci(1)
       call pgsls(4)
@@ -99,6 +112,16 @@ c      call pgsci(1)
       xl(1)=xt3
       xl(2)=xl(1)
       call pgline(2,xl,yl)
+      xl(1)=xt4
+      xl(2)=xl(1)
+      call pgline(2,xl,yl)
+
+      call pgsls(1)
+      call pgsci(1)
+      call pgsch(0.8)
+      do i=1,5
+         call pgptxt(xtril(i),50.,0.0,0.5,ctri(i))
+      enddo
 
       call pgend
 
