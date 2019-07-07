@@ -205,6 +205,11 @@ c         print *,nj,sig1,sig(nf)
       sigmin=sigmin-sigbit
       sigmax=sigmax+sigbit
 
+c      velmin=-230
+c      velmax=230.
+c      radmin=-1.1
+c      radmax=1.1
+
       call pgenv(radmin,radmax,velmin,velmax,0,0)
       call pgpoint(nf,rad,vel,17)
       call pgerry(nf,rad,velh,vell,1.)

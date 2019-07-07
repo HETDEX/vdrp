@@ -33,18 +33,18 @@
          fname="sfit/"//a10//"_"//a2//"_4550.res"
          open(unit=2,file=fname,status='old')
          read(2,*,end=334,err=334) y1,y2
-c         write(11,1101) 
-c     $        "/work/00115/gebhardt/maverick/scripts/rsp/rsp1a2b",
          write(11,1101) 
-     $        "~gebhardt/bin/rsp3",
-     $        y1,y2,3,4505,1035,a2,a10,-xb,10,3.5,0,1,0
+     $        "/work/00115/gebhardt/maverick/scripts/rsp/rsp3f",
+c         write(11,1101) 
+c     $        "~gebhardt/bin/rsp3",
+     $        y1,y2,3,4505,1035,a2,a10,-xb,10,3.5,0,1,2
  334     continue
          close(2)
       enddo
  667  continue
       close(1)
 
- 1101 format(a20,2(1x,f10.6),1x,i1,1x,i4,1x,i4,1x,a5,1x,a12,1x,f5.2,
+ 1101 format(a50,2(1x,f10.6),1x,i1,1x,i4,1x,i4,1x,a5,1x,a12,1x,f5.2,
      $     1x,i2,1x,f3.1,3(1x,i1))
 
       end

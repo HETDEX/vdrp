@@ -33,9 +33,9 @@ c   let's center on Feb 1, 2018, which is mjd=58150.3
 
       xmin=0.
       xmax=365.
-      xmax=540.
+      xmax=570.
       ymin=0.
-      ymax=1800.
+      ymax=1900.
       call pgenv(xmin,xmax,ymin,ymax,0,0)
       call pglabel('Days since 1 Jan 2018','Cumulative Number','')
 

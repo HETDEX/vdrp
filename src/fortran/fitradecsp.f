@@ -64,7 +64,6 @@ c         print *,ara(i),adec(i)
                   call fit2d(ara(i),adec(i),ntf,sflux,sfluxe,raf,decf,
      $                 xw,weight,iflag,fadcw,az,chif,ampsf,sumrata)
                   write(11,1103) fwin,chif,ampsf
-c                  print *,j,fwin,chif,ampsf
                enddo
                close(11)
                ifwf=0
@@ -94,7 +93,11 @@ c                  print *,j,fwin,chif,ampsf
       endif
       close(11)
 
-      if(ifit1.eq.1) call writespec(naf,spec)
+      if(ifit1.ge.1) call writespec(naf,spec)
+      if(ifit1.eq.2) then
+         call sumspec100(naf,spec)
+         call writespec100(naf,spec)
+      endif
 
  1101 format(2(1x,f10.6),3(1x,f7.2),1x,f9.1,1x,f7.2,1x,f10.2)
  1102 format(2(1x,f10.6),2(1x,f11.3))
@@ -113,6 +116,74 @@ c                  print *,j,fwin,chif,ampsf
      $        spec(i,8),spec(i,9)
       enddo
  1301 format(1x,f7.2,8(1x,f11.3))
+
+      return
+      end
+
+      subroutine writespec100(n,spec)
+      parameter(nmax=3000)
+      real spec(nmax,9)
+      
+      open(unit=13,file='spec100.out',status='unknown')
+      do i=1,n
+         write(13,1301) spec(i,1),spec(i,2),spec(i,3)
+      enddo
+ 1301 format(1x,f7.2,1(1x,f13.3),1x,f6.3)
+
+      return
+      end
+
+      subroutine sumspec100(n,spec)
+      parameter(nmax=3000)
+      real spec(nmax,9),w(nmax),w1(nmax),w2(nmax),sumsp(nmax)
+      real sumgeom(nmax)
+      integer ntb(nmax)
+      
+      ws=3490.
+      we=5510.
+      wbin=100.
+      nbin=0
+      do i=1,1000
+         sumsp(i)=0.
+         sumgeom(i)=0.
+         wnew=ws+float(i-1)*wbin
+         if(wnew.lt.we) then
+            nbin=nbin+1
+            w(nbin)=wnew+wbin/2.
+            w1(nbin)=wnew
+            w2(nbin)=wnew+wbin
+         else
+            goto 766
+         endif
+      enddo
+ 766  continue
+      
+      do j=1,nbin
+         ntb(j)=0
+         do k=1,n
+            wave=spec(k,1)
+            cts=spec(k,2)
+            geom=spec(k,9)
+            if(wave.gt.w1(j).and.wave.le.w2(j)) then
+               sumsp(j)=sumsp(j)+cts
+               sumgeom(j)=sumgeom(j)+geom
+               ntb(j)=ntb(j)+1
+            endif
+         enddo
+      enddo
+
+      nta=ntb(2)
+      n=nbin
+      do i=1,nbin
+         spec(i,1)=w(i)
+         if(ntb(i).gt.0) then
+            spec(i,2)=sumsp(i)*float(nta)/float(ntb(i))
+            spec(i,3)=sumgeom(i)/float(ntb(i))
+         else
+            spec(i,2)=0.
+            spec(i,3)=0.
+         endif
+      enddo
 
       return
       end
@@ -329,6 +400,7 @@ c            fweight2(i,na)=x4*x6
 
       imoff=1
 
+c- we are assuming it is FWHM measured at 4550AA
       open(unit=1,file='fwhm.use',status='old',err=955)
       read(1,*) rfw
       close(1)
@@ -366,6 +438,7 @@ c            fweight2(i,na)=x4*x6
 
       inew=1
       if(inew.eq.1) goto 500
+c- this is the old, switch to the new if all looks good
       as=5.
       ae=2000.
       ae=xfmax*10.
@@ -379,7 +452,6 @@ c            fweight2(i,na)=x4*x6
             chimin=chi
             atb=at
          endif
-c         if(ifwf.eq.1) print *,ia,at,xfmax,as,ae
       enddo
       amps=atb
       call getchifib(0.,0.,amps,ntf,xr,xd,sflux,xw,sfluxe,
@@ -564,13 +636,17 @@ c      nstep=50
       nstep=30
       xstep=2.*rfib/float(nstep-1)
       deltx=pi*rfib*rfib
-      area=1.*deltx/(2.*rsig*rsig*pi)
-      areamoff=4.*(2.**(1./bmof)-1.)*(bmof-1.)/pi/fmof/fmof
-      areamoff=deltx*areamoff
       do ia=1,nw
-         rsig0=rsig
+c         rsig0=rsig
+c         fmof0=fmof
+         rsig0=rsig/((wadc(ia)/4550.)**0.2)
+         fmof0=fmof/((wadc(ia)/4550.)**0.2)
+         area=1.*deltx/(2.*rsig0*rsig0*pi)
+         areamoff=4.*(2.**(1./bmof)-1.)*(bmof-1.)/pi/fmof0/fmof0
+         areamoff=deltx*areamoff
          xaoff=adc(ia)*sin(az(1)/dtr)
          yaoff=adc(ia)*cos(az(1)/dtr)
+         sumgw=0.
          do i=1,n
             xaoff=adc(ia)*sin(az(i)/dtr)
             yaoff=adc(ia)*cos(az(i)/dtr)
@@ -589,7 +665,7 @@ c      nstep=50
                      g=dist/rsig0
                      gaus=gaus+exp(-g*g/2.)*area
                      xmoff=xmoff+areamoff*((1.+4.*(2.**(1./bmof)-1.)*
-     $                    (dist/fmof)**2)**(-bmof))
+     $                    (dist/fmof0)**2)**(-bmof))
                      nsum=nsum+1
                   endif
                enddo
@@ -598,15 +674,18 @@ c      nstep=50
             xmoff=xmoff/float(nsum)
             if(imoff.eq.1) gaus=xmoff
             fadc(i,ia)=gaus
+            sumgw=sumgw+gaus
          enddo
 
+c- skip since it is not needed
+         goto 500
 c- now get area covered with fibers
          sumf1=0.
          sumf2=0.
          sumfw1=0.
          sumfw2=0.
          nfull=100
-         sigfull=5.
+         sigfull=4.
          xs=xrs-sigfull*rsig
          xe=xrs+sigfull*rsig
          ys=xds-sigfull*rsig
@@ -630,6 +709,8 @@ c- now get area covered with fibers
          enddo
          sumrat=sumf1/sumf2
          sumrata(ia)=sumrat
+ 500     continue
+         sumrata(ia)=sumgw
 c         do i=1,n
 c            fadc(i,ia)=fadc(i,ia)/sumrat
 c         enddo
@@ -1042,7 +1123,6 @@ c     this is sigma: 0 fix, 1 fit
          if(alamda.gt.1.e9) goto 666
          alamo=alamda
       enddo
-c      print *,'Hit max iteration'
  666  continue
 
       call mrqminb(x,y,sig,n,a,ia,na,covar,alpha,nca,
@@ -1086,8 +1166,6 @@ c      print *,'Hit max iteration'
          dyda(i+nadd+np+np)=
      $        (-yadd)/sig+yadd*w*(x-vel)/sig/sig+amp*gaus*(
      $        -h3*dfh3(w)*(x-vel)/sig/sig-h4*dfh4(w)*(x-vel)/sig/sig)
-c         print *,i,sig,dyda(i+nadd+np+np),gaus,w,x,vel
-c         read *
       enddo
 
       return

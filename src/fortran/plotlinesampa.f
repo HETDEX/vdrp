@@ -4,7 +4,7 @@
       real yel(nmax),yeu(nmax),ydiff(nmax),ydiffn(nmax)
       real yorig(nmax)
       integer ica(nmax)
-      character file1*80,file2*80,name*14
+      character file1*80,file2*80,name*14,nameo(nmax)*50
 
       call pgbegin(0,'?',1,1)
       call pgpap(0.,1.)
@@ -16,8 +16,8 @@
       xmax=5450.
 c      xmin=3700.
 c      xmax=4600.
-      ymin=0.6
-      ymax=1.4
+      ymin=0.7
+      ymax=1.5
 c      ymin=0.85
 c      ymax=1.25
       call pgenv(xmin,xmax,ymin,ymax,0,0)
@@ -34,6 +34,7 @@ c      ymax=1.25
          if(il.eq.1) name=file1(20:43)
          open(unit=2,file=file1,status='old')
          nl=nl+1
+         nameo(nl)=file1(1:43)
          n=0
          do i=1,2000
             read(2,*,end=667) x1,x2
@@ -71,7 +72,9 @@ c         yeu(i)=y(i)+xs
 c         print *,x(i),y(i)
       enddo
 
+      xscut=0.01
       icp=1
+      open(unit=12,file='outbad',status='unknown')
       do j=1,nl
          do i=1,n
             ydiff(i)=y(i)/ya(i,j)
@@ -81,11 +84,16 @@ c         print *,x(i),y(i)
          do i=1,n
             ydiff(i)=ya(i,j)*xb
          enddo
-         icp=icp+1
-         if(icp.eq.13) icp=2
-         call pgsci(icp)
-         call pgline(n,x,ydiff)
+         if(xs.le.xscut) then
+            icp=icp+1
+            if(icp.eq.13) icp=2
+            call pgsci(icp)
+            call pgline(n,x,ydiff)
+         else
+            write(12,*) xs,nameo(j)
+         endif
       enddo
+      close(12)
 
       call pgsci(1)
       call pgslw(5)

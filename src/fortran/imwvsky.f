@@ -36,6 +36,10 @@ c - this is the spectrum
       call ftgiou(im1,ier)
       iread=0
       call ftopen(im1,file1,iread,iblock,ier)
+      if(ier.ne.0) then
+         print *,"Nothing here ",file1
+         goto 706
+      endif
       call ftmahd(im1,iext,ihd,ier)
       call ftghpr(im1,2,simple,ibit,naxis,naxes,ipc,igc,extend,ier)
       ncol=naxes(1)

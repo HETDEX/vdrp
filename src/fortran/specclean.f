@@ -31,7 +31,8 @@
 
  888  continue
 
- 1101  format(1x,f8.2,1x,f11.2,1x,1pe11.2,3(1x,0pf7.3),3(1x,1pe11.2))
+ 1101  format(1x,f8.2,1x,f12.3,1x,1pe13.4,3(1x,0pf7.3),3(1x,1pe13.4))
+c 1101  format(1x,f8.2,2(1x,f12.2),3(1x,f7.3),3(1x,f12.2))
        end
 
       subroutine sclean(n,w,f,fout)

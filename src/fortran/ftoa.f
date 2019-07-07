@@ -2,7 +2,7 @@
       parameter (narrm=2000000)
       real xd(narrm,1)
       integer naxes(2)
-      character file1*80
+      character file1*100
       logical simple,extend,anyf
 
 

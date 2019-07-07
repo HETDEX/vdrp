@@ -24,7 +24,7 @@
       data deps /1.d-7/
       data epsabs,epsrel,epsode /1.e-10,1.e-5,1.e-5/
       data apow,apowi /4.,3./
-      data radd,nadd /50.,15/
+      data radd,nadd /100.,15/
 c      data radd,nadd /1500.,15/
 c      data radd,nadd /2000.,15/
 c      data radd,nadd /500.,15/
@@ -485,7 +485,7 @@ c - get the PSF-corrected sigma
 
       if(ipsf.eq.1) then
 
-         npsf=100
+         npsf=150
          rpsf=3.
          area=(2.*rpsf/float(npsf))**2
          do i=1,np

@@ -25,7 +25,8 @@
 
       parameter(cee=2.99e+5,pi=3.141593,ee=2.71828)
       data big,nl /1.e10,29/
-      data ntotval /3000/
+c      data ntotval /3000/
+      data ntotval /1000/
       data ibin /1/
 
       CALL IWKIN(19711)

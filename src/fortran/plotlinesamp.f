@@ -22,7 +22,7 @@ c      xmax=4600.
 c      ymin=0.85
 c      ymax=1.25
       call pgenv(xmin,xmax,ymin,ymax,0,0)
-      call pglabel('Wavelength','FtF','')
+      call pglabel('Wavelength','A2A','')
       call pgsls(1)
       call pgslw(4)
 
@@ -51,6 +51,7 @@ c         call pgmtxt('T',-1.5,0.5,0.5,file1(1:20))
          ica(il)=ic
          call pgsci(ic)
          call pgsls(it)
+         call pgslw(5)
          call pgline(n,x,y)
          call pgsci(1)
          call pgsls(1)

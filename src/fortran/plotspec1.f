@@ -6,7 +6,7 @@
 
       nf=18
       ibin=5
-c      ibin=1
+      ibin=1
       ib1=(ibin-1)/2
       xib=float(ibin)
 
@@ -21,6 +21,9 @@ c      call pgbegin(0,'?',3,3)
       xmax=3870.
       xmin=3500.
       xmax=5500.
+
+c      xmin=8400.
+c      xmax=8900.
 
       open(unit=1,file='splist',status='old')
 
@@ -78,15 +81,18 @@ c            x2=x6
          ybit=(ymax-ymin)/10.
          ymin=ymin-ybit
          ymax=ymax+ybit
-         ymin=3.
-         ymax=12.
-         if(il.eq.1) call pgenv(xmin,xmax,ymin,ymax,0,0)
-         call pgsci(il)
+c         ymin=3.
+c         ymax=12.
+c         if(il.eq.1) call pgenv(xmin,xmax,ymin,ymax,0,0)
+         call pgenv(xmin,xmax,ymin,ymax,0,0)
+c         call pgsci(il)
 c         call pgline(n,x,y)
          call pgline(nbb,xn,yn)
          call pgsch(1.8)
+c         if(il.eq.1) call pglabel('Wavelength',
+c     $        '1e-17 ergs/cm\U2\D/s','')
          if(il.eq.1) call pglabel('Wavelength',
-     $        '1e-17 ergs/cm\U2\D/s','')
+     $        'RMS','')
 c         if(il.eq.1) call pglabel('Wavelength',
 c     $        'Counts','')
 c         call pgmtxt('T',0.9,0.5,0.5,file1(1:nf))
