@@ -261,11 +261,11 @@ def call_getnormexp(nightshot, normdir, fwhmdir, wdir):
     fwhm_file = fwhmdir + '/' + nightshot + '/fwhm.out'
 
     try:
-        shutil.copy2(normdir + '/' + nightshot + '/norm.dat', './')
+        shutil.copy2(normdir + '/' + nightshot + '/norm.dat', wdir)
     except FileNotFoundError:
         _logger.warn('norm.dat is missing for %s' % nightshot)
     try:
-        shutil.copy2(fwhm_file, './')
+        shutil.copy2(fwhm_file, wdir)
     except FileNotFoundError:
         _logger.warn('fwhm.out is missing for %s' % nightshot)
 
