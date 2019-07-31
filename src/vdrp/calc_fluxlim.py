@@ -47,8 +47,8 @@ def getDefaults():
     defaults['multifits_dir'] = '/work/03946/hetdex/maverick/red1/reductions/'
     defaults['tp_dir'] = '/work/00115/gebhardt/maverick/detect/tp/'
     defaults['norm_dir'] = '/work/00115/gebhardt/maverick/getampnorm/all/'
-    defaults['rel_norm_dir'] = '/work/00115/gebhardt/maverick/detect/all/'
-    defaults['fwhm_dir'] = '/work/00115/gebhardt/maverick/detect/all/'
+    defaults['rel_norm_dir'] = '/work/00115/gebhardt/maverick/detect/'
+    defaults['fwhm_dir'] = '/work/00115/gebhardt/maverick/detect/'
 
     defaults['radec_file'] = '/work/00115/gebhardt/maverick/getfib/radec.all'
 

@@ -257,15 +257,19 @@ def call_getnormexp(nightshot, normdir, fwhmdir, wdir):
         Observation name
     """
     input = '{name:s}\n'
+ 
+    fwhm_file = fwhmdir + '/' + nightshot + '/fwhm.out'
 
     try:
-        shutil.copy2(normdir + '/' + nightshot + '/norm.dat', './')
+        shutil.copy2(normdir + '/' + nightshot + '/norm.dat', wdir)
     except FileNotFoundError:
         _logger.warn('norm.dat is missing for %s' % nightshot)
     try:
-        shutil.copy2(fwhmdir + '/' + nightshot + '/fwhm.out', './')
+        shutil.copy2(fwhm_file, wdir)
     except FileNotFoundError:
         _logger.warn('fwhm.out is missing for %s' % nightshot)
+
+    _logger.info('Grabbing FWHM file from' + fwhm_file)
 
     run_command(_vdrp_bindir + '/getnormexp', input.format(name=nightshot),
                 wdir=wdir)
