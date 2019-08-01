@@ -112,6 +112,8 @@ def getDefaults():
 
     defaults = {}
 
+    defaults['tmp_dir'] = '/tmp/'
+
     defaults['shuffle_cores'] = 1
     defaults["shuffle_mag_limit"] = 20.
     defaults["shuffle_ifustars_dir"] = \
@@ -174,6 +176,9 @@ def get_arguments(parser):
     ----------
     parser : argparse.ArgumentParser
     '''
+
+    parser.add_argument("--tmp_dir", type=str, help="Base directory "
+                        "used to create the temporary work directory")
 
     parser.add_argument("--dithall_dir", type=str, help="Base directory "
                         "used to find the dithall.use files")
@@ -907,7 +912,7 @@ def main(jobnum, args):
     wdir = results_dir
     if args.use_tmp:
         # Create a temporary directory
-        tmp_dir = tempfile.mkdtemp()
+        tmp_dir = tempfile.mkdtemp(dir=args.tmp_dir)
         _logger.info("Tempdir is {}".format(tmp_dir))
         _logger.info("Copying over prior data (if any)...")
         dir_util.copy_tree(results_dir, tmp_dir)

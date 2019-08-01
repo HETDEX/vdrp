@@ -43,6 +43,8 @@ def getDefaults():
 
     defaults = {}
 
+    defaults['tmp_dir'] = '/tmp/'
+
     defaults['dithall_dir'] = '/work/00115/gebhardt/maverick/detect/'
     defaults['multifits_dir'] = '/work/03946/hetdex/maverick/red1/reductions/'
     defaults['tp_dir'] = '/work/00115/gebhardt/maverick/detect/tp/'
@@ -86,6 +88,9 @@ def get_arguments(parser):
     ----------
     parser : argparse.ArgumentParser
     '''
+
+    parser.add_argument("--tmp_dir", type=str, help="Base directory "
+                        "used to create the temporary work directory")
 
     parser.add_argument("--dithall_dir", type=str, help="Base directory "
                         "used to find the dithall.use files")
@@ -261,7 +266,7 @@ def calc_fluxlim(args, workdir):
         The arguments structure
     """
 
-    curdir = tempfile.mkdtemp(prefix='flimtmp', dir='/tmp/')
+    curdir = tempfile.mkdtemp(prefix='flimtmp', dir=args.tmp_dir)
     cosd = np.cos(args.dec / 57.3)
     rstart = args.ra - args.ra_range/2./3600./cosd
     dstart = args.dec - args.dec_range/2./3600.

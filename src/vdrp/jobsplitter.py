@@ -31,6 +31,11 @@ echo " WORKING DIR: {workdir:s}/"
 {pyenv:s}
 module load gcc
 module unload xalt
+
+module use /work/01255/siliu/stampede2/ooops/modulefiles/
+ml ooops/1.0
+set_io_param 1
+
 '''
 
 pyenv = '''export PATH="$HOME/.pyenv/bin:$PATH"

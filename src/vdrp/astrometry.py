@@ -66,13 +66,13 @@ from vdrp.fplane_client import retrieve_fplane
 from vdrp.vdrp_helpers import VdrpInfo
 
 
-
 def getDefaults():
 
     defaults = {}
     defaults["use_tmp"] = "False"
     defaults["remove_tmp"] = "True"
     defaults["logfile"] = "astrometry.log"
+    defaults['tmp_dir'] = '/tmp/'
     defaults["reduction_dir"] = "/work/03946/hetdex/maverick/red1/reductions/"
     defaults["cofes_vis_vmin"] = -15.
     defaults["cofes_vis_vmax"] = 25.
@@ -159,6 +159,8 @@ def parseArgs(args):
                         "be copied to NIGHTvSHOT.")
     parser.add_argument("--remove_tmp", type=str,
                         help="Remove temporary directory after completion.")
+    parser.add_argument("--tmp_dir", type=str, help="Base directory "
+                        "used to create the temporary work directory")
     parser.add_argument("--reduction_dir", type=str,
                         help="Directory that holds panacea reductions. "
                         "Subdriectories with name like NIGHTvSHOT must exist.")
@@ -2144,7 +2146,7 @@ def main(args):
     wdir = results_dir
     if args.use_tmp:
         # Create a temporary directory
-        tmp_dir = tempfile.mkdtemp()
+        tmp_dir = tempfile.mkdtemp(dir=args.tmp_dir)
         logging.info("Tempdir is {}".format(tmp_dir))
         logging.info("Copying over prior data (if any)...")
         dir_util.copy_tree(results_dir, tmp_dir)
