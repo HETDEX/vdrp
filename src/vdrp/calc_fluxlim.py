@@ -6,7 +6,6 @@ Contains python translation of Karl Gebhardt
 .. moduleauthor:: Jan Snigula <snigula@mpe.mpg.de>
 """
 
-from __future__ import print_function
 # import matplotlib
 
 # from matplotlib import pyplot as plt
@@ -15,7 +14,7 @@ from argparse import RawDescriptionHelpFormatter as ap_RDHF
 from argparse import ArgumentParser as AP
 
 import os
-import ConfigParser
+import configParser
 import logging
 import logging.config
 from astropy.io import fits
@@ -175,7 +174,7 @@ def parseArgs(argv):
     config_source = "Default"
     if args.conf_file:
         config_source = args.conf_file
-        config = ConfigParser.SafeConfigParser()
+        config = configParser.SafeConfigParser()
         config.read([args.conf_file])
         defaults.update(dict(config.items("FluxLim")))
 
@@ -240,8 +239,7 @@ def compute_apcor(apcor_all, apcorlim):
         values to consider
     """
 
-    flattened = apcor_all.flatten()
-    flattened.sort()
+    flattened = sorted(apcor_all.flatten())
     top_vals = np.flip(flattened, 0)[:apcorlim]
 
     # Check if all elements are identical

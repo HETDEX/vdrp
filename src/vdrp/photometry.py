@@ -6,7 +6,6 @@ Contains python translation of Karl Gebhardt
 .. moduleauthor:: Jan Snigula <snigula@mpe.mpg.de>
 """
 
-from __future__ import print_function
 # import matplotlib
 
 # from matplotlib import pyplot as plt
@@ -21,7 +20,7 @@ import json
 import os
 import shutil
 import sys
-import ConfigParser
+import configParser
 import logging
 import logging.config
 import tempfile
@@ -291,7 +290,7 @@ def parseArgs(argv):
     config_source = "Default"
     if args.conf_file:
         config_source = args.conf_file
-        config = ConfigParser.SafeConfigParser()
+        config = configParser.SafeConfigParser()
         config.read([args.conf_file])
         defaults.update(dict(config.items("Photometry")))
 
@@ -833,7 +832,7 @@ def mk_sed_throughput_curve(args):
         sedcgs = seddata[1][1:]/6.626e-27/(3.e18/seddata[0][1:])*360.*5.e5*100.
 
         np.savetxt(os.path.join(wdir, 'sp%dsed.dat' % s.starid),
-                   zip(seddata[0][1:], seddata[1][1:]/sedcgs))
+                   list(zip(seddata[0][1:], seddata[1][1:]/sedcgs)))
 
         sedlist.append('sp%dsed.dat' % s.starid)
 
@@ -941,7 +940,7 @@ def main(jobnum, args):
                                     'specify target_ra and target_dec of the'
                                     ' position')
                 vstar.run_star_photometry(args.target_ra, args.target_dec,
-                                         args.starid, args)
+                                          args.starid, args)
 
             if task in ['extract_stars', 'all']:
                 # os.chdir(wdir)

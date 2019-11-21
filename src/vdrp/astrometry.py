@@ -7,7 +7,6 @@ Contains python translation of Karl Gebhardt
 .. moduleauthor:: Maximilian Fabricius <mxhf@mpe.mpg.de>
 """
 
-from __future__ import print_function
 import matplotlib
 matplotlib.use("agg")
 
@@ -21,7 +20,7 @@ import os
 import glob
 import shutil
 import sys
-import ConfigParser
+import configParser
 import logging
 import subprocess
 from astropy.io import fits
@@ -142,7 +141,7 @@ def parseArgs(args):
     config_source = "Default"
     if args.conf_file:
         config_source = args.conf_file
-        config = ConfigParser.SafeConfigParser()
+        config = configParser.SafeConfigParser()
         config.read([args.conf_file])
         defaults.update(dict(config.items("Astrometry")))
 
@@ -471,7 +470,7 @@ def mktot(wdir, prefixes, mktot_ifu_grid, mktot_magmin, mktot_magmax,
             logging.info("Creating {}".format(fnout))
 
             with open(fnout, 'w') as fout:
-                s  = " NL   NX   NY  LOWBAD HIGHBAD  THRESH     AP1  PH/ADU  RNOISE    FRAD\n"
+                s = " NL   NX   NY  LOWBAD HIGHBAD  THRESH     AP1  PH/ADU  RNOISE    FRAD\n"
                 s += "  1   49   49  -113.6 84000.0    7.93    1.00    1.27    1.06    3.00\n"
                 s += "\n"
                 fout.write(s)
@@ -1101,7 +1100,7 @@ def compute_offset(wdir, prefixes, getoff2_radii, add_radec_angoff_trial,
             nominal_angoffset = final_ang_offset
             add_radec_angoff = final_ang_offset
 
-        angoffsets = filter(lambda x: x != nominal_angoffset, angoffsets) \
+        angoffsets = [x for x in angoffsets if x != nominal_angoffset] \
             + [nominal_angoffset]
 
         # Give comprehensive information about the iterations.
@@ -1658,7 +1657,7 @@ def mk_match_plots(wdir, prefixes):
     shout_ifu_file = "shout.ifustars"
     exposures = ["exp01", "exp02", "exp03"]
     xy_files = {exp: "xy_{}.dat".format(exp) for exp in exposures}
-    tmp_csv_files = {exp: "tmp_{}.csv".format(exp) for exp in exposures}
+    # tmp_csv_files = {exp: "tmp_{}.csv".format(exp) for exp in exposures}
     radec_files = {exp: "radec2_{}.dat".format(exp) for exp in exposures}
     fplane_file = "fplane.txt"
 
@@ -1714,8 +1713,8 @@ def get_exposures(prefixes):
 
 
 def mk_fibermap_files(wdir, reduction_dir, night, shotid):
-    """ Replaces ``cp_fibermap_files``. Creates ``fibermap`` files from multifits. These are
-    essentially the IFUcen files in a different format.
+    """ Replaces ``cp_fibermap_files``. Creates ``fibermap`` files
+    from multifits. These are essentially the IFUcen files in a different format.
 
     Parameters
     ----------
@@ -1729,15 +1728,19 @@ def mk_fibermap_files(wdir, reduction_dir, night, shotid):
         ID of shot (e.g. 017)
     """
 
-    logging.info("mk_fibermap_files: Extracting fiber mapping from multifits files.")
+    logging.info("mk_fibermap_files: Extracting fiber mapping from "
+                 "multifits files.")
 
     with path.Path(wdir):
-        # In order to gt the mapping from IFU fiber number to spectrograph, amplifier and spectrum index
-        # we look at exp01. There is the built-in assumption that there is always exp01 and that the mapping is 
+        # In order to gt the mapping from IFU fiber number to spectrograph,
+        # amplifier and spectrum index we look at exp01. There is the built-in
+        # assumption that there is always exp01 and that the mapping is
         # stample over the exposures of one shot.
         # find all mutlifits files.
         pattern = os.path.join(reduction_dir,
-        "{}/virus/virus0000{}/exp01/virus/multi_???_???_???_??.fits".format(night,shotid))
+                               "{}/virus/virus0000{}/exp01/virus/"
+                               "multi_???_???_???_??.fits".format(night,
+                                                                  shotid))
         ff = glob.glob(pattern)
 
         # structure to store all the fibermaps
@@ -1746,19 +1749,20 @@ def mk_fibermap_files(wdir, reduction_dir, night, shotid):
         for f in ff:
             tt = f.split("_")
             ifuslot = tt[-3]
-            amp = tt[-1].replace(".fits","")
+            amp = tt[-1].replace(".fits", "")
 
             hdu = fits.open(f)
             xy = hdu["ifupos"].data
 
-            if not ifuslot in fibermaps:
+            if ifuslot not in fibermaps:
                 fibermaps[ifuslot] = []
 
-            for i,(x,y) in enumerate(xy):
-                fibermaps[ifuslot].append([x,y,amp,i+1])
+            for i, (x, y) in enumerate(xy):
+                fibermaps[ifuslot].append([x, y, amp, i+1])
 
         for ifuslot in fibermaps:
-            t = Table( np.array( fibermaps[ifuslot] ), names=["XS","YS","amp","mf_spec_index"])
+            t = Table(np.array(fibermaps[ifuslot]),
+                      names=["XS", "YS", "amp", "mf_spec_index"])
             fnfm = "ifuslot{}.fibermap".format(ifuslot)
             t.write(fnfm, format='ascii.fixed_width', overwrite=True)
 
@@ -1805,10 +1809,10 @@ def get_fiber_coords(wdir, active_slots, dither_offsets, subdir="coords"):
         fibermap_files = []
         fplane = FPlane("fplane.txt")
         for slot in active_slots:
-            if not slot in fplane.ifuslots:
+            if slot not in fplane.ifuslots:
                 logging.warning("get_fiber_coords: Slot "
-                    "{} not found in fplane.txt."
-                    .format(slot))
+                                "{} not found in fplane.txt."
+                                .format(slot))
                 continue
             ifu = fplane.by_ifuslot(slot)
 
@@ -1818,7 +1822,8 @@ def get_fiber_coords(wdir, active_slots, dither_offsets, subdir="coords"):
                 fibermap_files.append(fn)
             else:
                 logging.warning("get_fiber_coords: Found no fibermap file "
-                                "for slot {} with IFU ID {}. This slot delivers data however."
+                                "for slot {} with IFU ID {}. This slot "
+                                "delivers data however."
                                 .format(slot, ifu.ifuid))
 
         # Carry out required changes to astrometry
@@ -1842,8 +1847,8 @@ def get_fiber_coords(wdir, active_slots, dither_offsets, subdir="coords"):
                 ifu = fplane.by_ifuslot(ifuslot)
 
                 # read fiber positions in IFU system
-                fm       = ascii.read(fibermap_file, format="fixed_width")
-                x,y      = fm["XS"], fm["YS"]
+                fm = ascii.read(fibermap_file, format="fixed_width")
+                x, y = fm["XS"], fm["YS"]
                 # skip empty tables
                 if len(x) < 1:
                     continue
@@ -1857,17 +1862,22 @@ def get_fiber_coords(wdir, active_slots, dither_offsets, subdir="coords"):
 
                 ra, dec = tp.xy2raDec(xfp, yfp)
                 # save results
-                # construct new table that will hole fiber positions in focal plane system
-                cxs      = Column(name="XS",data=x,dtype=float)
-                cys      = Column(name="YS",data=y,dtype=float)
-                cra      = Column(name="ra",data=ra,dtype=float)
-                cdec     = Column(name="dec",data=dec,dtype=float)
-                cifuslot = Column(name="ifuslot",data=[ifuslot]*len(ra),dtype="S3")
-                cxfplane = Column(name="xfplane",data=xfp,dtype=float)
-                cyfplane = Column(name="yfplane",data=yfp,dtype=float)
-                camp     = Column(name="amp",data=fm["amp"],dtype='S2')
-                cmf_spec_index = Column(name="mf_spec_index",data=fm["mf_spec_index"],dtype=int)
-                table    = Table([cxs, cys, cra, cdec, cifuslot, cxfplane, cyfplane, camp, cmf_spec_index])
+                # construct new table that will hole fiber positions in
+                # focal plane system
+                cxs = Column(name="XS", data=x, dtype=float)
+                cys = Column(name="YS", data=y, dtype=float)
+                cra = Column(name="ra", data=ra, dtype=float)
+                cdec = Column(name="dec", data=dec, dtype=float)
+                cifuslot = Column(name="ifuslot", data=[ifuslot]*len(ra),
+                                  dtype="S3")
+                cxfplane = Column(name="xfplane", data=xfp, dtype=float)
+                cyfplane = Column(name="yfplane", data=yfp, dtype=float)
+                camp = Column(name="amp", data=fm["amp"], dtype='S2')
+                cmf_spec_index = Column(name="mf_spec_index",
+                                        data=fm["mf_spec_index"],
+                                        dtype=int)
+                table = Table([cxs, cys, cra, cdec, cifuslot, cxfplane,
+                               cyfplane, camp, cmf_spec_index])
 
                 outfilename = "i{}_{}.csv".format(ifuslot, offset_index + 1)
                 logging.info("Writing {}.".format(outfilename))
@@ -1889,7 +1899,8 @@ def get_active_slots(wdir, reduction_dir, exposures, night, shotid):
         exp_slots = {}
         for exp in exposures:
             pattern = os.path.join(reduction_dir,
-                                   "{}/virus/virus0000{}/*/*/multi*".format(night, shotid))
+                                   "{}/virus/virus0000{}/*/*/"
+                                   "multi*".format(night, shotid))
             ff = glob.glob(pattern)
             exp_slots[exp] = []
             for f in ff:
@@ -1929,8 +1940,11 @@ def comp_multifits(ifuslot, ifuid, specid, amp, index):
     called by mk_dithall.
     """
     mf = []
-    for a,i in zip(amp,index):
-        mf.append("multi_{specid:03d}_{ifuslot:03d}_{ifuid:03d}_{amp}_{index:03d}.ixy".format(specid=int(specid), ifuslot=int(ifuslot), ifuid=int(ifuid), amp=a, index=i))
+    for a, i in zip(amp, index):
+        fname = "multi_{specid:03d}_{ifuslot:03d}_{ifuid:03d}_{amp}_" \
+            "{index:03d}.ixy"
+        mf.append(fname.format(specid=int(specid), ifuslot=int(ifuslot),
+                               ifuid=int(ifuid), amp=a, index=i))
     return mf
 
 
@@ -1978,23 +1992,24 @@ def mk_dithall(wdir, active_slots, reduction_dir, night, shotid, subdir="."):
             logging.info("get_fiber_coords: Exposure {} ...".format(exp))
             exp_tdith = []
             for ifuslot in active_slots:
-                if not ifuslot in fp.ifuslots:
-                    logging.warning("mk_dithall: IFU slot {} "
-                        "not in fplane.txt. Please update fplane.txt."
-                        .format(ifuslot))
+                if ifuslot not in fp.ifuslots:
+                    logging.warning("mk_dithall: IFU slot {} not"
+                                    " in fplane.txt. Please update fplane.txt."
+                                    .format(ifuslot))
                     continue
                 ifu = fp.by_ifuslot(ifuslot)
 
                 # read the fibermaps, those contain the mapping of
                 # x/y (IFU space) to fiber number on the detector
-                #fibermap_filename = "ifuid{}.fibermap".format(ifu.ifuid)
-                #if not os.path.exists(fibermap_filename):
+                # fibermap_filename = "ifuid{}.fibermap".format(ifu.ifuid)
+                # if not os.path.exists(fibermap_filename):
                 #    logging.warning("mk_dithall: Found no fibermap file for "
                 #                    "IFU slot {} and IFU ID {} (expected {})."
-                #                    .format(ifuslot, ifu.ifuid, fibermap_filename))
+                #                    .format(ifuslot, ifu.ifuid,
+                #                            fibermap_filename))
                 #    continue
 
-                #fibermap = ascii.read(fibermap_filename)
+                # fibermap = ascii.read(fibermap_filename)
                 csv_filename = "i{}_{}.csv".format(ifuslot, i+1)
                 if not os.path.exists(csv_filename):
                     logging.warning("mk_dithall: Found no *.csv file for "
@@ -2005,7 +2020,8 @@ def mk_dithall(wdir, active_slots, reduction_dir, night, shotid, subdir="."):
 
                 # pointers to the multi extention fits and fiber
                 # strings like: multi_301_015_038_RU_085.ixy
-                cmulti_name = comp_multifits(ifuslot, ifu.ifuid, ifu.specid, csv["amp"], csv["mf_spec_index"])
+                cmulti_name = comp_multifits(ifuslot, ifu.ifuid, ifu.specid,
+                                             csv["amp"], csv["mf_spec_index"])
 
                 cifu = Column(["ifu{}".format(ifuslot)] * len(csv))
 
@@ -2253,11 +2269,14 @@ def main(args):
                                 # SDSS stars found, use these:
                                 shutil.copy('sdss.ifustars', 'shout.ifustars')
                             else:
-                                logging.info('No SDSS stars found, checking USNO')
+                                logging.info('No SDSS stars found, '
+                                             'checking USNO')
                                 # Finally use USNO as last fallback
                                 redo_shuffle(wdir, ra, dec, track,
-                                             args.acam_magadd, args.wfs1_magadd,
-                                             args.wfs2_magadd, args.shuffle_cfg,
+                                             args.acam_magadd,
+                                             args.wfs1_magadd,
+                                             args.wfs2_magadd,
+                                             args.shuffle_cfg,
                                              args.fplane_txt, args.night,
                                              catalog='USNO')
 
@@ -2312,7 +2331,7 @@ def main(args):
                 # Create `fibermap` files. These contain the IFU x/y to fiber
                 # number mapping.
                 mk_fibermap_files(wdir, args.reduction_dir, args.night,
-                                                       args.shotid)
+                                  args.shotid)
 
                 # find which slots delivered data for all exposures
                 # (infer from existance of corresponding multifits files).

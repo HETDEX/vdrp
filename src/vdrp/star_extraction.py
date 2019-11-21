@@ -9,15 +9,13 @@ Contains python translation of Karl Gebhardt
 .. moduleauthor:: Jan Snigula <snigula@mpe.mpg.de>
 """
 
-from __future__ import print_function
-
 from argparse import RawDescriptionHelpFormatter as ap_RDHF
 from argparse import ArgumentParser as AP
 
 import time
 import os
-import sys
-import ConfigParser
+# import sys
+import configParser
 import logging
 import logging.config
 import tempfile
@@ -144,7 +142,7 @@ def parseArgs(argv):
     config_source = "Default"
     if args.conf_file:
         config_source = args.conf_file
-        config = ConfigParser.SafeConfigParser()
+        config = configParser.SafeConfigParser()
         config.read([args.conf_file])
         defaults.update(dict(config.items("StarExtract")))
 

@@ -6,17 +6,12 @@ Contains python translation of Karl Gebhardt
 .. moduleauthor:: Jan Snigula <snigula@mpe.mpg.de>
 """
 
-from __future__ import print_function
-# import matplotlib
-
-# from matplotlib import pyplot as plt
-
 from argparse import RawDescriptionHelpFormatter as ap_RDHF
 from argparse import ArgumentParser as AP
 
 import os
 import sys
-import ConfigParser
+# import configParser
 import logging
 import logging.config
 import astropy.stats as aps

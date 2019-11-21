@@ -1,6 +1,6 @@
 import threading
 import multiprocessing.pool
-import Queue
+import queue
 import time
 import logging
 import os
@@ -63,7 +63,7 @@ class ThreadWorker(threading.Thread):
                     _logger.exception(e)
                 finally:
                     self.tasks.task_done()
-            except Queue.Empty:
+            except queue.Empty:
                 print('%s %s queue is empty, shutting down!'
                       % (time.strftime('%H:%M:%S'), self.name))
                 return
@@ -95,19 +95,19 @@ class MPWorker(multiprocessing.Process):
                     _logger.exception(e)
                 finally:
                     self.tasks.task_done()
-            except Queue.Empty:
+            except queue.Empty:
                 print('%s %s queue is empty, shutting down!'
                       % (time.strftime('%H:%M:%S'), self.name))
                 return
             except Exception as e:
                 _logger.exception(e)
-                    
+
 
 class ThreadPool:
     """Pool of threads consuming tasks from a queue"""
     def __init__(self, num_threads):
         self.num_threads = num_threads
-        self.tasks = Queue.Queue()
+        self.tasks = queue.Queue()
         for i in range(num_threads):
             ThreadWorker('ThreadWorker%d' % i, self.tasks)
 

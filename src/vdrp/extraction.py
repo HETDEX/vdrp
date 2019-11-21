@@ -6,8 +6,6 @@ Contains python translation of Karl Gebhardt
 .. moduleauthor:: Jan Snigula <snigula@mpe.mpg.de>
 """
 
-from __future__ import print_function
-
 import os
 import logging
 import logging.config
@@ -69,7 +67,7 @@ def get_star_spectrum_data(ra, dec, args, nightshot, multi_shot=False,
         shot = shot[w_s]
 
     else:
-        night, shot = map(list, zip(nightshot))
+        night, shot = list(map(list, list(zip(nightshot))))
 
     night_shots = []
     starobs = []

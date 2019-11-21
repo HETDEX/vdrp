@@ -6,8 +6,8 @@ Module provides interface to daophot.
 """
 import os
 import subprocess
-import sys
-from utils import rm
+# import sys
+from .utils import rm
 from hetdex_vdrp_support.tools import bindir
 
 DAOPHOT_FIND_CMD = \
@@ -32,7 +32,7 @@ phot
 {}.ap
 """
 
-ALLSTAR_CMD ="""
+ALLSTAR_CMD = """
 
 {}
 {}
@@ -140,7 +140,7 @@ class DAOPHOT_ALS(object):
         dtype = [int, float, float, float, float, float,
                  float, float, float]
         t = Table.read(ll[3:], format='ascii')
-        for i, n, d in zip(range(len(t.columns)), names, dtype):
+        for i, n, d in zip(list(range(len(t.columns))), names, dtype):
             t.columns[i].name = n
             t.columns[i].dtype = d
         # , format='ascii', names=names, dtype=dtype)

@@ -4,7 +4,7 @@ import threading
 import logging
 import sys
 import traceback
-import Queue
+import queue
 
 import vdrp.utils as utils
 
@@ -57,7 +57,7 @@ class MultiProcessingHandler(logging.Handler):
                 raise
             except EOFError:
                 break
-            except Queue.Empty:
+            except queue.Empty:
                 pass  # This periodically checks if the logger is closed.
             except Exception:
                 traceback.print_exc(file=sys.stderr)

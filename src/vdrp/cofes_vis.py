@@ -1,5 +1,5 @@
-import time
-import matplotlib
+# import time
+# import matplotlib
 import matplotlib.pyplot as plt
 from astropy.io import fits
 import numpy as np
@@ -146,7 +146,7 @@ def cofes_4x4_plots(prefix="", outfile_name='CoFeS_plots.png',
     assert len(prefixes) == prefixes.count(prefixes[0]), \
         "The prefix you specified, " + \
         "'" + prefix + "'" + ", is not unique. It matches to " + \
-        "".join(i + " and " for i in prefixes_dict.keys()) + \
+        "".join(i + " and " for i in list(prefixes_dict.keys())) + \
         ". Please enter a unique prefix."
     prefix = cofes_files[0].split('_')[0]
     filename_list = []
