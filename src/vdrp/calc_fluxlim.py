@@ -14,7 +14,7 @@ from argparse import RawDescriptionHelpFormatter as ap_RDHF
 from argparse import ArgumentParser as AP
 
 import os
-import configParser
+import configparser
 import logging
 import logging.config
 from astropy.io import fits
@@ -174,7 +174,7 @@ def parseArgs(argv):
     config_source = "Default"
     if args.conf_file:
         config_source = args.conf_file
-        config = configParser.SafeConfigParser()
+        config = configparser.SafeConfigParser()
         config.read([args.conf_file])
         defaults.update(dict(config.items("FluxLim")))
 

@@ -20,7 +20,7 @@ import json
 import os
 import shutil
 import sys
-import configParser
+import configparser
 import logging
 import logging.config
 import tempfile
@@ -290,7 +290,7 @@ def parseArgs(argv):
     config_source = "Default"
     if args.conf_file:
         config_source = args.conf_file
-        config = configParser.SafeConfigParser()
+        config = configparser.SafeConfigParser()
         config.read([args.conf_file])
         defaults.update(dict(config.items("Photometry")))
 

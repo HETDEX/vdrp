@@ -11,7 +11,7 @@ from argparse import ArgumentParser as AP
 
 import os
 import sys
-# import configParser
+# import configparser
 import logging
 import logging.config
 import astropy.stats as aps

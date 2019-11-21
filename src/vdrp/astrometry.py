@@ -20,7 +20,7 @@ import os
 import glob
 import shutil
 import sys
-import configParser
+import configparser
 import logging
 import subprocess
 from astropy.io import fits
@@ -141,7 +141,7 @@ def parseArgs(args):
     config_source = "Default"
     if args.conf_file:
         config_source = args.conf_file
-        config = configParser.SafeConfigParser()
+        config = configparser.SafeConfigParser()
         config.read([args.conf_file])
         defaults.update(dict(config.items("Astrometry")))
 
