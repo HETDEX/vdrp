@@ -17,8 +17,8 @@ from setuptools.command.sdist import sdist
 
 import subprocess as sp
 
-if sys.version_info < (2, 7) or sys.version_info >= (3, 0):
-    sys.exit("Python version 2.7 required")
+if sys.version_info < (3, 0):
+    sys.exit("Python version 3 required")
 
 
 def run_install():
@@ -119,7 +119,7 @@ entry_points = {'console_scripts':
 setup(
     # package description and version
     name="vdrp",
-    version='1.0.5-post',
+    version='1.1.0',
     author="HETDEX collaboration",
     author_email="snigula@mpe.mpg.de",
     description="VIRUS data reduction pipeline",
