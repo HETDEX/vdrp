@@ -290,7 +290,7 @@ def parseArgs(argv):
     config_source = "Default"
     if args.conf_file:
         config_source = args.conf_file
-        config = configparser.SafeConfigParser()
+        config = configparser.ConfigParser()
         config.read([args.conf_file])
         defaults.update(dict(config.items("Photometry")))
 
