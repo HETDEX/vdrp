@@ -50,7 +50,7 @@ BINARIES = ampnorm combsed fit2d fit2dc fit2dfix \
 	smftf smfwhm smline smline3 smlineaa smlineftf smlinesp smsp smsp2 smsp3 \
 	smsp3twi smspsky smsptwi specclean specint sum2d sum2dsp sumfln \
 	sumlineserr sumlineserr_t sumlineserrf sumsign sumspec sumspec100 \
-	sumspec2 sumspf sumsplines sumsplinesn sumtmp
+	sumspec2 sumspf sumsplines sumsplinesn sumtmp vred
 
 BINARIES_NOBIWT = 2dsm atof biwt comp comp0 findpeaks getnorm getoff getoff2 imfixwv mkraster spnorm wvoff
 
