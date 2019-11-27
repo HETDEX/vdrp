@@ -184,7 +184,7 @@ def daophot_find(prefix, sigma, logging=None):
                             stdout=subprocess.PIPE)
     s = DAOPHOT_FIND_CMD.format(prefix, sigma)
     so, se = proc.communicate(input=s.encode())
-    for l in so.split("\n"):
+    for l in so.split(b"\n"):
         if logging is not None:
             logging.info(l)
         else:
