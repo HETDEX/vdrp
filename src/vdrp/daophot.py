@@ -183,7 +183,7 @@ def daophot_find(prefix, sigma, logging=None):
     proc = subprocess.Popen(bindir()+"/daophot", stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE)
     s = DAOPHOT_FIND_CMD.format(prefix, sigma)
-    so, se = proc.communicate(input=s)
+    so, se = proc.communicate(input=s.encode())
     for l in so.split("\n"):
         if logging is not None:
             logging.info(l)
@@ -217,8 +217,8 @@ def daophot_phot(prefix, logging=None):
     proc = subprocess.Popen(bindir()+"/daophot", stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE)
     s = DAOPHOT_PHOT_CMD.format(prefix, prefix, prefix)
-    so, se = proc.communicate(input=s)
-    for l in so.split("\n"):
+    so, se = proc.communicate(input=s.encodE())
+    for l in so.split(b"\n"):
         if logging is not None:
             logging.info(l)
         else:
@@ -250,8 +250,8 @@ def allstar(prefix, psf="use.psf", logging=None):
     proc = subprocess.Popen(bindir()+"/allstar", stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE)
     s = ALLSTAR_CMD.format(prefix, psf, prefix)
-    so, se = proc.communicate(input=s)
-    for l in so.split("\n"):
+    so, se = proc.communicate(input=s.encode())
+    for l in so.split(b"\n"):
         if logging is not None:
             logging.info(l)
         else:
@@ -283,8 +283,8 @@ def daomaster(logging=None):
     proc = subprocess.Popen(bindir()+"/daomaster", stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE)
     s = DAOMASTER_CMD
-    so, se = proc.communicate(input=s)
-    for l in so.split("\n"):
+    so, se = proc.communicate(input=s.encode())
+    for l in so.split(b"\n"):
         if logging is not None:
             logging.info(l)
         else:
