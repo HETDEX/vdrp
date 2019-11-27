@@ -1976,9 +1976,9 @@ def mk_dithall(wdir, active_slots, reduction_dir, night, shotid, subdir="."):
         exposures = np.sort(exposures)
         for exp in exposures:
             pattern = os.path.join(reduction_dir,
-                                   "{}/virus/virus0000{}/{}/virus/CoFeS*"
+                                   "{}/virus/virus0000{}/{}/virus/Co*"
                                    .format(night, shotid, exp))
-            logging.info("    using CoFes*fits files {}..."
+            logging.info("    using Co*fits files {}..."
                          .format(pattern))
             CoFeS = glob.glob(pattern)
             __, t = os.path.split(CoFeS[0])
