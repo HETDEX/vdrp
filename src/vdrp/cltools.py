@@ -67,9 +67,9 @@ def getoff2(fnradec, fnshuffle_ifustars, radius, ra_offset,
     so, se = proc.communicate(input=s.encode())
     for l in so.split(b"\n"):
         if logging is not None:
-            logging.info(l)
+            logging.info(l.decode())
         else:
-            print(l)
+            print(l.decode())
     # print so
     # p_status = proc.wait()
     proc.wait()
@@ -133,9 +133,9 @@ def immosaicv(prefixes, fplane_file="fplane.txt", logging=None):
     so, se = proc.communicate()
     for l in so.split(b"\n"):
         if logging is not None:
-            logging.info(l)
+            logging.info(l.decode())
         else:
-            print(l)
+            print(l.decode())
     # p_status = proc.wait()
     proc.wait()
 
@@ -161,6 +161,6 @@ def imrot(fitsfile, angle, logging=None):
     so, se = proc.communicate(input=s.encode())
     for l in so.split(b"\n"):
         if logging is not None:
-            logging.info(l)
+            logging.info(l.decode())
         else:
-            print(l)
+            print(l.decode())

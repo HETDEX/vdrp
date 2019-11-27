@@ -1359,18 +1359,22 @@ def add_ifu_xy(wdir, offset_exposure_indices):
             t_detect_coor_xy = ra_dec_to_xy(t_detect_coor, ra, dec, fp, tp)
             t_catalog_coor_xy = ra_dec_to_xy(t_catalog_coor, ra, dec, fp, tp)
 
+            renamed_t_detect_coor_xy = t_detect_coor_xy.copy()
+            renamed_t_catalog_coor_xy = t_catalog_coor_xy.copy()
+
             for c in t_detect_coor_xy.columns:
                 # t_detect_coor_xy.columns[c].name = \
                 #     t_detect_coor_xy.columns[c].name + "1"
-                t_detect_coor_xy.columns[c].name = \
+                renamed_t_detect_coor_xy.columns[c].name = \
                     t_detect_coor_xy.columns[c].name + "_det"
             for c in t_catalog_coor_xy.columns:
                 # t_catalog_coor_xy.columns[c].name = \
                 #     t_catalog_coor_xy.columns[c].name + "2"
-                t_catalog_coor_xy.columns[c].name = \
+                renamed_t_catalog_coor_xy.columns[c].name = \
                     t_catalog_coor_xy.columns[c].name + "_cat"
 
-            t = table.hstack([t_detect_coor_xy, t_catalog_coor_xy])
+            t = table.hstack([renamed_t_detect_coor_xy,
+                              renamed_t_catalog_coor_xy])
             t.write('xy_exp{:02d}.dat'.format(exp_index),
                     format="ascii.fixed_width", delimiter='', overwrite=True)
 

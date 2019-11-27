@@ -54,5 +54,5 @@ def run_command(cmd, input=None, wdir=None):
 
     so, _ = proc.communicate(input=input.encode())
     for l in so.split(b"\n"):
-        _logger.info(l)
+        _logger.info(l.decode())
     proc.wait()

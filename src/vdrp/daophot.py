@@ -186,9 +186,9 @@ def daophot_find(prefix, sigma, logging=None):
     so, se = proc.communicate(input=s.encode())
     for l in so.split(b"\n"):
         if logging is not None:
-            logging.info(l)
+            logging.info(l.decode())
         else:
-            print(l)
+            print(l.decode())
     # p_status = proc.wait()
     proc.wait()
     rm([prefix + "jnk.fits"])
@@ -220,9 +220,9 @@ def daophot_phot(prefix, logging=None):
     so, se = proc.communicate(input=s.encode())
     for l in so.split(b"\n"):
         if logging is not None:
-            logging.info(l)
+            logging.info(l.decode())
         else:
-            print(l)
+            print(l.decode())
     # p_status = proc.wait()
     proc.wait()
     rm([prefix + "jnk.fits"])
@@ -253,9 +253,9 @@ def allstar(prefix, psf="use.psf", logging=None):
     so, se = proc.communicate(input=s.encode())
     for l in so.split(b"\n"):
         if logging is not None:
-            logging.info(l)
+            logging.info(l.decode())
         else:
-            print(l)
+            print(l.decode())
     # p_status = proc.wait()
     proc.wait()
 
@@ -286,9 +286,9 @@ def daomaster(logging=None):
     so, se = proc.communicate(input=s.encode())
     for l in so.split(b"\n"):
         if logging is not None:
-            logging.info(l)
+            logging.info(l.decode())
         else:
-            print(l)
+            print(l.decode())
     # p_status = proc.wait()
     proc.wait()
 
