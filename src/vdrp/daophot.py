@@ -217,7 +217,7 @@ def daophot_phot(prefix, logging=None):
     proc = subprocess.Popen(bindir()+"/daophot", stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE)
     s = DAOPHOT_PHOT_CMD.format(prefix, prefix, prefix)
-    so, se = proc.communicate(input=s.encodE())
+    so, se = proc.communicate(input=s.encode())
     for l in so.split(b"\n"):
         if logging is not None:
             logging.info(l)

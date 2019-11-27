@@ -52,7 +52,7 @@ def run_command(cmd, input=None, wdir=None):
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, cwd=wdir,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
-    so, _ = proc.communicate(input=input)
-    for l in so.split("\n"):
+    so, _ = proc.communicate(input=input.encode())
+    for l in so.split(b"\n"):
         _logger.info(l)
     proc.wait()

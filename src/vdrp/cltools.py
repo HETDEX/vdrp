@@ -64,8 +64,8 @@ def getoff2(fnradec, fnshuffle_ifustars, radius, ra_offset,
     proc = subprocess.Popen(bindir()+"/getoff2", stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE)
     s = GETOFF_CMD.format(radius)
-    so, se = proc.communicate(input=s)
-    for l in so.split("\n"):
+    so, se = proc.communicate(input=s.encode())
+    for l in so.split(b"\n"):
         if logging is not None:
             logging.info(l)
         else:
@@ -131,7 +131,7 @@ def immosaicv(prefixes, fplane_file="fplane.txt", logging=None):
     proc = subprocess.Popen(bindir()+"/immosaicv", stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE)
     so, se = proc.communicate()
-    for l in so.split("\n"):
+    for l in so.split(b"\n"):
         if logging is not None:
             logging.info(l)
         else:
@@ -158,8 +158,8 @@ def imrot(fitsfile, angle, logging=None):
     proc = subprocess.Popen(bindir()+"/imrot", stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE)
     s = CMD_IMROT.format(fitsfile, angle)
-    so, se = proc.communicate(input=s)
-    for l in so.split("\n"):
+    so, se = proc.communicate(input=s.encode())
+    for l in so.split(b"\n"):
         if logging is not None:
             logging.info(l)
         else:
