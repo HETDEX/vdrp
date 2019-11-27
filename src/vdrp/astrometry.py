@@ -306,8 +306,8 @@ def cp_post_stamps(wdir, reduction_dir, night, shotid):
     """
     # find the IFU postage stamp fits files and copy them over
     pattern = os.path.join(reduction_dir,
-                           "{}/virus/virus0000{}/*/*/CoFeS*".format(night,
-                                                                    shotid))
+                           "{}/virus/virus0000{}/*/*/Co*".format(night,
+                                                                 shotid))
     logging.info("Copy {} files to {}".format(pattern, wdir))
     cofes_files = glob.glob(pattern)
     if len(cofes_files) == 0:
