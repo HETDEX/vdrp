@@ -119,7 +119,7 @@ entry_points = {'console_scripts':
 setup(
     # package description and version
     name="vdrp",
-    version='1.2.0',
+    version='1.2.1',
     author="HETDEX collaboration",
     author_email="snigula@mpe.mpg.de",
     description="VIRUS data reduction pipeline",

@@ -1,5 +1,9 @@
 2019-12-03  Jan Snigula  <snigula@mpe.mpg.de>
 
+	* setup.py: Bumped version to 1.2.1
+
+2019-12-03  Jan Snigula  <snigula@mpe.mpg.de>
+
 	* setup.py: Bumped version to 1.2.0
 
 2019-05-27  Jan Snigula  <snigula@mpe.mpg.de>
