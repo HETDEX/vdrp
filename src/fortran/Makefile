@@ -27,9 +27,10 @@ PKG_BINDIR = ../vdrp/bin/
 LIBDIR = $(shell vdrp_support_libdir)
 
 BINARIES = combsed fit2d fitem fitonevp fitradecsp getnormexp getsdssg \
-	imextsp mkimage mkimage3d plotseda specclean sumlineserr sumspec sumsplines
+	imextsp imrot immosaicv mkimage mkimage3d plotseda specclean \
+    sumlineserr sumspec sumsplines
 
-BINARIES_NOBIWT = biwt
+BINARIES_NOBIWT = biwt getoff2
 
 # SOURCES = $(patsubst %,%.f,$(BINARIES))
 

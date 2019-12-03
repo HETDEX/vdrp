@@ -5,8 +5,11 @@ fitem
 fitonevp
 fitradecsp
 getnormexp
+getoff2
 getsdssg
 imextsp
+immosaicv
+imrot
 mkimage
 mkimage3d
 plotseda
