@@ -1,5 +1,5 @@
 
-      parameter(nmax=1000)
+      parameter(nmax=100000)
       real xa1(nmax),xa2(nmax)
       real*8 dxp1,dyp1,dxp2,dyp2,dxp1d,dyp1d,dradp,drad
       character file1*50,file2*50,file3*50,c1*4
