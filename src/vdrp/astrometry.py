@@ -1570,7 +1570,7 @@ def mk_match_matrix(wdir, ax, exp, image_files, fplane_file, shout_ifu_file,
                       0.+ycenter, ysize+ycenter]
 
             ax.imshow(np.rot90(images[f], k=3), extent=extent,
-                      origin='bottom', vmin=-5., vmax=10., cmap=cmap)
+                      origin='lower', vmin=-5., vmax=10., cmap=cmap)
 
             ii = ifu_xy['ifuslot'] == int(ifuslot)
             jj = matched['ifuslot'] == int(ifuslot)
@@ -1584,9 +1584,12 @@ def mk_match_matrix(wdir, ax, exp, image_files, fplane_file, shout_ifu_file,
 
             ax.set_xlim([extent[0], extent[1]])
             ax.set_ylim([extent[2], extent[3]])
-            dp = DAOPHOT_ALS.read(os.path.join(wdir, f + '.als'))
-            ax.plot(-dp.data['Y']+51./2., dp.data['X']-51./2., 'r+',
-                    markersize=10)
+
+            # ignore if there are no stars in the IFU, EMC Added 2023-09-21
+            if os.stat(os.path.join(wdir, f + '.als')).st_size > 0:
+                dp = DAOPHOT_ALS.read(os.path.join(wdir, f + '.als'))
+                ax.plot(-dp.data['Y']+51./2., dp.data['X']-51./2., 'r+',
+                        markersize=10)
             ax.text(.975, .025, ifuslot, transform=ax.transAxes,
                     color='white', ha='right', va='bottom')
         except Exception:
