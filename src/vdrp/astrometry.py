@@ -1010,7 +1010,7 @@ def compute_optimal_ang_off(wdir, smoothing=0.05, PLOT=True):
         plt.text(.1, .9, "avg. optimal\noffset angle\nis {:.5} Deg"
                  .format(ang_off_avg), transform=ax.transAxes)
         fig.tight_layout()
-        plt.savefig(os.path.join(wdir, "ang_off.pdf"), overwrite=True)
+        plt.savefig(os.path.join(wdir, "ang_off.pdf")) #, overwrite=True)
 
     vdrp_info["ang_off_avg"] = ang_off_avg
     return ang_off_avg
